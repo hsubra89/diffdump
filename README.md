@@ -1,31 +1,50 @@
 # diffdump
 
-A minimal TanStack Start app with one route and plain CSS.
+A minimal, anonymous git diff sharing app built entirely on Cloudflare.
+
+- TanStack Start runs on Cloudflare Workers.
+- Unified diffs are stored as private objects in Cloudflare R2.
+- Share URLs use 96-bit, base64url-encoded random slugs.
+- [`@pierre/diffs`](https://diffs.com/) renders multi-file patches.
+
+## How it works
+
+1. A user pastes a unified git diff on `/`.
+2. A TanStack server function validates the patch and its 2 MiB size limit.
+3. The Worker generates a 16-character cryptographic slug and conditionally
+   writes `diffs/<slug>` to R2 so an existing share is never overwritten.
+4. The app navigates to `/view/<slug>`, loads the private object through the
+   Worker, and renders it in the browser.
+
+## Local development
+
+Requirements: Node.js 22 or newer and a Cloudflare account for deployment.
 
 ```bash
 npm install
+npm run cf-typegen
 npm run dev
 ```
 
-Edit `src/routes/index.tsx` to get started. Add route files under
-`src/routes`; TanStack Router updates `src/routeTree.gen.ts` for you.
+The Cloudflare Vite plugin provides a locally persisted R2 binding during
+development.
 
-Build the production app with:
+## Validation
 
 ```bash
+npm test
 npm run build
 ```
 
-## Deploy to Cloudflare Workers
+## Deploy
 
-This project uses the Cloudflare Vite plugin (configured in `vite.config.ts`) and `wrangler.jsonc`:
+Authenticate Wrangler, create the production bucket once, then deploy:
 
-1. Install Wrangler: `npm install -g wrangler`
-2. Authenticate: `wrangler login`
-3. Deploy: `npx wrangler deploy`
+```bash
+npx wrangler login
+npx wrangler r2 bucket create diffdump-diffs
+npm run deploy
+```
 
-For production env vars, run `wrangler secret put MY_VAR` for each secret listed in `.env.example`. Public (non-secret) vars go in `wrangler.jsonc` under `vars`.
-
-KV, D1, R2, and Durable Object bindings are configured in `wrangler.jsonc` — see https://developers.cloudflare.com/workers/wrangler/configuration/.
-
-
+The R2 bucket is private and is only available to the Worker through the
+`DIFFS` binding in `wrangler.jsonc`.
