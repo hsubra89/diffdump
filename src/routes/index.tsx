@@ -81,10 +81,6 @@ function Home() {
       </nav>
 
       <section className="hero">
-        <p className="eyebrow">
-          <span className="status-dot" aria-hidden="true" />
-          Cloudflare-native diff sharing
-        </p>
         <h1>
           Share a diff.
           <br />

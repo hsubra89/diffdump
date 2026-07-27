@@ -127,14 +127,6 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
-.status-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--accent);
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgb(216 255 114 / 9%);
-}
-
 .hero h1 {
   max-width: 900px;
   margin: 0;
