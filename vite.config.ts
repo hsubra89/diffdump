@@ -7,6 +7,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  worker: { format: 'es' },
   plugins: [
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
 

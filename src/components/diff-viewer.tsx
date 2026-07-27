@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
-  FileDiff,
-  Virtualizer,
+  CodeView,
+  WorkerPoolContextProvider,
+  type CodeViewDiffItem,
   type FileDiffMetadata,
+  type WorkerInitializationRenderOptions,
+  type WorkerPoolOptions,
 } from '@pierre/diffs/react'
 import { parsePatchFiles } from '@pierre/diffs'
+import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
 
 import type { StoredDiff } from '../lib/diffs'
 
@@ -14,6 +18,20 @@ type DiffStyle = 'unified' | 'split'
 type DiffViewerProps = {
   slug: string
   storedDiff: StoredDiff
+}
+
+const workerPoolOptions: WorkerPoolOptions = {
+  poolSize: Math.min(
+    Math.max(1, (globalThis.navigator?.hardwareConcurrency ?? 2) - 1),
+    3,
+  ),
+  totalASTLRUCacheSize: 100,
+  workerFactory: () => new Worker(DiffWorkerUrl, { type: 'module' }),
+}
+
+const highlighterOptions: WorkerInitializationRenderOptions = {
+  theme: 'pierre-dark',
+  lineDiffType: 'word-alt',
 }
 
 export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
@@ -44,16 +62,32 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   }, [slug, storedDiff.diff])
 
   const summary = useMemo(() => summarizeDiff(parsed.files), [parsed.files])
+  const items = useMemo<CodeViewDiffItem[]>(
+    () =>
+      parsed.files.map((file, index) => ({
+        id: `${file.cacheKey ?? file.name}-${index}`,
+        type: 'diff',
+        fileDiff: file,
+      })),
+    [parsed.files],
+  )
   const options = useMemo(
     () => ({
       diffStyle,
       diffIndicators: 'bars' as const,
       hunkSeparators: 'line-info' as const,
-      lineDiffType: 'word-alt' as const,
+      itemMetrics: {
+        lineHeight: 19,
+      },
+      layout: {
+        paddingTop: 20,
+        paddingBottom: 48,
+        gap: 18,
+      },
       overflow: wrapLines ? ('wrap' as const) : ('scroll' as const),
       theme: 'pierre-dark',
       themeType: 'dark' as const,
-      stickyHeader: true,
+      stickyHeaders: true,
     }),
     [diffStyle, wrapLines],
   )
@@ -144,21 +178,12 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           </Link>
         </section>
       ) : (
-        <Virtualizer
-          className="diff-scroll"
-          contentClassName="diff-content"
-          config={{ overscrollSize: 640 }}
+        <WorkerPoolContextProvider
+          poolOptions={workerPoolOptions}
+          highlighterOptions={highlighterOptions}
         >
-          {parsed.files.map((file, index) => (
-            <FileDiff
-              key={`${file.cacheKey ?? file.name}-${index}`}
-              className="diff-file"
-              fileDiff={file}
-              options={options}
-              disableWorkerPool
-            />
-          ))}
-        </Virtualizer>
+          <CodeView className="diff-scroll" items={items} options={options} />
+        </WorkerPoolContextProvider>
       )}
     </main>
   )

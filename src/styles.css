@@ -521,16 +521,12 @@ kbd {
   scrollbar-color: #3b414a #111318;
 }
 
-.diff-content {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.diff-scroll > div {
   width: min(1540px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 20px 0 48px;
 }
 
-.diff-file {
+.diff-scroll diffs-container {
   overflow: hidden;
   background: #111318;
   border: 1px solid #292e35;
@@ -665,12 +661,11 @@ kbd {
     justify-content: space-between;
   }
 
-  .diff-content {
+  .diff-scroll > div {
     width: calc(100% - 16px);
-    padding-top: 10px;
   }
 
-  .diff-file {
+  .diff-scroll diffs-container {
     border-radius: 7px;
     font-size: 11px;
     line-height: 18px;
