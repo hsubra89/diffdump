@@ -354,6 +354,63 @@ textarea:focus-visible {
   min-width: 165px;
 }
 
+.terminal-upload {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
+  gap: 24px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 16px 18px;
+  background: rgb(21 24 29 / 58%);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+
+.terminal-upload-copy p {
+  margin: 0;
+}
+
+.terminal-upload-copy p:last-child {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.terminal-upload-label {
+  color: var(--muted-bright);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.terminal-command {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  overflow-x: auto;
+  color: var(--accent);
+  background: #0f1114;
+  border: 1px solid #252a31;
+  border-radius: 8px;
+  scrollbar-width: thin;
+  white-space: nowrap;
+}
+
+.terminal-command > span {
+  color: #5d6570;
+  user-select: none;
+}
+
+.terminal-command code {
+  color: #dfe3e8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
 .home-footer {
   display: flex;
   align-items: center;
@@ -623,6 +680,16 @@ kbd {
 
   .composer-actions {
     justify-content: space-between;
+  }
+
+  .terminal-upload {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .terminal-command {
+    margin: 0 -2px;
   }
 
   .home-footer {

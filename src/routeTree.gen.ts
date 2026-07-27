@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DRouteImport } from './routes/d'
 import { Route as ViewSlugRouteImport } from './routes/view.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DRoute = DRouteImport.update({
+  id: '/d',
+  path: '/d',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ViewSlugRoute = ViewSlugRouteImport.update({
@@ -25,27 +31,31 @@ const ViewSlugRoute = ViewSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/d': typeof DRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/d': typeof DRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/d': typeof DRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/view/$slug'
+  fullPaths: '/' | '/d' | '/view/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/view/$slug'
-  id: '__root__' | '/' | '/view/$slug'
+  to: '/' | '/d' | '/view/$slug'
+  id: '__root__' | '/' | '/d' | '/view/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DRoute: typeof DRoute
   ViewSlugRoute: typeof ViewSlugRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/d': {
+      id: '/d'
+      path: '/d'
+      fullPath: '/d'
+      preLoaderRoute: typeof DRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/view/$slug': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DRoute: DRoute,
   ViewSlugRoute: ViewSlugRoute,
 }
 export const routeTree = rootRouteImport

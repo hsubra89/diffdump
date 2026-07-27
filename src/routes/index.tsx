@@ -1,4 +1,9 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
@@ -35,7 +40,13 @@ function Home() {
   const [diff, setDiff] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [siteOrigin, setSiteOrigin] = useState('')
   const byteLength = new TextEncoder().encode(diff).byteLength
+  const uploadUrl = siteOrigin ? `${siteOrigin}/d` : '/d'
+
+  useEffect(() => {
+    setSiteOrigin(window.location.origin)
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -166,6 +177,22 @@ function Home() {
           </div>
         </div>
       </form>
+
+      <section
+        className="terminal-upload"
+        aria-labelledby="terminal-upload-title"
+      >
+        <div className="terminal-upload-copy">
+          <p id="terminal-upload-title" className="terminal-upload-label">
+            From your terminal
+          </p>
+          <p>Pipe working-tree changes straight to a share link.</p>
+        </div>
+        <div className="terminal-command">
+          <span aria-hidden="true">$</span>
+          <code>git diff | curl -T- {uploadUrl}</code>
+        </div>
+      </section>
 
       <footer className="home-footer">
         <span>Powered by Cloudflare Workers + R2</span>
