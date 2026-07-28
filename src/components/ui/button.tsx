@@ -8,7 +8,6 @@ export const buttonVariants = cva(
     'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap',
     'rounded-control border text-xs font-semibold',
     'transition-[color,background-color,border-color,transform,box-shadow] duration-150',
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
     'disabled:pointer-events-none disabled:opacity-55',
   ],
   {

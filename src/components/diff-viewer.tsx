@@ -403,7 +403,7 @@ function CategoryFilters({
             key={filter}
             className={cn(
               'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border border-transparent px-2.5 font-mono text-[10px] text-muted transition-colors',
-              'hover:border-line hover:bg-surface hover:text-muted-bright focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
+              'hover:border-line hover:bg-surface hover:text-muted-bright',
               active &&
                 'border-line-bright bg-surface-raised text-foreground shadow-sm',
             )}
