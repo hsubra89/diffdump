@@ -8,6 +8,23 @@ export const GITHUB_TOKEN_STORAGE_KEY = 'diffdump.github.token'
 export const CREATE_CLASSIC_GITHUB_TOKEN_URL =
   'https://github.com/settings/tokens/new?description=Diffdump%20Private%20Repo%20Read%20Access&scopes=repo&default_expires_at=90'
 
+export class GitHubDiffLoadError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'GitHubDiffLoadError'
+    this.status = status
+  }
+}
+
+export function isTokenFixableGitHubError(error: unknown): boolean {
+  return (
+    error instanceof GitHubDiffLoadError &&
+    (error.status === 401 || error.status === 403 || error.status === 404)
+  )
+}
+
 export type GitHubDiffSource =
   | {
       kind: 'pull'
@@ -145,7 +162,10 @@ export async function loadGitHubDiff(
   })
 
   if (!response.ok) {
-    throw new Error(await githubErrorMessage(response, Boolean(token)))
+    throw new GitHubDiffLoadError(
+      await githubErrorMessage(response, Boolean(token)),
+      response.status,
+    )
   }
 
   const diff = await response.text()

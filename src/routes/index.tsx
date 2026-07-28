@@ -4,11 +4,13 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
 } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
-import { GitHubImport } from '../components/github-import'
+import { GitHubOpenPanel } from '../components/github-open-panel'
 import { Button } from '../components/ui/button'
 import { eyebrowClassName } from '../components/ui/surfaces'
 import { ThemeToggle } from '../components/ui/theme-toggle'
@@ -18,6 +20,7 @@ import { MAX_DIFF_BYTES } from '../lib/diffs'
 import { createDiff } from '../server/diffs.functions'
 
 type CommandCopyState = 'idle' | 'armed' | 'full'
+type PanelTab = 'paste' | 'github'
 
 const EXAMPLE_DIFF = `diff --git a/src/greeting.ts b/src/greeting.ts
 index ce01362..cc628cc 100644
@@ -36,7 +39,7 @@ export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
       {
-        title: 'Diffdump — Share a git diff',
+        title: 'Diffdump — Share or review any git diff',
       },
     ],
   }),
@@ -46,12 +49,15 @@ export const Route = createFileRoute('/')({
 function Home() {
   const navigate = useNavigate()
   const createDiffFn = useServerFn(createDiff)
+  const [activeTab, setActiveTab] = useState<PanelTab>('paste')
   const [diff, setDiff] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [siteOrigin, setSiteOrigin] = useState('')
   const [commandCopyState, setCommandCopyState] =
     useState<CommandCopyState>('idle')
+  const pasteTabRef = useRef<HTMLButtonElement>(null)
+  const githubTabRef = useRef<HTMLButtonElement>(null)
   const commandCopyTimer = useRef<number | null>(null)
   const copyWindowEndsAt = useRef(0)
   const copyInFlight = useRef(false)
@@ -101,6 +107,24 @@ function Home() {
       event.preventDefault()
       event.currentTarget.form?.requestSubmit()
     }
+  }
+
+  function handleTabListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      return
+    }
+
+    event.preventDefault()
+    const nextTab: PanelTab =
+      event.key === 'Home'
+        ? 'paste'
+        : event.key === 'End'
+          ? 'github'
+          : activeTab === 'paste'
+            ? 'github'
+            : 'paste'
+    setActiveTab(nextTab)
+    ;(nextTab === 'paste' ? pasteTabRef : githubTabRef).current?.focus()
   }
 
   async function copyTerminalCommand() {
@@ -165,116 +189,167 @@ function Home() {
 
       <section className="pt-16 pb-10 md:pt-24 md:pb-12">
         <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-semibold leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
-          Share a diff.
+          Any diff.
           <br />
-          <span className="text-muted">Skip the ceremony.</span>
+          <span className="text-muted">One clean link.</span>
         </h1>
         <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
-          Paste a unified git diff and get a focused, unlisted review link in
-          seconds. No account. No repository access.
+          Paste a unified git diff for a focused, unlisted share link — or open
+          a GitHub pull request, commit, or comparison in the same clean viewer.
+          No account.
         </p>
       </section>
 
-      <section aria-labelledby="shared-diff-title">
+      <section aria-labelledby="panel-section-title">
         <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
           <h2
-            id="shared-diff-title"
+            id="panel-section-title"
             className={cn(eyebrowClassName, 'text-accent-text')}
           >
-            Create a shared diff
+            {activeTab === 'paste'
+              ? 'Create a shared diff'
+              : 'Open a GitHub diff'}
           </h2>
           <p className="text-xs text-muted">
-            Paste or pipe a patch to create an expiring, unlisted link.
+            {activeTab === 'paste'
+              ? 'Paste or pipe a patch to create an expiring, unlisted link.'
+              : 'Public repos work instantly — private ones ask for a token when needed.'}
           </p>
         </div>
 
-        <form
-          className="overflow-hidden rounded-panel border border-line bg-panel shadow-[0_16px_40px_light-dark(rgb(0_0_0/5%),rgb(0_0_0/35%))]"
-          onSubmit={handleSubmit}
-        >
-          <div className="flex min-h-12 items-center justify-between border-b border-line bg-canvas px-4 font-mono text-xs text-muted">
-            <div className="flex items-center gap-4">
-              <span className="flex gap-1.5" aria-hidden="true">
+        <div className="overflow-hidden rounded-panel border border-line bg-panel shadow-[0_16px_40px_light-dark(rgb(0_0_0/5%),rgb(0_0_0/35%))]">
+          <div className="flex min-h-12 items-stretch justify-between border-b border-line bg-canvas pr-3 font-mono text-xs text-muted">
+            <div className="flex min-w-0 items-stretch">
+              <span
+                className="flex items-center gap-1.5 px-4"
+                aria-hidden="true"
+              >
                 <i className="size-[7px] rounded-full bg-[#f17873]" />
                 <i className="size-[7px] rounded-full bg-[#e5b95f]" />
                 <i className="size-[7px] rounded-full bg-[#70c285]" />
               </span>
-              <label htmlFor="diff-input">diff.patch</label>
+              <div
+                role="tablist"
+                aria-label="Diff source"
+                className="flex items-stretch"
+                tabIndex={-1}
+                onKeyDown={handleTabListKeyDown}
+              >
+                <PanelTabButton
+                  active={activeTab === 'paste'}
+                  controls="panel-paste"
+                  id="tab-paste"
+                  tabRef={pasteTabRef}
+                  onSelect={() => setActiveTab('paste')}
+                >
+                  diff.patch
+                </PanelTabButton>
+                <PanelTabButton
+                  active={activeTab === 'github'}
+                  controls="panel-github"
+                  id="tab-github"
+                  tabRef={githubTabRef}
+                  onSelect={() => setActiveTab('github')}
+                >
+                  github.com/…
+                </PanelTabButton>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="xs"
-              className="font-mono"
-              onClick={() => {
-                setDiff(EXAMPLE_DIFF)
-                setError(null)
-              }}
-            >
-              Load example
-            </Button>
-          </div>
-
-          <textarea
-            className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
-            id="diff-input"
-            name="diff"
-            value={diff}
-            onChange={(event) => {
-              setDiff(event.target.value)
-              if (error) setError(null)
-            }}
-            onKeyDown={handleEditorKeyDown}
-            placeholder={`diff --git a/file.ts b/file.ts\n--- a/file.ts\n+++ b/file.ts\n@@ -1,3 +1,4 @@\n ...paste your diff here`}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            aria-describedby="diff-help diff-security diff-error"
-          />
-
-          <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-5 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
-            <div>
-              <p id="diff-help" className="text-xs text-muted">
-                Unlisted · Expires after 24 hours · 2 MiB max
-              </p>
-              <p
-                id="diff-security"
-                className="mt-1 max-w-[590px] text-xs leading-snug text-muted"
-              >
-                Anyone with the link can view this diff — remove secrets before
-                sharing.
-              </p>
-              <p
-                id="diff-error"
-                className="mt-1.5 max-w-[560px] text-xs text-danger empty:hidden"
-                role="alert"
-                aria-live="polite"
-              >
-                {error}
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-center justify-between gap-4 md:justify-start">
-              <span
-                className={cn(
-                  'min-w-[55px] text-right font-mono text-[11px] text-muted',
-                  byteLength > MAX_DIFF_BYTES && 'text-danger',
-                )}
-              >
-                {formatBytes(byteLength)}
-              </span>
+            {activeTab === 'paste' && (
               <Button
-                className="min-w-[150px]"
-                variant="primary"
-                size="sm"
-                type="submit"
-                disabled={isSubmitting}
+                variant="ghost"
+                size="xs"
+                className="self-center font-mono"
+                onClick={() => {
+                  setDiff(EXAMPLE_DIFF)
+                  setError(null)
+                }}
               >
-                {isSubmitting ? 'Creating link…' : 'Create share link'}
-                {!isSubmitting && <span aria-hidden="true">↗</span>}
+                Load example
               </Button>
-            </div>
+            )}
           </div>
-        </form>
+
+          <div
+            role="tabpanel"
+            id="panel-paste"
+            aria-labelledby="tab-paste"
+            className={cn(activeTab !== 'paste' && 'hidden')}
+          >
+            <form onSubmit={handleSubmit}>
+              <textarea
+                className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
+                id="diff-input"
+                name="diff"
+                value={diff}
+                onChange={(event) => {
+                  setDiff(event.target.value)
+                  if (error) setError(null)
+                }}
+                onKeyDown={handleEditorKeyDown}
+                placeholder={`diff --git a/file.ts b/file.ts\n--- a/file.ts\n+++ b/file.ts\n@@ -1,3 +1,4 @@\n ...paste your diff here`}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                aria-label="Unified diff"
+                aria-describedby="diff-help diff-security diff-error"
+              />
+
+              <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-5 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
+                <div>
+                  <p id="diff-help" className="text-xs text-muted">
+                    Unlisted · Expires after 24 hours · 2 MiB max
+                  </p>
+                  <p
+                    id="diff-security"
+                    className="mt-1 max-w-[590px] text-xs leading-snug text-muted"
+                  >
+                    Anyone with the link can view this diff — remove secrets
+                    before sharing.
+                  </p>
+                  <p
+                    id="diff-error"
+                    className="mt-1.5 max-w-[560px] text-xs text-danger empty:hidden"
+                    role="alert"
+                    aria-live="polite"
+                  >
+                    {error}
+                  </p>
+                </div>
+
+                <div className="flex shrink-0 items-center justify-between gap-4 md:justify-start">
+                  <span
+                    className={cn(
+                      'min-w-[55px] text-right font-mono text-[11px] text-muted',
+                      byteLength > MAX_DIFF_BYTES && 'text-danger',
+                    )}
+                  >
+                    {formatBytes(byteLength)}
+                  </span>
+                  <Button
+                    className="min-w-[150px]"
+                    variant="primary"
+                    size="sm"
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Creating link…' : 'Create share link'}
+                    {!isSubmitting && <span aria-hidden="true">↗</span>}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div
+            role="tabpanel"
+            id="panel-github"
+            aria-labelledby="tab-github"
+            className={cn(activeTab !== 'github' && 'hidden')}
+          >
+            <GitHubOpenPanel />
+          </div>
+        </div>
 
         <section
           className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
@@ -334,8 +409,6 @@ function Home() {
         </section>
       </section>
 
-      <GitHubImport />
-
       <footer className="flex items-center justify-center px-1 pt-10 text-[11px] text-muted md:justify-between">
         <span>
           Powered by <FooterLink href="https://diffs.com">diffs.com</FooterLink>{' '}
@@ -352,6 +425,41 @@ function Home() {
         </span>
       </footer>
     </main>
+  )
+}
+
+function PanelTabButton({
+  active,
+  controls,
+  id,
+  onSelect,
+  tabRef,
+  children,
+}: {
+  active: boolean
+  controls: string
+  id: string
+  onSelect: () => void
+  tabRef: RefObject<HTMLButtonElement | null>
+  children: ReactNode
+}) {
+  return (
+    <button
+      ref={tabRef}
+      className={cn(
+        '-mb-px flex items-center border-b-2 border-transparent px-3.5 transition-colors hover:text-foreground',
+        active && 'border-accent text-foreground',
+      )}
+      id={id}
+      aria-controls={controls}
+      aria-selected={active}
+      onClick={onSelect}
+      role="tab"
+      tabIndex={active ? 0 : -1}
+      type="button"
+    >
+      {children}
+    </button>
   )
 }
 
