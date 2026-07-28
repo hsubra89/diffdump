@@ -1,9 +1,12 @@
 # diffdump
 
-A minimal, anonymous git diff sharing app built entirely on Cloudflare.
+A minimal, anonymous git diff sharing app built entirely on Cloudflare and
+managed with [Alchemy](https://alchemy.run/).
 
 - TanStack Start runs on Cloudflare Workers.
 - Unified diffs are stored as private objects in Cloudflare R2.
+- `alchemy.run.ts` manages the Worker, R2 bucket, lifecycle rule, binding, and
+  custom domain as one stack.
 - Share links expire after 24 hours.
 - Share URLs use 96-bit, base64url-encoded random slugs.
 - [`@pierre/diffs`](https://diffs.com/) renders multi-file patches.
@@ -19,16 +22,17 @@ A minimal, anonymous git diff sharing app built entirely on Cloudflare.
 
 ## Local development
 
-Requirements: Node.js 22 or newer and a Cloudflare account for deployment.
+Requirements: Node.js 22 or newer and a Cloudflare account.
 
 ```bash
 npm install
-npm run cf-typegen
+npx alchemy login
 npm run dev
 ```
 
-The Cloudflare Vite plugin provides a locally persisted R2 binding during
-development.
+Alchemy creates an isolated development stage with its own Worker and R2
+bucket. The first Alchemy command also offers to bootstrap its Cloudflare-backed
+state store. Application code still runs through Vite with HMR on port 3000.
 
 ## Validation
 
@@ -39,15 +43,15 @@ npm run build
 
 ## Deploy
 
-Authenticate Wrangler, create the production bucket once, then deploy:
+Preview the production infrastructure changes, then deploy:
 
 ```bash
-npx wrangler login
-npx wrangler r2 bucket create diffdump-diffs
-npx wrangler r2 bucket lifecycle add diffdump-diffs expire-diffs-after-one-day diffs/ --expire-days 1
+npm run plan
 npm run deploy
 ```
 
-The R2 bucket is private and is only available to the Worker through the
-`DIFFS` binding in `wrangler.jsonc`. The application enforces the 24-hour
-expiry when a link is read; the lifecycle rule removes expired objects from R2.
+The `prod` stage creates the `diffdump` Worker, the private `diffdump-diffs`
+bucket, its one-day `diffs/` lifecycle rule, and the `diffdump.com` Worker
+custom domain. The bucket is only available through the Worker's `DIFFS`
+binding. The application enforces the 24-hour expiry when a link is read; the
+lifecycle rule removes expired objects from R2.
