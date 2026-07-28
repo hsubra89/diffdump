@@ -35,7 +35,8 @@ describe('R2 diff storage', () => {
       expect.objectContaining({
         customMetadata: {
           createdAt: '2026-07-27T12:00:00.000Z',
-          schemaVersion: '1',
+          expiresAt: '2026-07-28T12:00:00.000Z',
+          schemaVersion: '2',
         },
       }),
     )
@@ -46,15 +47,21 @@ describe('R2 diff storage', () => {
       get: vi.fn().mockResolvedValue({
         customMetadata: {
           createdAt: '2026-07-27T12:00:00.000Z',
+          expiresAt: '2026-07-28T12:00:00.000Z',
         },
         uploaded: new Date('2026-07-27T12:00:01.000Z'),
         text: () => Promise.resolve('diff contents'),
       }),
     } as unknown as DiffBucket
 
-    await expect(loadDiff(bucket, 'AAECAwQFBgcICQoL')).resolves.toEqual({
+    await expect(
+      loadDiff(bucket, 'AAECAwQFBgcICQoL', {
+        now: () => new Date('2026-07-28T11:59:59.999Z'),
+      }),
+    ).resolves.toEqual({
       diff: 'diff contents',
       createdAt: '2026-07-27T12:00:00.000Z',
+      expiresAt: '2026-07-28T12:00:00.000Z',
     })
   })
 
@@ -64,5 +71,46 @@ describe('R2 diff storage', () => {
     } as unknown as DiffBucket
 
     await expect(loadDiff(bucket, 'AAECAwQFBgcICQoL')).resolves.toBeNull()
+  })
+
+  it('expires a share exactly at its one-day boundary', async () => {
+    const text = vi.fn().mockResolvedValue('diff contents')
+    const bucket = {
+      get: vi.fn().mockResolvedValue({
+        customMetadata: {
+          createdAt: '2026-07-27T12:00:00.000Z',
+          expiresAt: '2026-07-28T12:00:00.000Z',
+        },
+        uploaded: new Date('2026-07-27T12:00:01.000Z'),
+        text,
+      }),
+    } as unknown as DiffBucket
+
+    await expect(
+      loadDiff(bucket, 'AAECAwQFBgcICQoL', {
+        now: () => new Date('2026-07-28T12:00:00.000Z'),
+      }),
+    ).resolves.toBeNull()
+    expect(text).not.toHaveBeenCalled()
+  })
+
+  it('applies the one-day default to legacy objects', async () => {
+    const bucket = {
+      get: vi.fn().mockResolvedValue({
+        customMetadata: {
+          createdAt: '2026-07-27T12:00:00.000Z',
+        },
+        uploaded: new Date('2026-07-27T12:00:01.000Z'),
+        text: () => Promise.resolve('diff contents'),
+      }),
+    } as unknown as DiffBucket
+
+    await expect(
+      loadDiff(bucket, 'AAECAwQFBgcICQoL', {
+        now: () => new Date('2026-07-28T11:59:59.999Z'),
+      }),
+    ).resolves.toMatchObject({
+      expiresAt: '2026-07-28T12:00:00.000Z',
+    })
   })
 })

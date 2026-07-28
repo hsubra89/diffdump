@@ -144,7 +144,7 @@ function Home() {
         <div className="composer-footer">
           <div>
             <p id="diff-help" className="privacy-note">
-              Unlisted · 2 MiB max · Stored privately in R2
+              Unlisted · Expires after 24 hours · 2 MiB max
             </p>
             <p
               id="diff-error"

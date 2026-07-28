@@ -1,4 +1,5 @@
 export const MAX_DIFF_BYTES = 2 * 1024 * 1024
+export const DEFAULT_DIFF_TTL_MS = 24 * 60 * 60 * 1000
 export const SHARE_SLUG_BYTES = 12
 export const SHARE_SLUG_LENGTH = 16
 
@@ -12,6 +13,7 @@ export type CreateDiffInput = {
 export type StoredDiff = {
   diff: string
   createdAt: string
+  expiresAt: string
 }
 
 export function validateCreateDiffInput(input: unknown): CreateDiffInput {

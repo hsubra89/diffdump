@@ -133,7 +133,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           <span className="addition-count">+{summary.additions}</span>
           <span className="deletion-count">−{summary.deletions}</span>
           <span className="created-at">
-            Shared {formatCreatedAt(storedDiff.createdAt)}
+            Expires {formatTimestamp(storedDiff.expiresAt)}
           </span>
         </div>
 
@@ -209,10 +209,11 @@ function summarizeDiff(files: FileDiffMetadata[]) {
   )
 }
 
-function formatCreatedAt(createdAt: string): string {
+function formatTimestamp(timestamp: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(createdAt))
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp))
 }
