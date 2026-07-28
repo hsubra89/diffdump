@@ -78,7 +78,7 @@ export function parseGitHubDiffUrl(input: string): GitHubDiffSource | null {
   const path = url.pathname
     .replace(/\/+$/, '')
     .replace(/\.(?:diff|patch)$/i, '')
-    .replace(/\/pull\/(\d+)\/(?:files|commits)$/i, '/pull/$1')
+    .replace(/\/pull\/(\d+)\/(?:files|commits|changes)$/i, '/pull/$1')
 
   const pullMatch = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)$/i.exec(path)
   if (pullMatch) {
@@ -131,8 +131,11 @@ export function createGitHubDiffPath(source: GitHubDiffSource): string {
 export function createGitHubUrlFromPath(path: string): string | null {
   const normalizedPath = path.replace(/^\/+/, '')
   const githubUrl = new URL(`/${normalizedPath}`, 'https://github.com').href
+  const source = parseGitHubDiffUrl(githubUrl)
 
-  return parseGitHubDiffUrl(githubUrl) ? githubUrl : null
+  return source
+    ? new URL(`/${createGitHubDiffPath(source)}`, 'https://github.com').href
+    : null
 }
 
 export async function loadGitHubDiff(

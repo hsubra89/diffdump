@@ -69,6 +69,14 @@ describe('GitHub diff URL parsing', () => {
       number: '42',
     })
     expect(
+      parseGitHubDiffUrl('https://github.com/acme/widgets/pull/42/changes'),
+    ).toEqual({
+      kind: 'pull',
+      owner: 'acme',
+      repo: 'widgets',
+      number: '42',
+    })
+    expect(
       parseGitHubDiffUrl('https://github.com/acme/widgets/pull/42.diff'),
     ).toEqual({
       kind: 'pull',
@@ -120,10 +128,16 @@ describe('GitHub diff URL parsing', () => {
     expect(createGitHubUrlFromPath('freckle-io/next/pull/744')).toBe(
       'https://github.com/freckle-io/next/pull/744',
     )
+    expect(createGitHubUrlFromPath('freckle-io/next/pull/744/changes')).toBe(
+      'https://github.com/freckle-io/next/pull/744',
+    )
   })
 
   it('rejects direct paths that are not supported GitHub diffs', () => {
     expect(createGitHubUrlFromPath('freckle-io/next/issues/744')).toBeNull()
+    expect(
+      createGitHubUrlFromPath('freckle-io/next/pull/744/unsupported'),
+    ).toBeNull()
     expect(createGitHubUrlFromPath('not-a-github-path')).toBeNull()
   })
 })
