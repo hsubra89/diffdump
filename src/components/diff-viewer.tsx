@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   CodeView,
@@ -12,6 +12,11 @@ import { parsePatchFiles } from '@pierre/diffs'
 import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
 
 import type { StoredDiff } from '../lib/diffs'
+import {
+  formatAbsoluteExpiry,
+  formatExpiryCountdown,
+  getExpiryCountdownUpdateDelay,
+} from '../lib/expiry'
 
 type DiffStyle = 'unified' | 'split'
 
@@ -132,9 +137,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           </span>
           <span className="addition-count">+{summary.additions}</span>
           <span className="deletion-count">−{summary.deletions}</span>
-          <span className="created-at">
-            Expires {formatTimestamp(storedDiff.expiresAt)}
-          </span>
+          <ExpiryCountdown expiresAt={storedDiff.expiresAt} />
         </div>
 
         <div className="view-controls">
@@ -189,6 +192,57 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   )
 }
 
+function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const [absoluteExpiry, setAbsoluteExpiry] = useState<string>()
+  const countdown = formatExpiryCountdown(expiresAt, nowMs)
+
+  useEffect(() => {
+    setAbsoluteExpiry(formatAbsoluteExpiry(expiresAt))
+  }, [expiresAt])
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined
+
+    function scheduleNextUpdate() {
+      const currentTime = Date.now()
+      setNowMs(currentTime)
+
+      const delay = getExpiryCountdownUpdateDelay(expiresAt, currentTime)
+      if (delay !== null) {
+        timeout = setTimeout(scheduleNextUpdate, delay)
+      }
+    }
+
+    const delay = getExpiryCountdownUpdateDelay(expiresAt)
+    if (delay !== null) {
+      timeout = setTimeout(scheduleNextUpdate, delay)
+    }
+
+    return () => {
+      if (timeout !== undefined) {
+        clearTimeout(timeout)
+      }
+    }
+  }, [expiresAt])
+
+  return (
+    <time
+      className="created-at expiry-countdown"
+      dateTime={expiresAt}
+      title={absoluteExpiry}
+      aria-label={
+        absoluteExpiry
+          ? `${countdown}. Exact expiration: ${absoluteExpiry}`
+          : countdown
+      }
+      suppressHydrationWarning
+    >
+      {countdown}
+    </time>
+  )
+}
+
 function summarizeDiff(files: FileDiffMetadata[]) {
   return files.reduce(
     (summary, file) => {
@@ -207,13 +261,4 @@ function summarizeDiff(files: FileDiffMetadata[]) {
       deletions: 0,
     },
   )
-}
-
-function formatTimestamp(timestamp: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(timestamp))
 }

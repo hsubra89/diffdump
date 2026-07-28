@@ -564,6 +564,12 @@ kbd {
   border-left: 1px solid var(--line);
 }
 
+.expiry-countdown {
+  cursor: help;
+  text-decoration: underline dotted #545b65;
+  text-underline-offset: 3px;
+}
+
 .addition-count {
   color: var(--addition);
 }
@@ -797,10 +803,6 @@ kbd {
     align-items: flex-start;
     flex-direction: column;
     justify-content: center;
-  }
-
-  .created-at {
-    display: none;
   }
 
   .view-controls {
