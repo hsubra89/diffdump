@@ -186,8 +186,8 @@ function GitHubTokenPrompt({
           >
             Create a classic PAT
           </a>{' '}
-          with <code className="font-mono">repo</code> scope. It is saved only
-          in this browser and sent only to GitHub.
+          with <code className="font-mono">repo</code> scope. Saved only in this
+          browser, sent only to GitHub.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center gap-2.5">
