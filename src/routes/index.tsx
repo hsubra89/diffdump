@@ -332,15 +332,6 @@ function Home() {
             R2
           </FooterLink>
         </span>
-        <span className="hidden items-center gap-1 md:flex">
-          <kbd className="min-w-[22px] rounded border border-line border-b-line-bright bg-surface px-1.5 py-0.5 text-center text-[10px] text-muted">
-            ⌘
-          </kbd>
-          <kbd className="min-w-[22px] rounded border border-line border-b-line-bright bg-surface px-1.5 py-0.5 text-center text-[10px] text-muted">
-            Enter
-          </kbd>
-          to share
-        </span>
       </footer>
     </main>
   )
