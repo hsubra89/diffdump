@@ -8,7 +8,6 @@ import {
   type RefObject,
 } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useServerFn } from '@tanstack/react-start'
 
 import { GitHubOpenPanel } from '../components/github-open-panel'
 import { Button } from '../components/ui/button'
@@ -16,8 +15,8 @@ import { eyebrowClassName } from '../components/ui/surfaces'
 import { ThemeToggle } from '../components/ui/theme-toggle'
 import { Wordmark } from '../components/wordmark'
 import { cn } from '../lib/cn'
+import { createSharedDiff } from '../lib/create-shared-diff'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
-import { createDiff } from '../server/diffs.functions'
 
 type CommandCopyState = 'idle' | 'armed' | 'full'
 type PanelTab = 'paste' | 'github'
@@ -50,7 +49,6 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   const navigate = useNavigate()
-  const createDiffFn = useServerFn(createDiff)
   const [activeTab, setActiveTab] = useState<PanelTab>('github')
   const [diff, setDiff] = useState('')
   const [githubUrl, setGithubUrl] = useState('')
@@ -90,7 +88,7 @@ function Home() {
     setIsSubmitting(true)
 
     try {
-      const { slug } = await createDiffFn({ data: { diff } })
+      const { slug } = await createSharedDiff(diff)
       await navigate({
         to: '/view/$slug',
         params: { slug },

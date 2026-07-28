@@ -17,4 +17,19 @@
       "bucket_name": "diffdump-diffs",
     },
   ],
+  "ratelimits": [
+    {
+      "name": "DIFF_CREATION_RATE_LIMITER",
+      // This namespace ID must remain unique within the Cloudflare account.
+      "namespace_id": "2026072801",
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
 }

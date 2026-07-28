@@ -17,7 +17,7 @@ https://diffdump.com/org/repo/pull/123
 
 Private GitHub repositories can be viewed with an optional classic personal access token carrying `repo` scope. GitHub reviews are client-only: the browser fetches the diff straight from `api.github.com` and renders it locally. The token stays in browser local storage, and neither the token nor the fetched diff is submitted to or stored by Diffdump.
 
-Raw unified diffs can instead be shared as unlisted review links. To create a share programmatically, send a `PUT` request to `https://diffdump.com/d` with a raw UTF-8 unified diff as the request body. A successful request returns `201 Created` with the unlisted review URL as `text/plain`. Empty or invalid diffs return `400`, diffs larger than 2 MiB return `413`, and storage failures return `500`.
+Raw unified diffs can instead be shared as unlisted review links. To create a share programmatically, send a `PUT` request to `https://diffdump.com/d` with a raw UTF-8 unified diff as the request body. A successful request returns `201 Created` with the unlisted review URL as `text/plain`. Empty or invalid diffs return `400`, diffs larger than 2 MiB return `413`, rate-limited requests return `429` with a `Retry-After` header, and storage failures return `500`.
 
 Example:
 

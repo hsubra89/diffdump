@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
 import { handleDiffUpload } from './diff-upload'
 
-type SaveUploadedDiff = Parameters<typeof handleDiffUpload>[1]
+type DiffUploadDependencies = Parameters<typeof handleDiffUpload>[1]
+type DiffUploadLogger = NonNullable<DiffUploadDependencies['logger']>
+type RateLimiter = DiffUploadDependencies['rateLimiter']
+type SaveUploadedDiff = DiffUploadDependencies['saveUploadedDiff']
 
 const VALID_DIFF = `diff --git a/hello.ts b/hello.ts
 --- a/hello.ts
@@ -15,15 +18,22 @@ const VALID_DIFF = `diff --git a/hello.ts b/hello.ts
 
 describe('PUT /d', () => {
   it('stores stdin exactly and returns the absolute share URL', async () => {
+    const rateLimiter = allowingRateLimiter()
     const saveUploadedDiff = vi
       .fn<SaveUploadedDiff>()
       .mockResolvedValue({ slug: 'AAECAwQFBgcICQoL' })
     const request = new Request('https://diffdump.example/d', {
       method: 'PUT',
+      headers: {
+        'CF-Connecting-IP': '203.0.113.10',
+      },
       body: VALID_DIFF,
     })
 
-    const response = await handleDiffUpload(request, saveUploadedDiff)
+    const response = await handleDiffUpload(request, {
+      rateLimiter,
+      saveUploadedDiff,
+    })
 
     expect(response.status).toBe(201)
     expect(response.headers.get('content-type')).toBe(
@@ -33,6 +43,102 @@ describe('PUT /d', () => {
       'https://diffdump.example/view/AAECAwQFBgcICQoL\n',
     )
     expect(saveUploadedDiff).toHaveBeenCalledWith(VALID_DIFF)
+    expect(rateLimiter.limit).toHaveBeenCalledWith({
+      key: 'anonymous-diff:203.0.113.10',
+    })
+  })
+
+  it('returns 429 with retry guidance before reading or saving the diff', async () => {
+    const rateLimiter = {
+      limit: vi.fn<RateLimiter['limit']>().mockResolvedValue({
+        success: false,
+      }),
+    }
+    const saveUploadedDiff = vi.fn<SaveUploadedDiff>()
+    const logger = {
+      error: vi.fn<DiffUploadLogger['error']>(),
+      warn: vi.fn<DiffUploadLogger['warn']>(),
+    }
+    const request = new Request('https://diffdump.example/d', {
+      method: 'PUT',
+      headers: {
+        'CF-Connecting-IP': '203.0.113.10',
+      },
+      body: 'not a diff',
+    })
+
+    const response = await handleDiffUpload(request, {
+      logger,
+      rateLimiter,
+      saveUploadedDiff,
+    })
+
+    expect(response.status).toBe(429)
+    expect(response.headers.get('retry-after')).toBe('60')
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    await expect(response.text()).resolves.toBe(
+      'Too many diff shares. Try again in 60 seconds.\n',
+    )
+    expect(saveUploadedDiff).not.toHaveBeenCalled()
+    expect(logger.warn).toHaveBeenCalledOnce()
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"diff_creation_rate_limited"'),
+    )
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining('not a diff'),
+    )
+  })
+
+  it('uses one fallback bucket when the Cloudflare client IP is unavailable', async () => {
+    const rateLimiter = allowingRateLimiter()
+    const request = new Request('https://diffdump.example/d', {
+      method: 'PUT',
+      body: VALID_DIFF,
+    })
+
+    await handleDiffUpload(request, {
+      rateLimiter,
+      saveUploadedDiff: vi
+        .fn<SaveUploadedDiff>()
+        .mockResolvedValue({ slug: 'AAECAwQFBgcICQoL' }),
+    })
+
+    expect(rateLimiter.limit).toHaveBeenCalledWith({
+      key: 'anonymous-diff:unknown-client',
+    })
+  })
+
+  it('fails closed when the rate limiter is unavailable', async () => {
+    const rateLimiter = {
+      limit: vi
+        .fn<RateLimiter['limit']>()
+        .mockRejectedValue(new Error('sensitive binding detail')),
+    }
+    const saveUploadedDiff = vi.fn<SaveUploadedDiff>()
+    const logger = {
+      error: vi.fn<DiffUploadLogger['error']>(),
+      warn: vi.fn<DiffUploadLogger['warn']>(),
+    }
+    const request = new Request('https://diffdump.example/d', {
+      method: 'PUT',
+      body: VALID_DIFF,
+    })
+
+    const response = await handleDiffUpload(request, {
+      logger,
+      rateLimiter,
+      saveUploadedDiff,
+    })
+
+    expect(response.status).toBe(503)
+    expect(response.headers.get('retry-after')).toBe('60')
+    await expect(response.text()).resolves.toBe(
+      'Diff sharing is temporarily unavailable. Please try again soon.\n',
+    )
+    expect(saveUploadedDiff).not.toHaveBeenCalled()
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"diff_creation_rate_limit_error"'),
+    )
   })
 
   it('returns a useful shell error for malformed input', async () => {
@@ -42,7 +148,10 @@ describe('PUT /d', () => {
       body: 'not a diff',
     })
 
-    const response = await handleDiffUpload(request, saveUploadedDiff)
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff,
+    })
 
     expect(response.status).toBe(400)
     await expect(response.text()).resolves.toContain(
@@ -61,7 +170,10 @@ describe('PUT /d', () => {
       body: VALID_DIFF,
     })
 
-    const response = await handleDiffUpload(request, saveUploadedDiff)
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff,
+    })
 
     expect(response.status).toBe(413)
     await expect(response.text()).resolves.toContain('2 MiB')
@@ -74,8 +186,11 @@ describe('PUT /d', () => {
       body: VALID_DIFF,
     })
 
-    const response = await handleDiffUpload(request, async () => {
-      throw new Error('sensitive storage detail')
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff: async () => {
+        throw new Error('sensitive storage detail')
+      },
     })
 
     expect(response.status).toBe(500)
@@ -84,3 +199,11 @@ describe('PUT /d', () => {
     )
   })
 })
+
+function allowingRateLimiter(): RateLimiter {
+  return {
+    limit: vi.fn<RateLimiter['limit']>().mockResolvedValue({
+      success: true,
+    }),
+  }
+}
