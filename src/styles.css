@@ -37,22 +37,25 @@
   font-synthesis: none;
   color: var(--text);
   background: var(--canvas);
-  --canvas: light-dark(#f7f7f7, #101010);
-  --panel: light-dark(#ffffff, #161616);
-  --surface: light-dark(#ffffff, #1b1b1b);
-  --surface-raised: light-dark(#efefef, #242424);
-  --line: light-dark(#e4e4e4, #2a2a2a);
-  --line-bright: light-dark(#cfcfcf, #3a3a3a);
-  --text: light-dark(#141414, #ededed);
-  --muted: light-dark(#7d7d7d, #8f8f8f);
-  --muted-bright: light-dark(#525252, #b9b9b9);
-  --accent: #d8ff72;
-  --accent-strong: #cbf558;
-  --accent-ink: #161a06;
-  --accent-text: light-dark(#55650e, #d8ff72);
-  --danger: light-dark(#c93c31, #ff8a83);
-  --addition: light-dark(#1a7f37, #71e3a0);
-  --deletion: light-dark(#d1242f, #ff8a83);
+  /* GitHub Default workbench colors, matching the Shiki themes used by the
+     diff renderer. These follow the same editor/sidebar token mapping as
+     Pierre's Diffshub chrome layer. */
+  --canvas: light-dark(#f6f8fa, #010409);
+  --panel: light-dark(#ffffff, #0d1117);
+  --surface: light-dark(#ffffff, #161b22);
+  --surface-raised: light-dark(#f3f4f6, #282e33);
+  --line: light-dark(#d0d7de, #30363d);
+  --line-bright: light-dark(#afb8c1, #484f58);
+  --text: light-dark(#1f2328, #e6edf3);
+  --muted: light-dark(#656d76, #7d8590);
+  --muted-bright: light-dark(#424a53, #c9d1d9);
+  --accent: light-dark(#1f883d, #238636);
+  --accent-strong: light-dark(#1a7f37, #2ea043);
+  --accent-ink: #ffffff;
+  --accent-text: light-dark(#0969da, #2f81f7);
+  --danger: light-dark(#cf222e, #f85149);
+  --addition: light-dark(#1a7f37, #3fb950);
+  --deletion: light-dark(#cf222e, #f85149);
   --radius-control: 7px;
   --radius-panel: 12px;
 }
@@ -79,14 +82,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   color: var(--text);
-  background:
-    radial-gradient(
-        circle at 50% -20%,
-        light-dark(#efefef, #1e1e1e) 0,
-        transparent 38rem
-      )
-      no-repeat,
-    var(--canvas);
+  background: var(--canvas);
 }
 
 @layer base {
@@ -121,24 +117,20 @@ body {
      .light/.dark root class. Inheriting re-couples it to the app theme. */
   color-scheme: inherit;
   --trees-bg-override: var(--canvas);
-  --trees-bg-muted-override: var(--surface-raised);
+  --trees-bg-muted-override: light-dark(#eaeef280, #6e76811a);
   --trees-fg-override: var(--muted-bright);
   --trees-fg-muted-override: var(--muted);
   --trees-border-color-override: var(--line);
-  --trees-selected-bg-override: light-dark(
-    rgb(85 101 14 / 10%),
-    rgb(216 255 114 / 10%)
-  );
-  --trees-selected-fg-override: light-dark(#3f4b0a, #eef9d1);
-  --trees-selected-focused-border-color-override: light-dark(
-    rgb(85 101 14 / 45%),
-    rgb(216 255 114 / 42%)
-  );
-  --trees-focus-ring-color-override: color-mix(
-    in srgb,
-    var(--accent-text) 55%,
-    transparent
-  );
+  --trees-input-bg-override: var(--panel);
+  --trees-selected-bg-override: light-dark(#afb8c133, #6e768166);
+  --trees-selected-fg-override: var(--text);
+  --trees-selected-focused-border-color-override: light-dark(#0969da, #1f6feb);
+  --trees-focus-ring-color-override: light-dark(#0969da, #1f6feb);
+  --trees-status-added-override: var(--addition);
+  --trees-status-ignored-override: light-dark(#6e7781, #6e7681);
+  --trees-status-modified-override: light-dark(#9a6700, #d29922);
+  --trees-status-untracked-override: var(--addition);
+  --trees-status-deleted-override: var(--deletion);
   --trees-scrollbar-thumb-override: var(--line-bright);
   --trees-font-family-override: var(--font-code);
   --trees-font-size-override: 11px;
