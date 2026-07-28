@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -9,6 +10,8 @@ import { useServerFn } from '@tanstack/react-start'
 
 import { MAX_DIFF_BYTES } from '../lib/diffs'
 import { createDiff } from '../server/diffs.functions'
+
+type CommandCopyState = 'idle' | 'armed' | 'full'
 
 const EXAMPLE_DIFF = `diff --git a/src/greeting.ts b/src/greeting.ts
 index ce01362..cc628cc 100644
@@ -41,11 +44,24 @@ function Home() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [siteOrigin, setSiteOrigin] = useState('')
+  const [commandCopyState, setCommandCopyState] =
+    useState<CommandCopyState>('idle')
+  const commandCopyTimer = useRef<number | null>(null)
+  const copyWindowEndsAt = useRef(0)
+  const copyInFlight = useRef(false)
   const byteLength = new TextEncoder().encode(diff).byteLength
   const uploadUrl = siteOrigin ? `${siteOrigin}/d` : '/d'
+  const uploadCommand = `git diff | curl -T- ${uploadUrl}`
+  const uploadAndOpenCommand = `${uploadCommand} | xargs open`
 
   useEffect(() => {
     setSiteOrigin(window.location.origin)
+
+    return () => {
+      if (commandCopyTimer.current !== null) {
+        window.clearTimeout(commandCopyTimer.current)
+      }
+    }
   }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -78,6 +94,51 @@ function Home() {
     if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
       event.preventDefault()
       event.currentTarget.form?.requestSubmit()
+    }
+  }
+
+  async function copyTerminalCommand() {
+    if (copyInFlight.current) {
+      return
+    }
+
+    copyInFlight.current = true
+    const includeOpen = Date.now() < copyWindowEndsAt.current
+
+    try {
+      await navigator.clipboard.writeText(
+        includeOpen ? uploadAndOpenCommand : uploadCommand,
+      )
+
+      if (commandCopyTimer.current !== null) {
+        window.clearTimeout(commandCopyTimer.current)
+      }
+
+      if (includeOpen) {
+        copyWindowEndsAt.current = 0
+        setCommandCopyState('full')
+        commandCopyTimer.current = window.setTimeout(() => {
+          setCommandCopyState('idle')
+          commandCopyTimer.current = null
+        }, 1800)
+      } else {
+        copyWindowEndsAt.current = Date.now() + 5000
+        setCommandCopyState('armed')
+        commandCopyTimer.current = window.setTimeout(() => {
+          copyWindowEndsAt.current = 0
+          setCommandCopyState('idle')
+          commandCopyTimer.current = null
+        }, 5000)
+      }
+    } catch {
+      if (commandCopyTimer.current !== null) {
+        window.clearTimeout(commandCopyTimer.current)
+        commandCopyTimer.current = null
+      }
+      copyWindowEndsAt.current = 0
+      setCommandCopyState('idle')
+    } finally {
+      copyInFlight.current = false
     }
   }
 
@@ -193,9 +254,42 @@ function Home() {
           </p>
           <p>Pipe working-tree changes straight to a share link.</p>
         </div>
-        <div className="terminal-command">
-          <span aria-hidden="true">$</span>
-          <code>git diff | curl -T- {uploadUrl}</code>
+        <div className="terminal-command-row">
+          <div className="terminal-command">
+            <span aria-hidden="true">$</span>
+            <code>
+              {uploadCommand}
+              <span className="terminal-open-pipe"> | xargs open</span>
+            </code>
+          </div>
+          <button
+            className="terminal-copy-button"
+            type="button"
+            onClick={copyTerminalCommand}
+            disabled={!siteOrigin}
+            aria-live="polite"
+            aria-label={
+              commandCopyState === 'armed'
+                ? 'Copy command including the pipe to open its returned URL'
+                : commandCopyState === 'full'
+                  ? 'Command including the pipe to open its returned URL copied'
+                  : 'Copy terminal command'
+            }
+            title={
+              commandCopyState === 'armed'
+                ? 'Click again within five seconds to include “| xargs open”'
+                : undefined
+            }
+          >
+            <span aria-hidden="true">
+              {commandCopyState === 'idle' ? '⧉' : '✓'}
+            </span>
+            {commandCopyState === 'armed'
+              ? 'Copy + open'
+              : commandCopyState === 'full'
+                ? 'Copied + open'
+                : 'Copy'}
+          </button>
         </div>
       </section>
 

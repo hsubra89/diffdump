@@ -410,8 +410,16 @@ textarea:focus-visible {
   text-transform: uppercase;
 }
 
+.terminal-command-row {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+  align-items: stretch;
+}
+
 .terminal-command {
   display: flex;
+  flex: 1 1 auto;
   min-width: 0;
   gap: 10px;
   align-items: center;
@@ -434,6 +442,48 @@ textarea:focus-visible {
   color: #dfe3e8;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
+}
+
+.terminal-open-pipe {
+  color: #626a75;
+}
+
+.terminal-copy-button {
+  display: inline-flex;
+  min-width: 112px;
+  flex: 0 0 auto;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 13px;
+  color: var(--muted-bright);
+  background: #171a1f;
+  border: 1px solid #303640;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+
+.terminal-copy-button:hover {
+  color: var(--text);
+  background: #1d2127;
+  border-color: var(--line-bright);
+}
+
+.terminal-copy-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.terminal-copy-button > span {
+  color: var(--accent);
+  font-size: 13px;
 }
 
 .home-footer {
@@ -713,8 +763,13 @@ kbd {
     padding: 15px;
   }
 
-  .terminal-command {
+  .terminal-command-row {
     margin: 0 -2px;
+  }
+
+  .terminal-copy-button {
+    min-width: 100px;
+    padding: 0 10px;
   }
 
   .home-footer {
