@@ -1,6 +1,6 @@
+import { env } from 'cloudflare:workers'
 import { createServerFn } from '@tanstack/react-start'
 
-import { env } from '../env'
 import { validateCreateDiffInput, validateShareSlug } from '../lib/diffs'
 import { loadDiff, saveDiff } from '../lib/diffs.server'
 

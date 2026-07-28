@@ -6,14 +6,15 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "alchemy dev",
+    "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "oxlint --react-plugin --jsx-a11y-plugin --vitest-plugin --deny-warnings --ignore-pattern src/routeTree.gen.ts src vite.config.ts vitest.config.ts && tsc --noEmit",
     "build": "vite build && tsc --noEmit",
-    "plan": "alchemy plan --stage prod",
-    "deploy": "npm run build && alchemy deploy --stage prod",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
     "test": "vitest run"
   },
   "dependencies": {
@@ -30,22 +31,20 @@
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260728.1",
-    "@effect/platform-node": "^4.0.0-beta.102",
+    "@cloudflare/vite-plugin": "^1.26.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-cli": "^1.132.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "alchemy": "2.0.0-beta.63",
-    "effect": "^4.0.0-beta.102",
     "oxlint": "^1.76.0",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.70.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

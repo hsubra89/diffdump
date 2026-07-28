@@ -7,7 +7,6 @@ dist-ssr
 .nitro
 .tanstack
 .wrangler
-.alchemy
 .output
 .vinxi
 __unconfig*

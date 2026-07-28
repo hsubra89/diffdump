@@ -1,6 +1,6 @@
+import { env } from 'cloudflare:workers'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { env } from '../env'
 import { saveDiff } from '../lib/diffs.server'
 import { handleDiffUpload } from '../server/diff-upload'
 
