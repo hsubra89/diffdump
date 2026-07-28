@@ -1,7 +1,10 @@
-import { lazy, Suspense } from 'react'
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { useServerFn } from '@tanstack/react-start'
 
+import { MissingDiffPage } from '../components/missing-diff-page'
 import { Wordmark } from '../components/wordmark'
+import type { StoredDiff } from '../lib/diffs'
 import { getDiff } from '../server/diffs.functions'
 
 const DiffViewer = import.meta.env.SSR
@@ -10,15 +13,6 @@ const DiffViewer = import.meta.env.SSR
 
 export const Route = createFileRoute('/view/$slug')({
   ssr: false,
-  loader: async ({ params }) => {
-    const storedDiff = await getDiff({ data: params.slug })
-
-    if (!storedDiff) {
-      throw notFound()
-    }
-
-    return storedDiff
-  },
   head: () => ({
     meta: [
       {
@@ -36,7 +30,48 @@ export const Route = createFileRoute('/view/$slug')({
 
 function SharedDiffPage() {
   const { slug } = Route.useParams()
-  const storedDiff = Route.useLoaderData()
+  const getDiffFn = useServerFn(getDiff)
+  const [storedDiff, setStoredDiff] = useState<StoredDiff | null>()
+  const [loadError, setLoadError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    setStoredDiff(undefined)
+    setLoadError(null)
+    void getDiffFn({ data: slug }).then(
+      (result) => {
+        if (active) {
+          setStoredDiff(result)
+        }
+      },
+      (error: unknown) => {
+        if (active) {
+          setLoadError(
+            error instanceof Error
+              ? error
+              : new Error('The shared diff could not be loaded.'),
+          )
+        }
+      },
+    )
+
+    return () => {
+      active = false
+    }
+  }, [getDiffFn, slug])
+
+  if (loadError) {
+    throw loadError
+  }
+
+  if (storedDiff === undefined) {
+    return <DiffLoading />
+  }
+
+  if (storedDiff === null) {
+    return <MissingDiffPage />
+  }
 
   if (!DiffViewer) {
     return <DiffLoading />
