@@ -41,7 +41,7 @@ export const Route = createRootRoute({
       },
       {
         property: 'og:description',
-        content: 'Review any GitHub diff. Skip the ceremony.',
+        content: 'Any pull request. One clean review.',
       },
       {
         property: 'og:image',
@@ -57,7 +57,7 @@ export const Route = createRootRoute({
       },
       {
         name: 'twitter:description',
-        content: 'Review any GitHub diff. Skip the ceremony.',
+        content: 'Any pull request. One clean review.',
       },
       {
         name: 'twitter:image',
