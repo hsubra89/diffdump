@@ -356,24 +356,26 @@ function Home() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        {activeTab === 'github' ? (
           <section
-            className="flex flex-col rounded-panel border border-line bg-panel/60 p-4"
+            className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
             aria-labelledby="address-bar-title"
           >
-            <p
-              id="address-bar-title"
-              className={cn(eyebrowClassName, 'text-muted-bright')}
-            >
-              From the address bar
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              Swap <code className="font-mono">github.com</code> for{' '}
-              <code className="font-mono">diffdump.com</code> on any pull
-              request, commit, or comparison URL.
-            </p>
-            <div className="mt-3 flex h-8 items-center overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
-              <code className="font-mono text-xs">
+            <div>
+              <p
+                id="address-bar-title"
+                className={cn(eyebrowClassName, 'text-muted-bright')}
+              >
+                From the address bar
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Swap <code className="font-mono">github.com</code> for{' '}
+                <code className="font-mono">diffdump.com</code> on any pull
+                request, commit, or comparison URL.
+              </p>
+            </div>
+            <div className="min-w-0 rounded-control border border-line bg-canvas px-3 py-1.5">
+              <code className="font-mono text-xs leading-[1.7] [overflow-wrap:anywhere]">
                 <span className="text-muted line-through">github.com</span>
                 <span className="text-muted" aria-hidden="true">
                   {' → '}
@@ -383,32 +385,34 @@ function Home() {
               </code>
             </div>
           </section>
-
+        ) : (
           <section
-            className="flex flex-col rounded-panel border border-line bg-panel/60 p-4"
+            className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
             aria-labelledby="terminal-upload-title"
           >
-            <p
-              id="terminal-upload-title"
-              className={cn(eyebrowClassName, 'text-muted-bright')}
-            >
-              From your terminal
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              Pipe working-tree changes straight to a share link.
-            </p>
-            <div className="mt-3 flex min-w-0 items-stretch gap-2">
-              <div className="flex h-8 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
-                <span className="select-none text-muted" aria-hidden="true">
-                  $
-                </span>
-                <code className="font-mono text-xs text-foreground">
+            <div>
+              <p
+                id="terminal-upload-title"
+                className={cn(eyebrowClassName, 'text-muted-bright')}
+              >
+                From your terminal
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Pipe working-tree changes straight to a share link.
+              </p>
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="min-w-0 flex-1 rounded-control border border-line bg-canvas px-3 py-1.5">
+                <code className="font-mono text-xs leading-[1.7] text-foreground [overflow-wrap:anywhere]">
+                  <span className="select-none text-muted" aria-hidden="true">
+                    ${' '}
+                  </span>
                   {uploadCommand}
                   <span className="text-muted"> | xargs open</span>
                 </code>
               </div>
               <Button
-                className="min-w-[100px]"
+                className="min-w-[100px] md:min-w-28"
                 variant="secondary"
                 size="sm"
                 onClick={copyTerminalCommand}
@@ -438,7 +442,7 @@ function Home() {
               </Button>
             </div>
           </section>
-        </div>
+        )}
       </section>
 
       <footer className="flex items-center justify-center px-1 pt-10 text-[11px] text-muted md:justify-between">
