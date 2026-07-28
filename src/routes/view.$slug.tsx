@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
-import { Link, createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 
+import { Wordmark } from '../components/wordmark'
 import { getDiff } from '../server/diffs.functions'
 
 const DiffViewer = import.meta.env.SSR
@@ -52,10 +53,7 @@ function DiffLoading() {
   return (
     <main className="grid h-svh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground">
       <header className="flex items-center border-b border-line bg-canvas/95 px-3 sm:px-5">
-        <Link className="wordmark" to="/">
-          <span aria-hidden="true">/</span>
-          diffdump
-        </Link>
+        <Wordmark />
       </header>
       <div
         className="flex items-center justify-center gap-3 font-mono text-xs text-muted"

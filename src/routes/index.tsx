@@ -8,6 +8,9 @@ import {
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
+import { Button } from '../components/ui/button'
+import { Wordmark } from '../components/wordmark'
+import { cn } from '../lib/cn'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
 import { createDiff } from '../server/diffs.functions'
 
@@ -143,50 +146,57 @@ function Home() {
   }
 
   return (
-    <main className="home-page">
-      <nav className="site-nav" aria-label="Primary navigation">
-        <a className="wordmark" href="/">
-          <span aria-hidden="true">/</span>
-          diffdump
-        </a>
-        <span className="nav-note">Tiny links for big changes</span>
+    <main className="mx-auto min-h-screen w-[min(1120px,calc(100%-24px))] py-[18px] text-foreground min-[721px]:w-[min(1120px,calc(100%-40px))] min-[721px]:py-[28px_22px]">
+      <nav
+        className="flex items-center justify-between"
+        aria-label="Primary navigation"
+      >
+        <Wordmark />
+        <span className="hidden font-mono text-[11px] uppercase tracking-[0.04em] text-muted min-[721px]:inline">
+          Tiny links for big changes
+        </span>
       </nav>
 
-      <section className="hero">
-        <h1>
+      <section className="py-[64px_36px] min-[721px]:py-[clamp(72px,10vw,120px)_48px]">
+        <h1 className="max-w-[900px] text-[clamp(48px,16vw,74px)] font-semibold leading-[0.9] tracking-[-0.072em] min-[721px]:text-[clamp(52px,8.3vw,104px)]">
           Share a diff.
           <br />
-          <span>Skip the ceremony.</span>
+          <span className="text-[#777e87]">Skip the ceremony.</span>
         </h1>
-        <p className="hero-copy">
+        <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright min-[721px]:mt-8 min-[721px]:text-[clamp(16px,2vw,19px)]">
           Paste a unified git diff and get a focused, unlisted review link in
           seconds. No account. No repository access.
         </p>
       </section>
 
-      <form className="composer" onSubmit={handleSubmit}>
-        <div className="composer-bar">
-          <div className="composer-title">
-            <span className="terminal-dots" aria-hidden="true">
-              <i />
-              <i />
-              <i />
+      <form
+        className="overflow-hidden rounded-[15px] border border-line-bright bg-surface/90 shadow-[0_30px_80px_rgb(0_0_0/26%),inset_0_1px_0_rgb(255_255_255/3%)]"
+        onSubmit={handleSubmit}
+      >
+        <div className="flex min-h-[48px] items-center justify-between border-b border-line bg-[#181b20] px-4 font-mono text-xs text-muted">
+          <div className="flex items-center gap-4">
+            <span className="flex gap-1.5" aria-hidden="true">
+              <i className="size-[7px] rounded-full bg-[#f17873]" />
+              <i className="size-[7px] rounded-full bg-[#e5b95f]" />
+              <i className="size-[7px] rounded-full bg-[#70c285]" />
             </span>
             <label htmlFor="diff-input">diff.patch</label>
           </div>
-          <button
-            className="example-button"
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
+            className="font-mono"
             onClick={() => {
               setDiff(EXAMPLE_DIFF)
               setError(null)
             }}
           >
             Load example
-          </button>
+          </Button>
         </div>
 
         <textarea
+          className="block min-h-[300px] w-full resize-y border-0 bg-[linear-gradient(90deg,rgb(255_255_255/1.5%)_1px,transparent_1px)] bg-[length:44px_100%] bg-panel px-[18px] py-5 font-mono text-xs leading-[1.72] text-[#e8eaed] caret-accent outline-none placeholder:text-[#4e555f] min-[721px]:min-h-80 min-[721px]:px-[26px] min-[721px]:py-6 min-[721px]:text-[13px]"
           id="diff-input"
           name="diff"
           value={diff}
@@ -202,19 +212,27 @@ function Home() {
           aria-describedby="diff-help diff-security diff-error"
         />
 
-        <div className="composer-footer">
+        <div className="flex min-h-[76px] flex-col items-stretch justify-between gap-5 border-t border-line bg-[#181b20] px-4 py-3.5 min-[721px]:flex-row min-[721px]:items-center min-[721px]:pl-5">
           <div>
-            <p id="diff-help" className="privacy-note">
+            <p id="diff-help" className="text-xs text-muted">
               Unlisted · Expires after 24 hours · 2 MiB max
             </p>
-            <p id="diff-security" className="security-note">
-              <span aria-hidden="true">!</span>
+            <p
+              id="diff-security"
+              className="mt-1.5 flex max-w-[590px] items-baseline gap-2 text-[11px] leading-snug text-muted-bright"
+            >
+              <span
+                className="inline-grid size-[15px] shrink-0 place-items-center rounded-full bg-[#e5b95f] text-[10px] font-extrabold leading-none text-accent-ink"
+                aria-hidden="true"
+              >
+                !
+              </span>
               Anyone with the link can view this diff. Remove secrets and
               credentials before sharing.
             </p>
             <p
               id="diff-error"
-              className="form-error"
+              className="mt-1.5 max-w-[560px] text-xs text-danger empty:hidden"
               role="alert"
               aria-live="polite"
             >
@@ -222,49 +240,58 @@ function Home() {
             </p>
           </div>
 
-          <div className="composer-actions">
+          <div className="flex shrink-0 items-center justify-between gap-4 min-[721px]:justify-start">
             <span
-              className={
-                byteLength > MAX_DIFF_BYTES
-                  ? 'byte-count byte-count--over'
-                  : 'byte-count'
-              }
+              className={cn(
+                'min-w-[55px] text-right font-mono text-[11px] text-muted',
+                byteLength > MAX_DIFF_BYTES && 'text-danger',
+              )}
             >
               {formatBytes(byteLength)}
             </span>
-            <button
-              className="button button--primary share-button"
+            <Button
+              className="min-w-[165px]"
+              variant="primary"
+              size="md"
               type="submit"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Creating link…' : 'Create share link'}
               {!isSubmitting && <span aria-hidden="true">↗</span>}
-            </button>
+            </Button>
           </div>
         </div>
       </form>
 
       <section
-        className="terminal-upload"
+        className="mt-3.5 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-surface/60 p-[15px] min-[721px]:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] min-[721px]:gap-6 min-[721px]:px-[18px] min-[721px]:py-4"
         aria-labelledby="terminal-upload-title"
       >
-        <div className="terminal-upload-copy">
-          <p id="terminal-upload-title" className="terminal-upload-label">
+        <div>
+          <p
+            id="terminal-upload-title"
+            className="font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-muted-bright"
+          >
             From your terminal
           </p>
-          <p>Pipe working-tree changes straight to a share link.</p>
+          <p className="mt-1 text-xs text-muted">
+            Pipe working-tree changes straight to a share link.
+          </p>
         </div>
-        <div className="terminal-command-row">
-          <div className="terminal-command">
-            <span aria-hidden="true">$</span>
-            <code>
+        <div className="-mx-0.5 flex min-w-0 items-stretch gap-2 min-[721px]:mx-0">
+          <div className="flex h-9 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-[#252a31] bg-[#0f1114] px-3 [scrollbar-width:thin]">
+            <span className="select-none text-[#5d6570]" aria-hidden="true">
+              $
+            </span>
+            <code className="font-mono text-xs text-[#dfe3e8]">
               {uploadCommand}
-              <span className="terminal-open-pipe"> | xargs open</span>
+              <span className="text-[#626a75]"> | xargs open</span>
             </code>
           </div>
-          <button
-            className="terminal-copy-button"
-            type="button"
+          <Button
+            className="min-w-[100px] min-[721px]:min-w-28"
+            variant="secondary"
+            size="md"
             onClick={copyTerminalCommand}
             disabled={!siteOrigin}
             aria-live="polite"
@@ -281,7 +308,7 @@ function Home() {
                 : undefined
             }
           >
-            <span aria-hidden="true">
+            <span className="text-accent" aria-hidden="true">
               {commandCopyState === 'idle' ? '⧉' : '✓'}
             </span>
             {commandCopyState === 'armed'
@@ -289,15 +316,19 @@ function Home() {
               : commandCopyState === 'full'
                 ? 'Copied + open'
                 : 'Copy'}
-          </button>
+          </Button>
         </div>
       </section>
 
-      <footer className="home-footer">
+      <footer className="flex items-center justify-center px-1 pt-[18px] text-[11px] text-[#666d76] min-[721px]:justify-between">
         <span>Powered by Cloudflare Workers + R2</span>
-        <span className="keyboard-hint">
-          <kbd>⌘</kbd>
-          <kbd>Enter</kbd>
+        <span className="hidden items-center gap-1 min-[721px]:flex">
+          <kbd className="min-w-[22px] rounded border border-line border-b-[#3b414a] bg-[#171a1e] px-1.5 py-0.5 text-center text-[10px] text-muted">
+            ⌘
+          </kbd>
+          <kbd className="min-w-[22px] rounded border border-line border-b-[#3b414a] bg-[#171a1e] px-1.5 py-0.5 text-center text-[10px] text-muted">
+            Enter
+          </kbd>
           to share
         </span>
       </footer>

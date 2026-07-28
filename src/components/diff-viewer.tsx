@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import {
   CodeView,
   WorkerPoolContextProvider,
@@ -11,8 +10,10 @@ import {
 } from '@pierre/diffs/react'
 import { parsePatchFiles } from '@pierre/diffs'
 import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
+import { Link } from '@tanstack/react-router'
 
 import DiffFilePicker from './diff-file-picker'
+import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { SegmentedControl, SegmentedControlItem } from './ui/segmented-control'
 import { PanelHeader, Toolbar } from './ui/surfaces'
@@ -156,10 +157,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   return (
     <main className="grid h-svh grid-rows-[56px_auto_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground [grid-template-areas:'header''toolbar''workspace']">
       <header className="flex items-center justify-between border-b border-line bg-canvas/95 px-3 [grid-area:header] sm:px-5">
-        <Link className="wordmark" to="/">
-          <span aria-hidden="true">/</span>
-          diffdump
-        </Link>
+        <Wordmark />
 
         <div className="flex items-center gap-2">
           <Link
@@ -236,7 +234,9 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
 
       {parsed.error ? (
         <section className="flex w-[min(580px,calc(100%-40px))] flex-col items-start justify-center justify-self-center [grid-area:workspace]">
-          <p className="eyebrow">Render error</p>
+          <p className="mb-5 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-bright">
+            Render error
+          </p>
           <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] leading-[0.98] tracking-[-0.055em]">
             This patch needs a second look.
           </h1>
