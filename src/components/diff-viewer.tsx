@@ -433,6 +433,7 @@ function CategoryFilters({
             className={cn(
               'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border border-transparent px-2.5 font-mono text-[10px] text-muted transition-colors',
               'hover:border-line hover:bg-surface hover:text-muted-bright',
+              'disabled:pointer-events-none disabled:opacity-55',
               active &&
                 'border-line-bright bg-surface-raised text-foreground shadow-sm',
             )}
@@ -458,8 +459,12 @@ function CategorySummary({ summary }: { summary: DiffLineSummary }) {
       aria-label={`${summary.files} ${summary.files === 1 ? 'file' : 'files'}, ${summary.additions} additions, ${summary.deletions} deletions`}
     >
       <span>{summary.files}</span>
-      <span className="text-addition">+{summary.additions}</span>
-      <span className="text-deletion">−{summary.deletions}</span>
+      {summary.files > 0 && (
+        <>
+          <span className="text-addition">+{summary.additions}</span>
+          <span className="text-deletion">−{summary.deletions}</span>
+        </>
+      )}
     </span>
   )
 }
