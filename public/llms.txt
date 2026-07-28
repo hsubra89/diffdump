@@ -1,12 +1,23 @@
 # Diffdump
 
-> Diffdump is a no-account web service for turning unified Git diffs into focused, unlisted review links and for viewing GitHub pull requests, commits, and comparisons.
+> Diffdump is a no-account web service for reviewing GitHub pull requests, commits, and comparisons in a clean, focused viewer, and for turning raw unified Git diffs into unlisted, expiring share links.
 
 Canonical origin: https://diffdump.com
 
 Diffdump renders multi-file patches with syntax highlighting, unified and split layouts, line wrapping, a searchable file tree, file categories, and light and dark themes.
 
-To create a share programmatically, send a `PUT` request to `https://diffdump.com/d` with a raw UTF-8 unified diff as the request body. A successful request returns `201 Created` with the unlisted review URL as `text/plain`. Empty or invalid diffs return `400`, diffs larger than 2 MiB return `413`, and storage failures return `500`.
+Public GitHub pull requests, commits, and comparisons can be opened directly without creating or storing anything. Replace `github.com` with `diffdump.com` in a supported GitHub URL, or paste the URL into the form on the home page.
+
+Example:
+
+```text
+https://github.com/org/repo/pull/123
+https://diffdump.com/org/repo/pull/123
+```
+
+Private GitHub repositories can be viewed with an optional classic personal access token carrying `repo` scope. GitHub reviews are client-only: the browser fetches the diff straight from `api.github.com` and renders it locally. The token stays in browser local storage, and neither the token nor the fetched diff is submitted to or stored by Diffdump.
+
+Raw unified diffs can instead be shared as unlisted review links. To create a share programmatically, send a `PUT` request to `https://diffdump.com/d` with a raw UTF-8 unified diff as the request body. A successful request returns `201 Created` with the unlisted review URL as `text/plain`. Empty or invalid diffs return `400`, diffs larger than 2 MiB return `413`, and storage failures return `500`.
 
 Example:
 
@@ -16,13 +27,9 @@ git diff | curl -T- https://diffdump.com/d
 
 Shared diffs use random 96-bit URL slugs, are stored in a private Cloudflare R2 bucket, expire after 24 hours, and are marked `noindex, nofollow`. Share URLs are unlisted rather than access-controlled; anyone possessing a URL can open it. There is no public listing.
 
-Public GitHub pull requests, commits, and comparisons can be opened without creating or storing a Diffdump share. Replace `github.com` with `diffdump.com` in a supported GitHub URL, or use the GitHub form on the home page.
-
-Private GitHub repositories can be viewed with an optional classic personal access token carrying `repo` scope. The token stays in browser local storage and is sent directly to `api.github.com`; neither the token nor the fetched private diff is submitted to or stored by Diffdump.
-
 ## Primary resources
 
-- [Diffdump](https://diffdump.com/): Create an unlisted diff share or open a GitHub diff.
+- [Diffdump](https://diffdump.com/): Review a GitHub diff or create an unlisted diff share.
 - [GitHub diff form](https://diffdump.com/github): Open a public or private GitHub pull request, commit, or comparison.
 - [Source and documentation](https://github.com/hsubra89/diffdump): Source code, complete capabilities, architecture, local development, and deployment instructions.
 

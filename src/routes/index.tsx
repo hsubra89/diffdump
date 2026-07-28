@@ -197,9 +197,9 @@ function Home() {
           <span className="text-muted">One clean review.</span>
         </h1>
         <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
-          Open any GitHub pull request, commit, or comparison in a fast,
-          focused review view — no account, nothing uploaded. Raw diff instead?
-          Paste it for a clean, unlisted share link.
+          Open any GitHub pull request, commit, or comparison in a fast, focused
+          review view — no account, nothing uploaded. Raw diff instead? Paste it
+          for a clean, unlisted share link.
         </p>
       </section>
 
