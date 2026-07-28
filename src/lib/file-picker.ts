@@ -1,16 +1,24 @@
 import type { ChangeTypes } from '@pierre/diffs'
 import type { GitStatus } from '@pierre/trees'
 
+import type { DiffCategory } from './diff-files'
+
 export type DiffFilePickerSource = {
   itemId: string
   name: string
   type: ChangeTypes
+  category: DiffCategory
+  additions: number
+  deletions: number
 }
 
 export type DiffFilePickerEntry = {
   itemId: string
   path: string
   status: GitStatus
+  category: DiffCategory
+  additions: number
+  deletions: number
 }
 
 export function createDiffFilePickerEntries(
@@ -39,6 +47,9 @@ export function createDiffFilePickerEntries(
       itemId: file.itemId,
       path,
       status: toGitStatus(file.type),
+      category: file.category,
+      additions: file.additions,
+      deletions: file.deletions,
     }
   })
 }

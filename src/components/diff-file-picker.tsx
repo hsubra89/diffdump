@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
-import { prepareFileTreeInput } from '@pierre/trees'
+import { preparePresortedFileTreeInput } from '@pierre/trees'
 import { FileTree, useFileTree } from '@pierre/trees/react'
 
+import { DIFF_CATEGORY_DETAILS } from '../lib/diff-files'
 import type { DiffFilePickerEntry } from '../lib/file-picker'
 
 type DiffFilePickerProps = {
@@ -14,7 +15,10 @@ export default function DiffFilePicker({
   onSelect,
 }: DiffFilePickerProps) {
   const paths = useMemo(() => entries.map((entry) => entry.path), [entries])
-  const preparedInput = useMemo(() => prepareFileTreeInput(paths), [paths])
+  const preparedInput = useMemo(
+    () => preparePresortedFileTreeInput(paths),
+    [paths],
+  )
   const entriesByPath = useMemo(
     () => new Map(entries.map((entry) => [entry.path, entry])),
     [entries],
@@ -37,6 +41,29 @@ export default function DiffFilePicker({
     icons: 'standard',
     search: true,
     stickyFolders: true,
+    renderRowDecoration({ item }) {
+      const entry = entriesByPath.get(item.path)
+
+      if (!entry) {
+        return null
+      }
+
+      const category = DIFF_CATEGORY_DETAILS[entry.category]
+      const text = `${category.shortLabel} +${entry.additions} −${entry.deletions}`
+
+      return {
+        text,
+        title: `${category.label}: +${entry.additions} −${entry.deletions}`,
+        parts: [
+          {
+            text: `${category.shortLabel} `,
+            color: 'var(--trees-fg-muted-override)',
+          },
+          { text: `+${entry.additions} `, color: 'var(--addition)' },
+          { text: `−${entry.deletions}`, color: 'var(--deletion)' },
+        ],
+      }
+    },
     onSelectionChange(selectedPaths) {
       for (let index = selectedPaths.length - 1; index >= 0; index -= 1) {
         const entry = entriesByPath.get(selectedPaths[index])

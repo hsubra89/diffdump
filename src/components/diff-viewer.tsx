@@ -4,6 +4,7 @@ import {
   WorkerPoolContextProvider,
   type CodeViewHandle,
   type CodeViewDiffItem,
+  type CodeViewItem,
   type FileDiffMetadata,
   type WorkerInitializationRenderOptions,
   type WorkerPoolOptions,
@@ -20,6 +21,18 @@ import { PanelHeader, Toolbar } from './ui/surfaces'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
+import {
+  DIFF_CATEGORIES,
+  DIFF_CATEGORY_DETAILS,
+  createClassifiedDiffFiles,
+  filterAndOrderDiffFiles,
+  summarizeDiffFiles,
+  type DiffCategory,
+  type DiffCategoryFilter,
+  type DiffFileOrder,
+  type DiffLineSummary,
+  type DiffSummary,
+} from '../lib/diff-files'
 import type { StoredDiff } from '../lib/diffs'
 import { useResolvedTheme } from '../lib/theme'
 import {
@@ -58,6 +71,9 @@ const highlighterOptions: WorkerInitializationRenderOptions = {
 export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
   const [wrapLines, setWrapLines] = useState(false)
+  const [categoryFilter, setCategoryFilter] =
+    useState<DiffCategoryFilter>('all')
+  const [fileOrder, setFileOrder] = useState<DiffFileOrder>('patch')
   const resolvedTheme = useResolvedTheme()
   const [copied, setCopied] = useState(false)
   const [filePickerOpen, setFilePickerOpen] = useState(false)
@@ -85,26 +101,52 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
     }
   }, [slug, storedDiff.diff])
 
-  const summary = useMemo(() => summarizeDiff(parsed.files), [parsed.files])
+  const classifiedFiles = useMemo(
+    () => createClassifiedDiffFiles(parsed.files),
+    [parsed.files],
+  )
+  const summary = useMemo(
+    () => summarizeDiffFiles(classifiedFiles),
+    [classifiedFiles],
+  )
+  const visibleFiles = useMemo(
+    () => filterAndOrderDiffFiles(classifiedFiles, categoryFilter, fileOrder),
+    [categoryFilter, classifiedFiles, fileOrder],
+  )
+  const filesById = useMemo(
+    () => new Map(classifiedFiles.map((file) => [file.id, file])),
+    [classifiedFiles],
+  )
   const items = useMemo<CodeViewDiffItem[]>(
     () =>
-      parsed.files.map((file, index) => ({
-        id: getDiffItemId(file, index),
+      visibleFiles.map(({ id, file }) => ({
+        id,
         type: 'diff',
         fileDiff: file,
       })),
-    [parsed.files],
+    [visibleFiles],
   )
   const filePickerEntries = useMemo(
     () =>
       createDiffFilePickerEntries(
-        parsed.files.map((file, index) => ({
-          itemId: getDiffItemId(file, index),
-          name: file.name,
-          type: file.type,
+        visibleFiles.map((file) => ({
+          itemId: file.id,
+          name: file.file.name,
+          type: file.file.type,
+          category: file.category,
+          additions: file.additions,
+          deletions: file.deletions,
         })),
       ),
-    [parsed.files],
+    [visibleFiles],
+  )
+  const renderHeaderPrefix = useCallback(
+    (item: CodeViewItem) => {
+      const file = filesById.get(item.id)
+
+      return file ? <DiffCategoryBadge category={file.category} /> : null
+    },
+    [filesById],
   )
   const options = useMemo(
     () => ({
@@ -163,7 +205,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   }
 
   return (
-    <main className="grid h-svh grid-rows-[56px_auto_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground [grid-template-areas:'header''toolbar''workspace']">
+    <main className="grid h-svh w-full min-w-0 grid-rows-[56px_auto_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground [grid-template-areas:'header''toolbar''workspace']">
       <header className="flex items-center justify-between border-b border-line bg-canvas/95 px-3 [grid-area:header] sm:px-5">
         <Wordmark />
 
@@ -191,58 +233,77 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
       </header>
 
       <Toolbar
-        className="items-stretch gap-0 p-0 [grid-area:toolbar] md:grid md:min-h-12 md:grid-cols-[240px_minmax(0,1fr)]"
+        className="min-w-0 max-w-full items-stretch gap-0 overflow-hidden p-0 [grid-area:toolbar] md:grid md:grid-cols-[240px_minmax(0,1fr)]"
         aria-label="Diff controls"
       >
-        <div
-          className="hidden border-r border-line md:block"
-          aria-hidden="true"
-        />
-        <div className="flex w-full flex-col items-stretch gap-2 px-3 py-2 md:flex-row md:items-center md:justify-between md:overflow-y-auto md:px-4 md:py-0 md:[scrollbar-gutter:stable]">
-          <div className="flex items-center gap-3 font-mono text-[11px]">
-            <span className="text-muted">
-              {summary.files} {summary.files === 1 ? 'file' : 'files'}
-            </span>
-            <span className="text-addition">+{summary.additions}</span>
-            <span className="text-deletion">−{summary.deletions}</span>
-            <ExpiryCountdown expiresAt={storedDiff.expiresAt} />
-          </div>
+        <div className="hidden items-center gap-2 border-r border-line px-3 md:flex">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+            Order
+          </span>
+          <FileOrderControl
+            className="min-w-0 flex-1 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1.5"
+            order={fileOrder}
+            onChange={setFileOrder}
+          />
+        </div>
+        <div className="flex min-w-0 w-full flex-col">
+          <CategoryFilters
+            activeFilter={categoryFilter}
+            summary={summary}
+            onChange={setCategoryFilter}
+          />
 
-          <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-end md:gap-3">
-            <Button
-              className="md:hidden"
-              variant="secondary"
-              size="sm"
-              aria-label={
-                filePickerOpen ? 'Close file picker' : 'Open file picker'
-              }
-              aria-controls="diff-file-picker"
-              aria-expanded={filePickerOpen}
-              onClick={() => setFilePickerOpen((current) => !current)}
-            >
-              <span aria-hidden="true">☷</span>
-              <span className="max-[390px]:sr-only">Files</span>
-            </Button>
-            <SegmentedControl aria-label="Diff layout">
-              <SegmentedControlItem
-                active={diffStyle === 'unified'}
-                onClick={() => setDiffStyle('unified')}
+          <div className="flex min-w-0 flex-col gap-2 border-t border-line px-3 py-2 sm:flex-row sm:items-center sm:justify-between md:px-4">
+            <div className="flex shrink-0 items-center gap-3 font-mono text-[11px]">
+              <span className="text-muted">
+                {categoryFilter === 'all'
+                  ? `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`
+                  : `Showing ${visibleFiles.length} of ${summary.files}`}
+              </span>
+              <ExpiryCountdown expiresAt={storedDiff.expiresAt} />
+            </div>
+
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end md:flex-nowrap md:gap-3">
+              <Button
+                className="md:hidden"
+                variant="secondary"
+                size="sm"
+                aria-label={
+                  filePickerOpen ? 'Close file picker' : 'Open file picker'
+                }
+                aria-controls="diff-file-picker"
+                aria-expanded={filePickerOpen}
+                onClick={() => setFilePickerOpen((current) => !current)}
               >
-                Unified
-              </SegmentedControlItem>
-              <SegmentedControlItem
-                active={diffStyle === 'split'}
-                onClick={() => setDiffStyle('split')}
+                <span aria-hidden="true">☷</span>
+                <span className="max-[390px]:sr-only">Files</span>
+              </Button>
+              <FileOrderControl
+                className="md:hidden"
+                order={fileOrder}
+                onChange={setFileOrder}
+              />
+              <SegmentedControl aria-label="Diff layout">
+                <SegmentedControlItem
+                  active={diffStyle === 'unified'}
+                  onClick={() => setDiffStyle('unified')}
+                >
+                  Unified
+                </SegmentedControlItem>
+                <SegmentedControlItem
+                  active={diffStyle === 'split'}
+                  onClick={() => setDiffStyle('split')}
+                >
+                  Split
+                </SegmentedControlItem>
+              </SegmentedControl>
+              <Toggle
+                pressed={wrapLines}
+                onClick={() => setWrapLines((current) => !current)}
               >
-                Split
-              </SegmentedControlItem>
-            </SegmentedControl>
-            <Toggle
-              pressed={wrapLines}
-              onClick={() => setWrapLines((current) => !current)}
-            >
-              Wrap lines
-            </Toggle>
+                Wrap lines
+              </Toggle>
+            </div>
           </div>
         </div>
       </Toolbar>
@@ -302,7 +363,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
               </IconButton>
             </PanelHeader>
             <DiffFilePicker
-              key={slug}
+              key={`${slug}:${categoryFilter}:${fileOrder}`}
               entries={filePickerEntries}
               onSelect={scrollToFile}
             />
@@ -316,6 +377,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
               className="diff-scroll min-h-0 min-w-0 overflow-auto [grid-area:viewer]"
               items={items}
               options={options}
+              renderHeaderPrefix={renderHeaderPrefix}
             />
           </WorkerPoolContextProvider>
         </div>
@@ -324,8 +386,102 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   )
 }
 
-function getDiffItemId(file: FileDiffMetadata, index: number): string {
-  return `${file.cacheKey ?? file.name}-${index}`
+function CategoryFilters({
+  activeFilter,
+  summary,
+  onChange,
+}: {
+  activeFilter: DiffCategoryFilter
+  summary: DiffSummary
+  onChange: (filter: DiffCategoryFilter) => void
+}) {
+  const filters: readonly DiffCategoryFilter[] = ['all', ...DIFF_CATEGORIES]
+
+  return (
+    <fieldset
+      className="category-filter-scroll flex w-full min-w-0 max-w-full items-center gap-1 overflow-x-auto px-3 py-2 md:px-4"
+      aria-label="Filter files by category"
+    >
+      {filters.map((filter) => {
+        const details =
+          filter === 'all' ? { label: 'All' } : DIFF_CATEGORY_DETAILS[filter]
+        const filterSummary =
+          filter === 'all' ? summary : summary.categories[filter]
+        const active = activeFilter === filter
+
+        return (
+          <button
+            key={filter}
+            className={cn(
+              'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border border-transparent px-2.5 font-mono text-[10px] text-muted transition-colors',
+              'hover:border-line hover:bg-surface hover:text-muted-bright focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
+              active &&
+                'border-line-bright bg-surface-raised text-foreground shadow-sm',
+            )}
+            type="button"
+            aria-pressed={active}
+            disabled={filterSummary.files === 0}
+            data-testid={`category-filter-${filter}`}
+            onClick={() => onChange(filter)}
+          >
+            <span className="font-semibold">{details.label}</span>
+            <CategorySummary summary={filterSummary} />
+          </button>
+        )
+      })}
+    </fieldset>
+  )
+}
+
+function CategorySummary({ summary }: { summary: DiffLineSummary }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 tabular-nums"
+      aria-label={`${summary.files} ${summary.files === 1 ? 'file' : 'files'}, ${summary.additions} additions, ${summary.deletions} deletions`}
+    >
+      <span>{summary.files}</span>
+      <span className="text-addition">+{summary.additions}</span>
+      <span className="text-deletion">−{summary.deletions}</span>
+    </span>
+  )
+}
+
+function FileOrderControl({
+  className,
+  order,
+  onChange,
+}: {
+  className?: string
+  order: DiffFileOrder
+  onChange: (order: DiffFileOrder) => void
+}) {
+  return (
+    <SegmentedControl className={className} aria-label="File order">
+      <SegmentedControlItem
+        active={order === 'patch'}
+        onClick={() => onChange('patch')}
+      >
+        Patch
+      </SegmentedControlItem>
+      <SegmentedControlItem
+        active={order === 'category'}
+        onClick={() => onChange('category')}
+      >
+        Category
+      </SegmentedControlItem>
+    </SegmentedControl>
+  )
+}
+
+function DiffCategoryBadge({ category }: { category: DiffCategory }) {
+  return (
+    <span
+      className="inline-flex items-center rounded border border-line bg-surface-raised px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-bright"
+      data-diff-category={category}
+    >
+      {DIFF_CATEGORY_DETAILS[category].label}
+    </span>
+  )
 }
 
 function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
@@ -376,25 +532,5 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
     >
       {countdown}
     </time>
-  )
-}
-
-function summarizeDiff(files: FileDiffMetadata[]) {
-  return files.reduce(
-    (summary, file) => {
-      summary.files += 1
-
-      for (const hunk of file.hunks) {
-        summary.additions += hunk.additionLines
-        summary.deletions += hunk.deletionLines
-      }
-
-      return summary
-    },
-    {
-      files: 0,
-      additions: 0,
-      deletions: 0,
-    },
   )
 }

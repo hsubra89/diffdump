@@ -147,6 +147,14 @@ body {
   scrollbar-gutter: stable;
 }
 
+.category-filter-scroll {
+  scrollbar-width: none;
+}
+
+.category-filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .diff-scroll > div {
   width: calc(100% - 32px);
   margin: 0 auto;
