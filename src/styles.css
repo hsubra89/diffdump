@@ -114,6 +114,10 @@ body {
 }
 
 .diff-file-tree {
+  /* The tree's :host sets `color-scheme: light dark`, which resolves its
+     light-dark() colors against the OS preference instead of the app's
+     .light/.dark root class. Inheriting re-couples it to the app theme. */
+  color-scheme: inherit;
   --trees-bg-override: var(--canvas);
   --trees-bg-muted-override: var(--surface-raised);
   --trees-fg-override: var(--muted-bright);
