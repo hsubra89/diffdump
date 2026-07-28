@@ -1,8 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   CodeView,
   WorkerPoolContextProvider,
+  type CodeViewHandle,
   type CodeViewDiffItem,
   type FileDiffMetadata,
   type WorkerInitializationRenderOptions,
@@ -11,12 +18,14 @@ import {
 import { parsePatchFiles } from '@pierre/diffs'
 import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
 
+import DiffFilePicker from './diff-file-picker'
 import type { StoredDiff } from '../lib/diffs'
 import {
   formatAbsoluteExpiry,
   formatExpiryCountdown,
   getExpiryCountdownUpdateDelay,
 } from '../lib/expiry'
+import { createDiffFilePickerEntries } from '../lib/file-picker'
 
 type DiffStyle = 'unified' | 'split'
 
@@ -43,6 +52,8 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
   const [wrapLines, setWrapLines] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [filePickerOpen, setFilePickerOpen] = useState(false)
+  const codeViewRef = useRef<CodeViewHandle<undefined>>(null)
 
   const parsed = useMemo(() => {
     try {
@@ -70,10 +81,21 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   const items = useMemo<CodeViewDiffItem[]>(
     () =>
       parsed.files.map((file, index) => ({
-        id: `${file.cacheKey ?? file.name}-${index}`,
+        id: getDiffItemId(file, index),
         type: 'diff',
         fileDiff: file,
       })),
+    [parsed.files],
+  )
+  const filePickerEntries = useMemo(
+    () =>
+      createDiffFilePickerEntries(
+        parsed.files.map((file, index) => ({
+          itemId: getDiffItemId(file, index),
+          name: file.name,
+          type: file.type,
+        })),
+      ),
     [parsed.files],
   )
   const options = useMemo(
@@ -96,6 +118,31 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
     }),
     [diffStyle, wrapLines],
   )
+
+  const scrollToFile = useCallback((itemId: string) => {
+    codeViewRef.current?.scrollTo({
+      type: 'item',
+      id: itemId,
+      align: 'start',
+      behavior: 'smooth-auto',
+    })
+    setFilePickerOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!filePickerOpen) {
+      return
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setFilePickerOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [filePickerOpen])
 
   async function copyShareLink() {
     try {
@@ -141,6 +188,17 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
         </div>
 
         <div className="view-controls">
+          <button
+            className="file-picker-toggle"
+            type="button"
+            aria-label={filePickerOpen ? 'Close file picker' : 'Open file picker'}
+            aria-controls="diff-file-picker"
+            aria-expanded={filePickerOpen}
+            onClick={() => setFilePickerOpen((current) => !current)}
+          >
+            <span aria-hidden="true">☷</span>
+            <span className="file-picker-toggle-label">Files</span>
+          </button>
           <div className="segmented-control" aria-label="Diff layout">
             <button
               type="button"
@@ -181,15 +239,57 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           </Link>
         </section>
       ) : (
-        <WorkerPoolContextProvider
-          poolOptions={workerPoolOptions}
-          highlighterOptions={highlighterOptions}
-        >
-          <CodeView className="diff-scroll" items={items} options={options} />
-        </WorkerPoolContextProvider>
+        <div className="diff-workspace">
+          {filePickerOpen ? (
+            <button
+              className="file-picker-backdrop"
+              type="button"
+              aria-label="Close file picker"
+              onClick={() => setFilePickerOpen(false)}
+            />
+          ) : null}
+          <aside
+            className={`file-picker${filePickerOpen ? ' file-picker--open' : ''}`}
+            id="diff-file-picker"
+            aria-label="Changed files"
+          >
+            <div className="file-picker-header">
+              <span>Files</span>
+              <span className="file-picker-count">{filePickerEntries.length}</span>
+              <button
+                className="file-picker-close"
+                type="button"
+                aria-label="Close file picker"
+                onClick={() => setFilePickerOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <DiffFilePicker
+              key={slug}
+              entries={filePickerEntries}
+              onSelect={scrollToFile}
+            />
+          </aside>
+          <WorkerPoolContextProvider
+            poolOptions={workerPoolOptions}
+            highlighterOptions={highlighterOptions}
+          >
+            <CodeView
+              ref={codeViewRef}
+              className="diff-scroll"
+              items={items}
+              options={options}
+            />
+          </WorkerPoolContextProvider>
+        </div>
       )}
     </main>
   )
+}
+
+function getDiffItemId(file: FileDiffMetadata, index: number): string {
+  return `${file.cacheKey ?? file.name}-${index}`
 }
 
 function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
