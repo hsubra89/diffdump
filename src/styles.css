@@ -146,6 +146,13 @@ body {
   scrollbar-gutter: stable;
 }
 
+.diff-scroll [data-diff-category] {
+  /* The category badge is slotted into the card header, whose padding is
+     16px, while the hunk separator pill below sits at the 8px
+     --diffs-gap-inline inset. Pull the badge back so their left edges align. */
+  margin-left: -8px;
+}
+
 .category-filter-scroll {
   scrollbar-width: none;
 }
@@ -155,8 +162,12 @@ body {
 }
 
 .diff-scroll > div {
-  width: calc(100% - 32px);
-  margin: 0 auto;
+  /* Keep the cards on the same fixed right rail as the header and toolbar:
+     the vertical scrollbar eats into the right margin instead of pushing the
+     cards inward (diffshub's gutter-compensation pattern). */
+  width: auto;
+  margin-left: 16px;
+  margin-right: max(0px, 16px - var(--diff-scrollbar-width, 0px));
 }
 
 .diff-scroll diffs-container {
@@ -172,7 +183,8 @@ body {
 
 @media (max-width: 767px) {
   .diff-scroll > div {
-    width: calc(100% - 24px);
+    margin-left: 12px;
+    margin-right: max(0px, 12px - var(--diff-scrollbar-width, 0px));
   }
 
   .diff-scroll diffs-container {

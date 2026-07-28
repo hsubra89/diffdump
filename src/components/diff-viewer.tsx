@@ -76,6 +76,35 @@ const highlighterOptions: WorkerInitializationRenderOptions = {
   lineDiffType: 'word-alt',
 }
 
+/* With classic (non-overlay) scrollbars, Chrome reserves the native scrollbar
+   width at the inline-end of the diff's [data-code] element because of its
+   `scrollbar-gutter: stable`, even though the element clips overflow-y and
+   hides its vertical scrollbar — leaving the hunk separator bar (100cqi wide)
+   stopping short of the card edge with the separator row's background peeking
+   through. The rule lives in the library's shadow DOM, but every
+   diffs-container shares one adopted stylesheet, so patching it once fixes
+   all current and future cards. */
+const patchedDiffSheets = new WeakSet<CSSStyleSheet>()
+
+function patchDiffScrollbarGutter(root: HTMLElement): boolean {
+  const container = root.querySelector('diffs-container')
+  const sheet = container?.shadowRoot?.adoptedStyleSheets[0]
+
+  if (!sheet) {
+    return false
+  }
+
+  if (!patchedDiffSheets.has(sheet)) {
+    sheet.insertRule(
+      '[data-code] { scrollbar-gutter: auto; }',
+      sheet.cssRules.length,
+    )
+    patchedDiffSheets.add(sheet)
+  }
+
+  return true
+}
+
 export default function DiffViewer(props: DiffViewerProps) {
   const isGitHubDiff = props.mode === 'github'
   const viewerId = isGitHubDiff ? props.githubUrl : props.slug
@@ -91,6 +120,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [copied, setCopied] = useState(false)
   const [filePickerOpen, setFilePickerOpen] = useState(false)
   const codeViewRef = useRef<CodeViewHandle<undefined>>(null)
+  const mainRef = useRef<HTMLElement>(null)
   const [viewedState, setViewedState] = useState(() => ({
     reviewId,
     fileIds: new Set(readStoredViewedFileIds(reviewId)),
@@ -265,6 +295,51 @@ export default function DiffViewer(props: DiffViewerProps) {
   }, [reviewId, viewedState])
 
   useEffect(() => {
+    if (parsed.error) {
+      return
+    }
+
+    /* Publish the scroll area's scrollbar width so the card rail can absorb
+       it: the cards' right margin shrinks by the measured width (see
+       .diff-scroll > div in styles.css), keeping the card edge on the same
+       fixed inset as the header and toolbar above. Overlay scrollbars
+       measure 0 and change nothing. */
+    const main = mainRef.current
+    const scroller = main?.querySelector('.diff-scroll')
+
+    if (!main || !(scroller instanceof HTMLElement)) {
+      return
+    }
+
+    const updateScrollbarWidth = () => {
+      main.style.setProperty(
+        '--diff-scrollbar-width',
+        `${scroller.offsetWidth - scroller.clientWidth}px`,
+      )
+    }
+
+    updateScrollbarWidth()
+    const observer = new ResizeObserver(updateScrollbarWidth)
+    observer.observe(scroller)
+    return () => observer.disconnect()
+  }, [parsed.error])
+
+  useEffect(() => {
+    const main = mainRef.current
+
+    if (parsed.error || !main || patchDiffScrollbarGutter(main)) {
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      if (patchDiffScrollbarGutter(main)) {
+        window.clearInterval(interval)
+      }
+    }, 150)
+    return () => window.clearInterval(interval)
+  }, [parsed.error])
+
+  useEffect(() => {
     if (!filePickerOpen) {
       return
     }
@@ -290,8 +365,11 @@ export default function DiffViewer(props: DiffViewerProps) {
   }
 
   return (
-    <main className="grid h-svh w-full min-w-0 grid-rows-[56px_auto_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground [grid-template-areas:'header''toolbar''workspace']">
-      <header className="flex items-center justify-between border-b border-line bg-canvas/95 px-3 [grid-area:header] sm:px-5">
+    <main
+      ref={mainRef}
+      className="grid h-svh w-full min-w-0 grid-rows-[56px_auto_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground [grid-template-areas:'header''toolbar''workspace']"
+    >
+      <header className="flex items-center justify-between border-b border-line bg-canvas/95 px-3 [grid-area:header] md:px-4">
         <Wordmark />
 
         <div className="flex items-center gap-2">
