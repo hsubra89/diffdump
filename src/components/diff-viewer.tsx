@@ -22,6 +22,7 @@ import { PanelHeader, Toolbar, eyebrowClassName } from './ui/surfaces'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
+import { diffThemes } from '../lib/diff-themes'
 import {
   DIFF_CATEGORIES,
   DIFF_CATEGORY_DETAILS,
@@ -65,11 +66,6 @@ const workerPoolOptions: WorkerPoolOptions = {
   totalASTLRUCacheSize: 100,
   workerFactory: () => new Worker(DiffWorkerUrl, { type: 'module' }),
 }
-
-const diffThemes = {
-  dark: 'pierre-dark',
-  light: 'pierre-light',
-} as const
 
 const highlighterOptions: WorkerInitializationRenderOptions = {
   theme: diffThemes,
