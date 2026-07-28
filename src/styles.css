@@ -260,6 +260,31 @@ textarea:focus-visible {
   color: var(--muted);
 }
 
+.security-note {
+  display: flex;
+  max-width: 590px;
+  gap: 7px;
+  align-items: baseline;
+  margin: 6px 0 0;
+  color: var(--muted-bright);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.security-note > span {
+  display: inline-grid;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  color: var(--accent-ink);
+  background: #e5b95f;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .form-error {
   max-width: 560px;
   margin-top: 5px;

@@ -138,13 +138,18 @@ function Home() {
           spellCheck={false}
           autoCapitalize="off"
           autoCorrect="off"
-          aria-describedby="diff-help diff-error"
+          aria-describedby="diff-help diff-security diff-error"
         />
 
         <div className="composer-footer">
           <div>
             <p id="diff-help" className="privacy-note">
               Unlisted · Expires after 24 hours · 2 MiB max
+            </p>
+            <p id="diff-security" className="security-note">
+              <span aria-hidden="true">!</span>
+              Anyone with the link can view this diff. Remove secrets and
+              credentials before sharing.
             </p>
             <p
               id="diff-error"
