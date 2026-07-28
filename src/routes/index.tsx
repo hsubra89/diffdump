@@ -22,6 +22,8 @@ import { createDiff } from '../server/diffs.functions'
 type CommandCopyState = 'idle' | 'armed' | 'full'
 type PanelTab = 'paste' | 'github'
 
+const EXAMPLE_GITHUB_URL = 'https://github.com/TanStack/router/pull/3092'
+
 const EXAMPLE_DIFF = `diff --git a/src/greeting.ts b/src/greeting.ts
 index ce01362..cc628cc 100644
 --- a/src/greeting.ts
@@ -39,7 +41,7 @@ export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
       {
-        title: 'Diffdump — Share or review any git diff',
+        title: 'Diffdump — Review any GitHub diff',
       },
     ],
   }),
@@ -49,8 +51,9 @@ export const Route = createFileRoute('/')({
 function Home() {
   const navigate = useNavigate()
   const createDiffFn = useServerFn(createDiff)
-  const [activeTab, setActiveTab] = useState<PanelTab>('paste')
+  const [activeTab, setActiveTab] = useState<PanelTab>('github')
   const [diff, setDiff] = useState('')
+  const [githubUrl, setGithubUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [siteOrigin, setSiteOrigin] = useState('')
@@ -117,9 +120,9 @@ function Home() {
     event.preventDefault()
     const nextTab: PanelTab =
       event.key === 'Home'
-        ? 'paste'
+        ? 'github'
         : event.key === 'End'
-          ? 'github'
+          ? 'paste'
           : activeTab === 'paste'
             ? 'github'
             : 'paste'
@@ -181,7 +184,7 @@ function Home() {
         <Wordmark />
         <div className="flex items-center gap-3">
           <span className={cn(eyebrowClassName, 'hidden text-muted md:inline')}>
-            Tiny links for big changes
+            Code review without the clutter
           </span>
           <ThemeToggle />
         </div>
@@ -189,14 +192,14 @@ function Home() {
 
       <section className="pt-16 pb-10 md:pt-24 md:pb-12">
         <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-semibold leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
-          Any diff.
+          Any pull request.
           <br />
-          <span className="text-muted">One clean link.</span>
+          <span className="text-muted">One clean review.</span>
         </h1>
         <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
-          Paste a unified git diff for a focused, unlisted share link — or open
-          a GitHub pull request, commit, or comparison in the same clean viewer.
-          No account.
+          Open any GitHub pull request, commit, or comparison in a fast,
+          focused review view — no account, nothing uploaded. Raw diff instead?
+          Paste it for a clean, unlisted share link.
         </p>
       </section>
 
@@ -206,14 +209,14 @@ function Home() {
             id="panel-section-title"
             className={cn(eyebrowClassName, 'text-accent-text')}
           >
-            {activeTab === 'paste'
-              ? 'Create a shared diff'
-              : 'Open a GitHub diff'}
+            {activeTab === 'github'
+              ? 'Review a GitHub diff'
+              : 'Create a shared diff'}
           </h2>
           <p className="text-xs text-muted">
-            {activeTab === 'paste'
-              ? 'Paste or pipe a patch to create an expiring, unlisted link.'
-              : 'Public repos work instantly — private ones ask for a token when needed.'}
+            {activeTab === 'github'
+              ? 'Public repos work instantly — private ones ask for a token when needed.'
+              : 'Paste or pipe a patch to create an expiring, unlisted link.'}
           </p>
         </div>
 
@@ -236,15 +239,6 @@ function Home() {
                 onKeyDown={handleTabListKeyDown}
               >
                 <PanelTabButton
-                  active={activeTab === 'paste'}
-                  controls="panel-paste"
-                  id="tab-paste"
-                  tabRef={pasteTabRef}
-                  onSelect={() => setActiveTab('paste')}
-                >
-                  diff.patch
-                </PanelTabButton>
-                <PanelTabButton
                   active={activeTab === 'github'}
                   controls="panel-github"
                   id="tab-github"
@@ -253,21 +247,41 @@ function Home() {
                 >
                   github.com/…
                 </PanelTabButton>
+                <PanelTabButton
+                  active={activeTab === 'paste'}
+                  controls="panel-paste"
+                  id="tab-paste"
+                  tabRef={pasteTabRef}
+                  onSelect={() => setActiveTab('paste')}
+                >
+                  diff.patch
+                </PanelTabButton>
               </div>
             </div>
-            {activeTab === 'paste' && (
-              <Button
-                variant="ghost"
-                size="xs"
-                className="self-center font-mono"
-                onClick={() => {
+            <Button
+              variant="ghost"
+              size="xs"
+              className="self-center font-mono"
+              onClick={() => {
+                if (activeTab === 'github') {
+                  setGithubUrl(EXAMPLE_GITHUB_URL)
+                } else {
                   setDiff(EXAMPLE_DIFF)
                   setError(null)
-                }}
-              >
-                Load example
-              </Button>
-            )}
+                }
+              }}
+            >
+              Load example
+            </Button>
+          </div>
+
+          <div
+            role="tabpanel"
+            id="panel-github"
+            aria-labelledby="tab-github"
+            className={cn(activeTab !== 'github' && 'hidden')}
+          >
+            <GitHubOpenPanel url={githubUrl} onUrlChange={setGithubUrl} />
           </div>
 
           <div
@@ -340,22 +354,40 @@ function Home() {
               </div>
             </form>
           </div>
-
-          <div
-            role="tabpanel"
-            id="panel-github"
-            aria-labelledby="tab-github"
-            className={cn(activeTab !== 'github' && 'hidden')}
-          >
-            <GitHubOpenPanel />
-          </div>
         </div>
 
-        <section
-          className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
-          aria-labelledby="terminal-upload-title"
-        >
-          <div>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <section
+            className="flex flex-col rounded-panel border border-line bg-panel/60 p-4"
+            aria-labelledby="address-bar-title"
+          >
+            <p
+              id="address-bar-title"
+              className={cn(eyebrowClassName, 'text-muted-bright')}
+            >
+              From the address bar
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Swap <code className="font-mono">github.com</code> for{' '}
+              <code className="font-mono">diffdump.com</code> on any pull
+              request, commit, or comparison URL.
+            </p>
+            <div className="mt-3 flex h-8 items-center overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
+              <code className="font-mono text-xs">
+                <span className="text-muted line-through">github.com</span>
+                <span className="text-muted" aria-hidden="true">
+                  {' → '}
+                </span>
+                <span className="text-accent-text">diffdump.com</span>
+                <span className="text-foreground">/org/repo/pull/123</span>
+              </code>
+            </div>
+          </section>
+
+          <section
+            className="flex flex-col rounded-panel border border-line bg-panel/60 p-4"
+            aria-labelledby="terminal-upload-title"
+          >
             <p
               id="terminal-upload-title"
               className={cn(eyebrowClassName, 'text-muted-bright')}
@@ -365,48 +397,48 @@ function Home() {
             <p className="mt-1 text-xs text-muted">
               Pipe working-tree changes straight to a share link.
             </p>
-          </div>
-          <div className="flex min-w-0 items-stretch gap-2">
-            <div className="flex h-8 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
-              <span className="select-none text-muted" aria-hidden="true">
-                $
-              </span>
-              <code className="font-mono text-xs text-foreground">
-                {uploadCommand}
-                <span className="text-muted"> | xargs open</span>
-              </code>
-            </div>
-            <Button
-              className="min-w-[100px] md:min-w-28"
-              variant="secondary"
-              size="sm"
-              onClick={copyTerminalCommand}
-              disabled={!siteOrigin}
-              aria-live="polite"
-              aria-label={
-                commandCopyState === 'armed'
-                  ? 'Copy command including the pipe to open its returned URL'
+            <div className="mt-3 flex min-w-0 items-stretch gap-2">
+              <div className="flex h-8 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
+                <span className="select-none text-muted" aria-hidden="true">
+                  $
+                </span>
+                <code className="font-mono text-xs text-foreground">
+                  {uploadCommand}
+                  <span className="text-muted"> | xargs open</span>
+                </code>
+              </div>
+              <Button
+                className="min-w-[100px]"
+                variant="secondary"
+                size="sm"
+                onClick={copyTerminalCommand}
+                disabled={!siteOrigin}
+                aria-live="polite"
+                aria-label={
+                  commandCopyState === 'armed'
+                    ? 'Copy command including the pipe to open its returned URL'
+                    : commandCopyState === 'full'
+                      ? 'Command including the pipe to open its returned URL copied'
+                      : 'Copy terminal command'
+                }
+                title={
+                  commandCopyState === 'armed'
+                    ? 'Click again within five seconds to include “| xargs open”'
+                    : undefined
+                }
+              >
+                <span className="text-accent-text" aria-hidden="true">
+                  {commandCopyState === 'idle' ? '⧉' : '✓'}
+                </span>
+                {commandCopyState === 'armed'
+                  ? 'Copy + open'
                   : commandCopyState === 'full'
-                    ? 'Command including the pipe to open its returned URL copied'
-                    : 'Copy terminal command'
-              }
-              title={
-                commandCopyState === 'armed'
-                  ? 'Click again within five seconds to include “| xargs open”'
-                  : undefined
-              }
-            >
-              <span className="text-accent-text" aria-hidden="true">
-                {commandCopyState === 'idle' ? '⧉' : '✓'}
-              </span>
-              {commandCopyState === 'armed'
-                ? 'Copy + open'
-                : commandCopyState === 'full'
-                  ? 'Copied + open'
-                  : 'Copy'}
-            </Button>
-          </div>
-        </section>
+                    ? 'Copied + open'
+                    : 'Copy'}
+              </Button>
+            </div>
+          </section>
+        </div>
       </section>
 
       <footer className="flex items-center justify-center px-1 pt-10 text-[11px] text-muted md:justify-between">

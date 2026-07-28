@@ -9,9 +9,14 @@ import {
 } from '../lib/github-diffs'
 import { Button } from './ui/button'
 
-export function GitHubOpenPanel() {
+export function GitHubOpenPanel({
+  url,
+  onUrlChange,
+}: {
+  url: string
+  onUrlChange: (url: string) => void
+}) {
   const navigate = useNavigate()
-  const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isOpening, setIsOpening] = useState(false)
   const [hasToken, setHasToken] = useState(false)
@@ -19,6 +24,10 @@ export function GitHubOpenPanel() {
   useEffect(() => {
     setHasToken(readStoredGitHubToken() !== '')
   }, [])
+
+  useEffect(() => {
+    setError(null)
+  }, [url])
 
   async function handleOpen(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -67,10 +76,7 @@ export function GitHubOpenPanel() {
             id="github-url-input"
             type="url"
             value={url}
-            onChange={(event) => {
-              setUrl(event.currentTarget.value)
-              if (error) setError(null)
-            }}
+            onChange={(event) => onUrlChange(event.currentTarget.value)}
             placeholder="https://github.com/org/repo/pull/123"
             aria-describedby="github-open-error"
             autoCapitalize="off"
@@ -96,9 +102,8 @@ export function GitHubOpenPanel() {
           {error}
         </p>
         <p className="mt-4 max-w-[560px] text-xs leading-snug text-muted">
-          Shortcut: replace <code className="font-mono">github.com</code> with{' '}
-          <code className="font-mono">diffdump.com</code> in the address bar to
-          jump straight to this view.
+          Reviews are client-only: the diff is fetched straight from GitHub and
+          rendered in your browser.
         </p>
       </div>
 

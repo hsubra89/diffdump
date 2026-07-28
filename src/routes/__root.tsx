@@ -14,12 +14,12 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Diffdump — Share a git diff',
+        title: 'Diffdump — Review any GitHub diff',
       },
       {
         name: 'description',
         content:
-          'Paste a git diff, create a private share link, and read it in a focused code review view.',
+          'Open any GitHub pull request, commit, or comparison in a clean, focused review view — or paste a git diff for an unlisted share link.',
       },
       {
         name: 'theme-color',
@@ -37,11 +37,11 @@ export const Route = createRootRoute({
       },
       {
         property: 'og:title',
-        content: 'Diffdump — Share a git diff',
+        content: 'Diffdump — Review any GitHub diff',
       },
       {
         property: 'og:description',
-        content: 'Share a diff. Skip the ceremony.',
+        content: 'Review any GitHub diff. Skip the ceremony.',
       },
       {
         property: 'og:image',
@@ -53,11 +53,11 @@ export const Route = createRootRoute({
       },
       {
         name: 'twitter:title',
-        content: 'Diffdump — Share a git diff',
+        content: 'Diffdump — Review any GitHub diff',
       },
       {
         name: 'twitter:description',
-        content: 'Share a diff. Skip the ceremony.',
+        content: 'Review any GitHub diff. Skip the ceremony.',
       },
       {
         name: 'twitter:image',
