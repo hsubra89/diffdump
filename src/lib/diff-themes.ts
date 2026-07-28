@@ -12,6 +12,13 @@ interface GitHubSyntaxPalette {
   type: string
 }
 
+/* The TSX grammar re-suffixes every TypeScript scope with `.tsx`, and
+   TextMate selectors match per dot-segment, so `.ts` rules never apply to
+   `.tsx` tokens. Emit both variants for each scope. */
+function tsAndTsx(...scopes: string[]): string[] {
+  return scopes.flatMap((scope) => [scope, scope.replace(/\.ts\b/g, '.tsx')])
+}
+
 function githubWebTokenColors({
   accent,
   constant,
@@ -20,43 +27,43 @@ function githubWebTokenColors({
 }: GitHubSyntaxPalette): NonNullable<ThemeRegistration['tokenColors']> {
   return [
     {
-      scope: ['entity.name.label.ts', 'meta.object-literal.key.ts'],
+      scope: tsAndTsx('entity.name.label.ts', 'meta.object-literal.key.ts'),
       settings: { foreground: accent },
     },
     {
-      scope: 'punctuation.separator.key-value.ts',
+      scope: tsAndTsx('punctuation.separator.key-value.ts'),
       settings: { foreground },
     },
     {
-      scope: [
+      scope: tsAndTsx(
         'meta.function-call.ts variable.other.object.ts',
         'meta.object.member.ts variable.other.readwrite.ts',
-      ],
+      ),
       settings: { foreground: type },
     },
     {
-      scope: 'variable.parameter.ts',
+      scope: tsAndTsx('variable.parameter.ts'),
       settings: { foreground },
     },
     {
-      scope: 'storage.type.function.arrow.ts',
+      scope: tsAndTsx('storage.type.function.arrow.ts'),
       settings: { foreground: accent },
     },
     {
-      scope: 'meta.template.expression.ts variable.other.object.ts',
+      scope: tsAndTsx('meta.template.expression.ts variable.other.object.ts'),
       settings: { foreground },
     },
     {
-      scope: 'meta.template.expression.ts variable.other.property.ts',
+      scope: tsAndTsx('meta.template.expression.ts variable.other.property.ts'),
       settings: { foreground: constant },
     },
     {
-      scope: [
+      scope: tsAndTsx(
         'punctuation.definition.template-expression.begin.ts',
         'punctuation.definition.template-expression.end.ts',
         'meta.template.expression.ts punctuation.accessor.ts',
         'meta.template.expression.ts meta.brace.round.ts',
-      ],
+      ),
       settings: { foreground },
     },
   ]

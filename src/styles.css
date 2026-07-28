@@ -129,6 +129,7 @@ body {
   --trees-status-added-override: var(--addition);
   --trees-status-ignored-override: light-dark(#6e7781, #6e7681);
   --trees-status-modified-override: light-dark(#9a6700, #d29922);
+  --trees-status-renamed-override: var(--muted);
   --trees-status-untracked-override: var(--addition);
   --trees-status-deleted-override: var(--deletion);
   --trees-scrollbar-thumb-override: var(--line-bright);
