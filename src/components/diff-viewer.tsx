@@ -18,7 +18,7 @@ import { ErrorHero } from './error-hero'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { SegmentedControl, SegmentedControlItem } from './ui/segmented-control'
-import { PanelHeader, Toolbar, eyebrowClassName } from './ui/surfaces'
+import { PanelHeader, Toolbar } from './ui/surfaces'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
@@ -330,87 +330,73 @@ export default function DiffViewer(props: DiffViewerProps) {
       </header>
 
       <Toolbar
-        className="min-w-0 max-w-full items-stretch gap-0 overflow-hidden p-0 [grid-area:toolbar] md:grid md:grid-cols-[240px_minmax(0,1fr)]"
+        className="min-w-0 max-w-full flex-col items-stretch gap-0 overflow-hidden p-0 [grid-area:toolbar]"
         aria-label="Diff controls"
       >
-        <div className="hidden items-center gap-2 border-r border-line px-3 md:flex">
-          <span className={cn(eyebrowClassName, 'text-muted')}>Order</span>
-          <FileOrderControl
-            className="min-w-0 flex-1 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1.5"
-            order={fileOrder}
-            onChange={setFileOrder}
-          />
-        </div>
-        <div className="flex min-w-0 w-full flex-col">
-          <CategoryFilters
-            activeFilter={categoryFilter}
-            summary={summary}
-            onChange={setCategoryFilter}
-          />
+        <CategoryFilters
+          activeFilter={categoryFilter}
+          summary={summary}
+          onChange={setCategoryFilter}
+        />
 
-          <div className="flex min-w-0 flex-col gap-2 border-t border-line px-3 py-2 sm:flex-row sm:items-center sm:justify-between md:px-4">
-            <div className="flex shrink-0 items-center gap-3 font-mono text-[11px]">
-              <span className="text-muted">
-                {categoryFilter === 'all'
-                  ? `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`
-                  : `Showing ${visibleFiles.length} of ${summary.files}`}
+        <div className="flex min-w-0 flex-col gap-2 border-t border-line px-3 py-2 sm:flex-row sm:items-center sm:justify-between md:px-4">
+          <div className="flex shrink-0 items-center gap-3 font-mono text-[11px]">
+            <span className="text-muted">
+              {categoryFilter === 'all'
+                ? `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`
+                : `Showing ${visibleFiles.length} of ${summary.files}`}
+            </span>
+            <span
+              className="border-l border-line pl-3 text-muted"
+              aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
+            >
+              {viewedFileCount} viewed
+            </span>
+            {expiresAt ? (
+              <ExpiryCountdown expiresAt={expiresAt} />
+            ) : (
+              <span className="text-accent-text">
+                Private GitHub view · not shared
               </span>
-              <span
-                className="border-l border-line pl-3 text-muted"
-                aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
-              >
-                {viewedFileCount} viewed
-              </span>
-              {expiresAt ? (
-                <ExpiryCountdown expiresAt={expiresAt} />
-              ) : (
-                <span className="text-accent-text">
-                  Private GitHub view · not shared
-                </span>
-              )}
-            </div>
+            )}
+          </div>
 
-            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end md:flex-nowrap md:gap-3">
-              <Button
-                className="md:hidden"
-                variant="secondary"
-                size="sm"
-                aria-label={
-                  filePickerOpen ? 'Close file picker' : 'Open file picker'
-                }
-                aria-controls="diff-file-picker"
-                aria-expanded={filePickerOpen}
-                onClick={() => setFilePickerOpen((current) => !current)}
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end md:flex-nowrap md:gap-3">
+            <Button
+              className="md:hidden"
+              variant="secondary"
+              size="sm"
+              aria-label={
+                filePickerOpen ? 'Close file picker' : 'Open file picker'
+              }
+              aria-controls="diff-file-picker"
+              aria-expanded={filePickerOpen}
+              onClick={() => setFilePickerOpen((current) => !current)}
+            >
+              <span aria-hidden="true">☷</span>
+              <span className="max-[390px]:sr-only">Files</span>
+            </Button>
+            <FileOrderControl order={fileOrder} onChange={setFileOrder} />
+            <SegmentedControl aria-label="Diff layout">
+              <SegmentedControlItem
+                active={diffStyle === 'unified'}
+                onClick={() => setDiffStyle('unified')}
               >
-                <span aria-hidden="true">☷</span>
-                <span className="max-[390px]:sr-only">Files</span>
-              </Button>
-              <FileOrderControl
-                className="md:hidden"
-                order={fileOrder}
-                onChange={setFileOrder}
-              />
-              <SegmentedControl aria-label="Diff layout">
-                <SegmentedControlItem
-                  active={diffStyle === 'unified'}
-                  onClick={() => setDiffStyle('unified')}
-                >
-                  Unified
-                </SegmentedControlItem>
-                <SegmentedControlItem
-                  active={diffStyle === 'split'}
-                  onClick={() => setDiffStyle('split')}
-                >
-                  Split
-                </SegmentedControlItem>
-              </SegmentedControl>
-              <Toggle
-                pressed={wrapLines}
-                onClick={() => setWrapLines((current) => !current)}
+                Unified
+              </SegmentedControlItem>
+              <SegmentedControlItem
+                active={diffStyle === 'split'}
+                onClick={() => setDiffStyle('split')}
               >
-                Wrap lines
-              </Toggle>
-            </div>
+                Split
+              </SegmentedControlItem>
+            </SegmentedControl>
+            <Toggle
+              pressed={wrapLines}
+              onClick={() => setWrapLines((current) => !current)}
+            >
+              Wrap lines
+            </Toggle>
           </div>
         </div>
       </Toolbar>
@@ -576,24 +562,24 @@ function CategorySummary({ summary }: { summary: DiffLineSummary }) {
 }
 
 function FileOrderControl({
-  className,
   order,
   onChange,
 }: {
-  className?: string
   order: DiffFileOrder
   onChange: (order: DiffFileOrder) => void
 }) {
   return (
-    <SegmentedControl className={className} aria-label="File order">
+    <SegmentedControl aria-label="File order" title="File order">
       <SegmentedControlItem
         active={order === 'patch'}
+        title="Order files as they appear in the patch"
         onClick={() => onChange('patch')}
       >
         Patch
       </SegmentedControlItem>
       <SegmentedControlItem
         active={order === 'category'}
+        title="Group files by category: source, tests, docs, other"
         onClick={() => onChange('category')}
       >
         Category
