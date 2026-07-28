@@ -1,8 +1,4 @@
-import {
-  forwardRef,
-  type ButtonHTMLAttributes,
-  type HTMLAttributes,
-} from 'react'
+import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '../../lib/cn'
@@ -75,19 +71,3 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
 )
 
 IconButton.displayName = 'IconButton'
-
-export function ButtonGroup({
-  className,
-  ...props
-}: HTMLAttributes<HTMLFieldSetElement>) {
-  return (
-    <fieldset
-      className={cn(
-        'inline-flex items-center overflow-hidden rounded-control border border-line bg-canvas p-0.5',
-        '[&>*]:rounded-[5px]',
-        className,
-      )}
-      {...props}
-    />
-  )
-}

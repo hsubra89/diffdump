@@ -2,6 +2,9 @@ import type { HTMLAttributes } from 'react'
 
 import { cn } from '../../lib/cn'
 
+export const eyebrowClassName =
+  'font-mono text-[11px] font-semibold uppercase tracking-[0.08em]'
+
 export function Toolbar({ className, ...props }: HTMLAttributes<HTMLElement>) {
   return (
     <section
@@ -21,7 +24,8 @@ export function PanelHeader({
   return (
     <div
       className={cn(
-        'flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-muted-bright',
+        eyebrowClassName,
+        'flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-muted-bright',
         className,
       )}
       {...props}

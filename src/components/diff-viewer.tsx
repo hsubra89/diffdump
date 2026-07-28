@@ -14,10 +14,11 @@ import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
 import { Link } from '@tanstack/react-router'
 
 import DiffFilePicker from './diff-file-picker'
+import { ErrorHero } from './error-hero'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { SegmentedControl, SegmentedControlItem } from './ui/segmented-control'
-import { PanelHeader, Toolbar } from './ui/surfaces'
+import { PanelHeader, Toolbar, eyebrowClassName } from './ui/surfaces'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
@@ -237,9 +238,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
         aria-label="Diff controls"
       >
         <div className="hidden items-center gap-2 border-r border-line px-3 md:flex">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
-            Order
-          </span>
+          <span className={cn(eyebrowClassName, 'text-muted')}>Order</span>
           <FileOrderControl
             className="min-w-0 flex-1 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:px-1.5"
             order={fileOrder}
@@ -309,23 +308,13 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
       </Toolbar>
 
       {parsed.error ? (
-        <section className="flex w-[min(580px,calc(100%-40px))] flex-col items-start justify-center justify-self-center [grid-area:workspace]">
-          <p className="mb-5 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-bright">
-            Render error
-          </p>
-          <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] leading-[1.02] tracking-[-0.035em]">
-            This patch needs a second look.
-          </h1>
-          <p className="mb-7 leading-relaxed text-muted-bright">
-            {parsed.error}
-          </p>
-          <Link
-            className={buttonVariants({ variant: 'primary', size: 'sm' })}
-            to="/"
-          >
-            Try another diff
-          </Link>
-        </section>
+        <ErrorHero
+          className="justify-self-center [grid-area:workspace]"
+          eyebrow="Render error"
+          title="This patch needs a second look."
+          description={parsed.error}
+          actionLabel="Try another diff"
+        />
       ) : (
         <div className="relative grid min-h-0 grid-cols-1 [grid-area:workspace] [grid-template-areas:'viewer'] md:grid-cols-[240px_minmax(0,1fr)] md:[grid-template-areas:'tree_viewer']">
           {filePickerOpen ? (

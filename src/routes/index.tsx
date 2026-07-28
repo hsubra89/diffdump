@@ -9,6 +9,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
 import { Button } from '../components/ui/button'
+import { eyebrowClassName } from '../components/ui/surfaces'
 import { ThemeToggle } from '../components/ui/theme-toggle'
 import { Wordmark } from '../components/wordmark'
 import { cn } from '../lib/cn'
@@ -154,7 +155,7 @@ function Home() {
       >
         <Wordmark />
         <div className="flex items-center gap-3">
-          <span className="hidden font-mono text-[11px] uppercase tracking-[0.04em] text-muted md:inline">
+          <span className={cn(eyebrowClassName, 'hidden text-muted md:inline')}>
             Tiny links for big changes
           </span>
           <ThemeToggle />
@@ -268,7 +269,7 @@ function Home() {
         <div>
           <p
             id="terminal-upload-title"
-            className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-bright"
+            className={cn(eyebrowClassName, 'text-muted-bright')}
           >
             From your terminal
           </p>
