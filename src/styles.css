@@ -137,8 +137,14 @@ body {
   --trees-font-size-override: 11px;
   --trees-border-radius-override: 5px;
   --trees-item-margin-x-override: 5px;
-  --trees-padding-inline-override: 3px;
+  /* Put the search field on the same 5px rail as the tree rows' highlight
+     boxes; its inner text then starts at ~12px, aligned with the FILES
+     header text above. */
+  --trees-padding-inline-override: 5px;
   --trees-icon-nudge-override: 0;
+  /* Breathing room between the panel header's border and the search field,
+     which the tree otherwise renders flush against its top edge. */
+  padding-top: 8px;
 }
 
 .diff-scroll {
