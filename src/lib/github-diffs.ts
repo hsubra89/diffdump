@@ -98,6 +98,26 @@ export function parseGitHubDiffUrl(input: string): GitHubDiffSource | null {
   return null
 }
 
+export function createGitHubDiffPath(source: GitHubDiffSource): string {
+  const repoPath = `${source.owner}/${source.repo}`
+
+  switch (source.kind) {
+    case 'pull':
+      return `${repoPath}/pull/${source.number}`
+    case 'commit':
+      return `${repoPath}/commit/${source.sha}`
+    case 'compare':
+      return `${repoPath}/compare/${source.range}`
+  }
+}
+
+export function createGitHubUrlFromPath(path: string): string | null {
+  const normalizedPath = path.replace(/^\/+/, '')
+  const githubUrl = new URL(`/${normalizedPath}`, 'https://github.com').href
+
+  return parseGitHubDiffUrl(githubUrl) ? githubUrl : null
+}
+
 export async function loadGitHubDiff(
   input: string,
   options: LoadGitHubDiffOptions = {},

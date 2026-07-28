@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import {
   CREATE_CLASSIC_GITHUB_TOKEN_URL,
+  createGitHubDiffPath,
   parseGitHubDiffUrl,
   readStoredGitHubToken,
   writeStoredGitHubToken,
@@ -38,7 +39,8 @@ export function GitHubImport() {
     }
 
     const normalizedUrl = url.trim()
-    if (!parseGitHubDiffUrl(normalizedUrl)) {
+    const source = parseGitHubDiffUrl(normalizedUrl)
+    if (!source) {
       setError('Enter a GitHub pull request, commit, or comparison URL.')
       return
     }
@@ -48,8 +50,8 @@ export function GitHubImport() {
 
     try {
       await navigate({
-        to: '/github',
-        search: { url: normalizedUrl },
+        to: '/$',
+        params: { _splat: createGitHubDiffPath(source) },
       })
     } catch (caughtError) {
       setError(
@@ -91,7 +93,9 @@ export function GitHubImport() {
         </h2>
         <p className="mt-3 leading-relaxed text-muted-bright">
           Store a GitHub token in this browser, then open a private pull
-          request, commit, or comparison directly in Diffdump.
+          request, commit, or comparison directly in Diffdump. Paste its URL
+          below, or replace <code className="font-mono">github.com</code> with{' '}
+          <code className="font-mono">diffdump.com</code> in the address bar.
         </p>
       </div>
 

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   GITHUB_TOKEN_STORAGE_KEY,
+  createGitHubDiffPath,
+  createGitHubUrlFromPath,
   loadGitHubDiff,
   parseGitHubDiffUrl,
   readStoredGitHubToken,
@@ -105,6 +107,24 @@ describe('GitHub diff URL parsing', () => {
       parseGitHubDiffUrl('https://github.com/acme/widgets/issues/42'),
     ).toBeNull()
     expect(parseGitHubDiffUrl('not a url')).toBeNull()
+  })
+
+  it('maps supported sources to host-replacement paths', () => {
+    const source = parseGitHubDiffUrl(
+      'https://github.com/freckle-io/next/pull/744/files',
+    )
+
+    expect(source && createGitHubDiffPath(source)).toBe(
+      'freckle-io/next/pull/744',
+    )
+    expect(createGitHubUrlFromPath('freckle-io/next/pull/744')).toBe(
+      'https://github.com/freckle-io/next/pull/744',
+    )
+  })
+
+  it('rejects direct paths that are not supported GitHub diffs', () => {
+    expect(createGitHubUrlFromPath('freckle-io/next/issues/744')).toBeNull()
+    expect(createGitHubUrlFromPath('not-a-github-path')).toBeNull()
   })
 })
 

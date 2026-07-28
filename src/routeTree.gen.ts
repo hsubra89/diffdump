@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as DRouteImport } from './routes/d'
 import { Route as GithubRouteImport } from './routes/github'
 import { Route as ViewSlugRouteImport } from './routes/view.$slug'
@@ -17,6 +18,11 @@ import { Route as ViewSlugRouteImport } from './routes/view.$slug'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DRoute = DRouteImport.update({
@@ -37,12 +43,14 @@ const ViewSlugRoute = ViewSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/d': typeof DRoute
   '/github': typeof GithubRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/d': typeof DRoute
   '/github': typeof GithubRoute
   '/view/$slug': typeof ViewSlugRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/d': typeof DRoute
   '/github': typeof GithubRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/d' | '/github' | '/view/$slug'
+  fullPaths: '/' | '/$' | '/d' | '/github' | '/view/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/d' | '/github' | '/view/$slug'
-  id: '__root__' | '/' | '/d' | '/github' | '/view/$slug'
+  to: '/' | '/$' | '/d' | '/github' | '/view/$slug'
+  id: '__root__' | '/' | '/$' | '/d' | '/github' | '/view/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   DRoute: typeof DRoute
   GithubRoute: typeof GithubRoute
   ViewSlugRoute: typeof ViewSlugRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/d': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   DRoute: DRoute,
   GithubRoute: GithubRoute,
   ViewSlugRoute: ViewSlugRoute,

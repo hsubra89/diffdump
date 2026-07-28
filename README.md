@@ -25,6 +25,13 @@ seconds — no account, no repository access. It is hosted at
   with an optional classic personal access token carrying the `repo` scope.
   The token is stored only in browser `localStorage` and sent directly to
   `api.github.com`; it is never submitted to Diffdump.
+- For any supported GitHub URL, replace `github.com` with `diffdump.com`:
+
+  ```text
+  https://github.com/freckle-io/next/pull/744
+  https://diffdump.com/freckle-io/next/pull/744
+  ```
+
 - Links are unlisted by design: 96-bit, base64url-encoded random slugs served
   with `noindex, nofollow`. There is no public listing.
 - Shares accept diffs up to 2 MiB and expire after 24 hours.
@@ -61,8 +68,8 @@ seconds — no account, no repository access. It is hosted at
 4. The app navigates to `/view/<slug>`, loads the private object through the
    Worker, and renders it in the browser until its 24-hour expiry.
 
-The separate `/github` flow reads the optional token after client hydration and
-requests GitHub's diff media type directly from `api.github.com`. It renders the
+The direct GitHub routes read the optional token after client hydration and
+request GitHub's diff media type directly from `api.github.com`. They render the
 response without creating a Diffdump share.
 
 ## Local development
