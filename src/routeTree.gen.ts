@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DRouteImport } from './routes/d'
+import { Route as GithubRouteImport } from './routes/github'
 import { Route as ViewSlugRouteImport } from './routes/view.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const DRoute = DRouteImport.update({
   path: '/d',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GithubRoute = GithubRouteImport.update({
+  id: '/github',
+  path: '/github',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ViewSlugRoute = ViewSlugRouteImport.update({
   id: '/view/$slug',
   path: '/view/$slug',
@@ -32,30 +38,34 @@ const ViewSlugRoute = ViewSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/d': typeof DRoute
+  '/github': typeof GithubRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/d': typeof DRoute
+  '/github': typeof GithubRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/d': typeof DRoute
+  '/github': typeof GithubRoute
   '/view/$slug': typeof ViewSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/d' | '/view/$slug'
+  fullPaths: '/' | '/d' | '/github' | '/view/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/d' | '/view/$slug'
-  id: '__root__' | '/' | '/d' | '/view/$slug'
+  to: '/' | '/d' | '/github' | '/view/$slug'
+  id: '__root__' | '/' | '/d' | '/github' | '/view/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DRoute: typeof DRoute
+  GithubRoute: typeof GithubRoute
   ViewSlugRoute: typeof ViewSlugRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/github': {
+      id: '/github'
+      path: '/github'
+      fullPath: '/github'
+      preLoaderRoute: typeof GithubRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/view/$slug': {
       id: '/view/$slug'
       path: '/view/$slug'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DRoute: DRoute,
+  GithubRoute: GithubRoute,
   ViewSlugRoute: ViewSlugRoute,
 }
 export const routeTree = rootRouteImport

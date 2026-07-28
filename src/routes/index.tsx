@@ -8,6 +8,7 @@ import {
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
+import { GitHubImport } from '../components/github-import'
 import { Button } from '../components/ui/button'
 import { eyebrowClassName } from '../components/ui/surfaces'
 import { ThemeToggle } from '../components/ui/theme-toggle'
@@ -174,152 +175,168 @@ function Home() {
         </p>
       </section>
 
-      <form
-        className="overflow-hidden rounded-panel border border-line bg-panel shadow-[0_16px_40px_light-dark(rgb(0_0_0/5%),rgb(0_0_0/35%))]"
-        onSubmit={handleSubmit}
-      >
-        <div className="flex min-h-12 items-center justify-between border-b border-line bg-canvas px-4 font-mono text-xs text-muted">
-          <div className="flex items-center gap-4">
-            <span className="flex gap-1.5" aria-hidden="true">
-              <i className="size-[7px] rounded-full bg-[#f17873]" />
-              <i className="size-[7px] rounded-full bg-[#e5b95f]" />
-              <i className="size-[7px] rounded-full bg-[#70c285]" />
-            </span>
-            <label htmlFor="diff-input">diff.patch</label>
-          </div>
-          <Button
-            variant="ghost"
-            size="xs"
-            className="font-mono"
-            onClick={() => {
-              setDiff(EXAMPLE_DIFF)
-              setError(null)
-            }}
+      <section aria-labelledby="shared-diff-title">
+        <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+          <h2
+            id="shared-diff-title"
+            className={cn(eyebrowClassName, 'text-accent-text')}
           >
-            Load example
-          </Button>
+            Create a shared diff
+          </h2>
+          <p className="text-xs text-muted">
+            Paste or pipe a patch to create an expiring, unlisted link.
+          </p>
         </div>
 
-        <textarea
-          className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
-          id="diff-input"
-          name="diff"
-          value={diff}
-          onChange={(event) => {
-            setDiff(event.target.value)
-            if (error) setError(null)
-          }}
-          onKeyDown={handleEditorKeyDown}
-          placeholder={`diff --git a/file.ts b/file.ts\n--- a/file.ts\n+++ b/file.ts\n@@ -1,3 +1,4 @@\n ...paste your diff here`}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          aria-describedby="diff-help diff-security diff-error"
-        />
-
-        <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-5 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
-          <div>
-            <p id="diff-help" className="text-xs text-muted">
-              Unlisted · Expires after 24 hours · 2 MiB max
-            </p>
-            <p
-              id="diff-security"
-              className="mt-1 max-w-[590px] text-xs leading-snug text-muted"
-            >
-              Anyone with the link can view this diff — remove secrets before
-              sharing.
-            </p>
-            <p
-              id="diff-error"
-              className="mt-1.5 max-w-[560px] text-xs text-danger empty:hidden"
-              role="alert"
-              aria-live="polite"
-            >
-              {error}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center justify-between gap-4 md:justify-start">
-            <span
-              className={cn(
-                'min-w-[55px] text-right font-mono text-[11px] text-muted',
-                byteLength > MAX_DIFF_BYTES && 'text-danger',
-              )}
-            >
-              {formatBytes(byteLength)}
-            </span>
+        <form
+          className="overflow-hidden rounded-panel border border-line bg-panel shadow-[0_16px_40px_light-dark(rgb(0_0_0/5%),rgb(0_0_0/35%))]"
+          onSubmit={handleSubmit}
+        >
+          <div className="flex min-h-12 items-center justify-between border-b border-line bg-canvas px-4 font-mono text-xs text-muted">
+            <div className="flex items-center gap-4">
+              <span className="flex gap-1.5" aria-hidden="true">
+                <i className="size-[7px] rounded-full bg-[#f17873]" />
+                <i className="size-[7px] rounded-full bg-[#e5b95f]" />
+                <i className="size-[7px] rounded-full bg-[#70c285]" />
+              </span>
+              <label htmlFor="diff-input">diff.patch</label>
+            </div>
             <Button
-              className="min-w-[150px]"
-              variant="primary"
-              size="sm"
-              type="submit"
-              disabled={isSubmitting}
+              variant="ghost"
+              size="xs"
+              className="font-mono"
+              onClick={() => {
+                setDiff(EXAMPLE_DIFF)
+                setError(null)
+              }}
             >
-              {isSubmitting ? 'Creating link…' : 'Create share link'}
-              {!isSubmitting && <span aria-hidden="true">↗</span>}
+              Load example
             </Button>
           </div>
-        </div>
-      </form>
 
-      <section
-        className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
-        aria-labelledby="terminal-upload-title"
-      >
-        <div>
-          <p
-            id="terminal-upload-title"
-            className={cn(eyebrowClassName, 'text-muted-bright')}
-          >
-            From your terminal
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            Pipe working-tree changes straight to a share link.
-          </p>
-        </div>
-        <div className="flex min-w-0 items-stretch gap-2">
-          <div className="flex h-8 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
-            <span className="select-none text-muted" aria-hidden="true">
-              $
-            </span>
-            <code className="font-mono text-xs text-foreground">
-              {uploadCommand}
-              <span className="text-muted"> | xargs open</span>
-            </code>
+          <textarea
+            className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
+            id="diff-input"
+            name="diff"
+            value={diff}
+            onChange={(event) => {
+              setDiff(event.target.value)
+              if (error) setError(null)
+            }}
+            onKeyDown={handleEditorKeyDown}
+            placeholder={`diff --git a/file.ts b/file.ts\n--- a/file.ts\n+++ b/file.ts\n@@ -1,3 +1,4 @@\n ...paste your diff here`}
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            aria-describedby="diff-help diff-security diff-error"
+          />
+
+          <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-5 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
+            <div>
+              <p id="diff-help" className="text-xs text-muted">
+                Unlisted · Expires after 24 hours · 2 MiB max
+              </p>
+              <p
+                id="diff-security"
+                className="mt-1 max-w-[590px] text-xs leading-snug text-muted"
+              >
+                Anyone with the link can view this diff — remove secrets before
+                sharing.
+              </p>
+              <p
+                id="diff-error"
+                className="mt-1.5 max-w-[560px] text-xs text-danger empty:hidden"
+                role="alert"
+                aria-live="polite"
+              >
+                {error}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center justify-between gap-4 md:justify-start">
+              <span
+                className={cn(
+                  'min-w-[55px] text-right font-mono text-[11px] text-muted',
+                  byteLength > MAX_DIFF_BYTES && 'text-danger',
+                )}
+              >
+                {formatBytes(byteLength)}
+              </span>
+              <Button
+                className="min-w-[150px]"
+                variant="primary"
+                size="sm"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Creating link…' : 'Create share link'}
+                {!isSubmitting && <span aria-hidden="true">↗</span>}
+              </Button>
+            </div>
           </div>
-          <Button
-            className="min-w-[100px] md:min-w-28"
-            variant="secondary"
-            size="sm"
-            onClick={copyTerminalCommand}
-            disabled={!siteOrigin}
-            aria-live="polite"
-            aria-label={
-              commandCopyState === 'armed'
-                ? 'Copy command including the pipe to open its returned URL'
+        </form>
+
+        <section
+          className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
+          aria-labelledby="terminal-upload-title"
+        >
+          <div>
+            <p
+              id="terminal-upload-title"
+              className={cn(eyebrowClassName, 'text-muted-bright')}
+            >
+              From your terminal
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Pipe working-tree changes straight to a share link.
+            </p>
+          </div>
+          <div className="flex min-w-0 items-stretch gap-2">
+            <div className="flex h-8 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
+              <span className="select-none text-muted" aria-hidden="true">
+                $
+              </span>
+              <code className="font-mono text-xs text-foreground">
+                {uploadCommand}
+                <span className="text-muted"> | xargs open</span>
+              </code>
+            </div>
+            <Button
+              className="min-w-[100px] md:min-w-28"
+              variant="secondary"
+              size="sm"
+              onClick={copyTerminalCommand}
+              disabled={!siteOrigin}
+              aria-live="polite"
+              aria-label={
+                commandCopyState === 'armed'
+                  ? 'Copy command including the pipe to open its returned URL'
+                  : commandCopyState === 'full'
+                    ? 'Command including the pipe to open its returned URL copied'
+                    : 'Copy terminal command'
+              }
+              title={
+                commandCopyState === 'armed'
+                  ? 'Click again within five seconds to include “| xargs open”'
+                  : undefined
+              }
+            >
+              <span className="text-accent-text" aria-hidden="true">
+                {commandCopyState === 'idle' ? '⧉' : '✓'}
+              </span>
+              {commandCopyState === 'armed'
+                ? 'Copy + open'
                 : commandCopyState === 'full'
-                  ? 'Command including the pipe to open its returned URL copied'
-                  : 'Copy terminal command'
-            }
-            title={
-              commandCopyState === 'armed'
-                ? 'Click again within five seconds to include “| xargs open”'
-                : undefined
-            }
-          >
-            <span className="text-accent-text" aria-hidden="true">
-              {commandCopyState === 'idle' ? '⧉' : '✓'}
-            </span>
-            {commandCopyState === 'armed'
-              ? 'Copy + open'
-              : commandCopyState === 'full'
-                ? 'Copied + open'
-                : 'Copy'}
-          </Button>
-        </div>
+                  ? 'Copied + open'
+                  : 'Copy'}
+            </Button>
+          </div>
+        </section>
       </section>
 
-      <footer className="flex items-center justify-center px-1 pt-5 text-[11px] text-muted md:justify-between">
+      <GitHubImport />
+
+      <footer className="flex items-center justify-center px-1 pt-10 text-[11px] text-muted md:justify-between">
         <span>
           Powered by <FooterLink href="https://diffs.com">diffs.com</FooterLink>{' '}
           +{' '}

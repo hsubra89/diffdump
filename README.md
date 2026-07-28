@@ -20,6 +20,11 @@ seconds — no account, no repository access. It is hosted at
   The response body is the share URL — append `| xargs open` to jump straight
   into the review view.
 
+- Open a public GitHub pull request, commit, or comparison directly in the
+  review view without creating a share. Private repositories are supported
+  with an optional classic personal access token carrying the `repo` scope.
+  The token is stored only in browser `localStorage` and sent directly to
+  `api.github.com`; it is never submitted to Diffdump.
 - Links are unlisted by design: 96-bit, base64url-encoded random slugs served
   with `noindex, nofollow`. There is no public listing.
 - Shares accept diffs up to 2 MiB and expire after 24 hours.
@@ -43,6 +48,8 @@ seconds — no account, no repository access. It is hosted at
 - Unified diffs are stored as private objects in Cloudflare R2.
 - Share links expire after 24 hours.
 - Share URLs use 96-bit, base64url-encoded random slugs.
+- GitHub reviews are client-only: the browser fetches the diff directly from
+  GitHub, and neither the token nor the fetched diff is stored by Diffdump.
 
 ## How it works
 
@@ -53,6 +60,10 @@ seconds — no account, no repository access. It is hosted at
    writes `diffs/<slug>` to R2 so an existing share is never overwritten.
 4. The app navigates to `/view/<slug>`, loads the private object through the
    Worker, and renders it in the browser until its 24-hour expiry.
+
+The separate `/github` flow reads the optional token after client hydration and
+requests GitHub's diff media type directly from `api.github.com`. It renders the
+response without creating a Diffdump share.
 
 ## Local development
 

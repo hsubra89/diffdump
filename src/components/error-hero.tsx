@@ -10,6 +10,7 @@ type ErrorHeroProps = {
   title: string
   description: string
   actionLabel: string
+  actionHash?: string
   className?: string
   children?: ReactNode
 }
@@ -19,6 +20,7 @@ export function ErrorHero({
   title,
   description,
   actionLabel,
+  actionHash,
   className,
   children,
 }: ErrorHeroProps) {
@@ -40,6 +42,7 @@ export function ErrorHero({
       <Link
         className={buttonVariants({ variant: 'primary', size: 'sm' })}
         to="/"
+        hash={actionHash}
       >
         {actionLabel}
       </Link>

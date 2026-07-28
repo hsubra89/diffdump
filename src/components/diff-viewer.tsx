@@ -45,10 +45,17 @@ import { createDiffFilePickerEntries } from '../lib/file-picker'
 
 type DiffStyle = 'unified' | 'split'
 
-type DiffViewerProps = {
-  slug: string
-  storedDiff: StoredDiff
-}
+type DiffViewerProps =
+  | {
+      mode?: 'shared'
+      slug: string
+      storedDiff: StoredDiff
+    }
+  | {
+      mode: 'github'
+      githubUrl: string
+      diff: string
+    }
 
 const workerPoolOptions: WorkerPoolOptions = {
   poolSize: Math.min(
@@ -69,7 +76,11 @@ const highlighterOptions: WorkerInitializationRenderOptions = {
   lineDiffType: 'word-alt',
 }
 
-export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
+export default function DiffViewer(props: DiffViewerProps) {
+  const isGitHubDiff = props.mode === 'github'
+  const viewerId = isGitHubDiff ? props.githubUrl : props.slug
+  const diff = isGitHubDiff ? props.diff : props.storedDiff.diff
+  const expiresAt = isGitHubDiff ? null : props.storedDiff.expiresAt
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
   const [wrapLines, setWrapLines] = useState(false)
   const [categoryFilter, setCategoryFilter] =
@@ -82,7 +93,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
 
   const parsed = useMemo(() => {
     try {
-      const files = parsePatchFiles(storedDiff.diff, slug, true).flatMap(
+      const files = parsePatchFiles(diff, viewerId, true).flatMap(
         (patch) => patch.files,
       )
 
@@ -100,7 +111,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
             : 'The diff could not be rendered.',
       }
     }
-  }, [slug, storedDiff.diff])
+  }, [diff, viewerId])
 
   const classifiedFiles = useMemo(
     () => createClassifiedDiffFiles(parsed.files),
@@ -219,17 +230,29 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
             )}
             to="/"
           >
-            New diff
+            Home
           </Link>
-          <Button
-            className="min-w-24"
-            variant="primary"
-            size="sm"
-            onClick={copyShareLink}
-          >
-            <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
-            {copied ? 'Copied' : 'Copy link'}
-          </Button>
+          {isGitHubDiff ? (
+            <a
+              className={buttonVariants({ variant: 'primary', size: 'sm' })}
+              href={props.githubUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              View on GitHub
+              <span aria-hidden="true">↗</span>
+            </a>
+          ) : (
+            <Button
+              className="min-w-24"
+              variant="primary"
+              size="sm"
+              onClick={copyShareLink}
+            >
+              <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
+              {copied ? 'Copied' : 'Copy link'}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -259,7 +282,13 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
                   ? `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`
                   : `Showing ${visibleFiles.length} of ${summary.files}`}
               </span>
-              <ExpiryCountdown expiresAt={storedDiff.expiresAt} />
+              {expiresAt ? (
+                <ExpiryCountdown expiresAt={expiresAt} />
+              ) : (
+                <span className="text-accent-text">
+                  Private GitHub view · not shared
+                </span>
+              )}
             </div>
 
             <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end md:flex-nowrap md:gap-3">
@@ -352,7 +381,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
               </IconButton>
             </PanelHeader>
             <DiffFilePicker
-              key={`${slug}:${categoryFilter}:${fileOrder}`}
+              key={`${viewerId}:${categoryFilter}:${fileOrder}`}
               entries={filePickerEntries}
               onSelect={scrollToFile}
             />
