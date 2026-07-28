@@ -50,15 +50,21 @@ function SharedDiffPage() {
 
 function DiffLoading() {
   return (
-    <main className="view-page view-page--loading">
-      <header className="view-header">
+    <main className="grid h-svh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground">
+      <header className="flex items-center border-b border-line bg-canvas/95 px-3 sm:px-5">
         <Link className="wordmark" to="/">
           <span aria-hidden="true">/</span>
           diffdump
         </Link>
       </header>
-      <div className="diff-loading" aria-live="polite">
-        <span className="loading-pulse" aria-hidden="true" />
+      <div
+        className="flex items-center justify-center gap-3 font-mono text-xs text-muted"
+        aria-live="polite"
+      >
+        <span
+          className="size-2 animate-pulse rounded-full bg-accent"
+          aria-hidden="true"
+        />
         Loading shared diff…
       </div>
     </main>

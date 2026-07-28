@@ -51,7 +51,7 @@ export default function DiffFilePicker({
 
   return (
     <FileTree
-      className="diff-file-tree"
+      className="diff-file-tree block min-h-0 w-full flex-1"
       model={model}
       aria-label="Changed files"
     />
