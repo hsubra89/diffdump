@@ -13,6 +13,7 @@ describe('diff file picker entries', () => {
           category: 'source',
           additions: 2,
           deletions: 1,
+          viewed: true,
         },
         {
           itemId: 'two',
@@ -21,6 +22,7 @@ describe('diff file picker entries', () => {
           category: 'source',
           additions: 3,
           deletions: 0,
+          viewed: false,
         },
         {
           itemId: 'three',
@@ -29,6 +31,7 @@ describe('diff file picker entries', () => {
           category: 'source',
           additions: 0,
           deletions: 4,
+          viewed: false,
         },
         {
           itemId: 'four',
@@ -37,6 +40,7 @@ describe('diff file picker entries', () => {
           category: 'source',
           additions: 1,
           deletions: 1,
+          viewed: false,
         },
       ]),
     ).toEqual([
@@ -47,6 +51,7 @@ describe('diff file picker entries', () => {
         category: 'source',
         additions: 2,
         deletions: 1,
+        viewed: true,
       },
       {
         itemId: 'two',
@@ -55,6 +60,7 @@ describe('diff file picker entries', () => {
         category: 'source',
         additions: 3,
         deletions: 0,
+        viewed: false,
       },
       {
         itemId: 'three',
@@ -63,6 +69,7 @@ describe('diff file picker entries', () => {
         category: 'source',
         additions: 0,
         deletions: 4,
+        viewed: false,
       },
       {
         itemId: 'four',
@@ -71,6 +78,7 @@ describe('diff file picker entries', () => {
         category: 'source',
         additions: 1,
         deletions: 1,
+        viewed: false,
       },
     ])
   })
@@ -85,6 +93,7 @@ describe('diff file picker entries', () => {
           category: 'source',
           additions: 1,
           deletions: 0,
+          viewed: false,
         },
         {
           itemId: 'two',
@@ -93,6 +102,7 @@ describe('diff file picker entries', () => {
           category: 'tests',
           additions: 2,
           deletions: 1,
+          viewed: true,
         },
       ]),
     ).toEqual([
@@ -103,6 +113,7 @@ describe('diff file picker entries', () => {
         category: 'source',
         additions: 1,
         deletions: 0,
+        viewed: false,
       },
       {
         itemId: 'two',
@@ -111,6 +122,7 @@ describe('diff file picker entries', () => {
         category: 'tests',
         additions: 2,
         deletions: 1,
+        viewed: true,
       },
     ])
   })

@@ -43,6 +43,10 @@ import {
   getExpiryCountdownUpdateDelay,
 } from '../lib/expiry'
 import { createDiffFilePickerEntries } from '../lib/file-picker'
+import {
+  readStoredViewedFileIds,
+  writeStoredViewedFileIds,
+} from '../lib/viewed-files'
 
 type DiffStyle = 'unified' | 'split'
 
@@ -75,6 +79,7 @@ const highlighterOptions: WorkerInitializationRenderOptions = {
 export default function DiffViewer(props: DiffViewerProps) {
   const isGitHubDiff = props.mode === 'github'
   const viewerId = isGitHubDiff ? props.githubUrl : props.slug
+  const reviewId = `${isGitHubDiff ? 'github' : 'shared'}:${viewerId}`
   const diff = isGitHubDiff ? props.diff : props.storedDiff.diff
   const expiresAt = isGitHubDiff ? null : props.storedDiff.expiresAt
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
@@ -86,6 +91,12 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [copied, setCopied] = useState(false)
   const [filePickerOpen, setFilePickerOpen] = useState(false)
   const codeViewRef = useRef<CodeViewHandle<undefined>>(null)
+  const [viewedState, setViewedState] = useState(() => ({
+    reviewId,
+    fileIds: new Set(readStoredViewedFileIds(reviewId)),
+  }))
+  const viewedFileIds =
+    viewedState.reviewId === reviewId ? viewedState.fileIds : EMPTY_FILE_ID_SET
 
   const parsed = useMemo(() => {
     try {
@@ -125,14 +136,28 @@ export default function DiffViewer(props: DiffViewerProps) {
     () => new Map(classifiedFiles.map((file) => [file.id, file])),
     [classifiedFiles],
   )
+  const viewedFileCount = useMemo(
+    () =>
+      classifiedFiles.reduce(
+        (count, file) => count + (viewedFileIds.has(file.storageId) ? 1 : 0),
+        0,
+      ),
+    [classifiedFiles, viewedFileIds],
+  )
   const items = useMemo<CodeViewDiffItem[]>(
     () =>
-      visibleFiles.map(({ id, file }) => ({
-        id,
-        type: 'diff',
-        fileDiff: file,
-      })),
-    [visibleFiles],
+      visibleFiles.map(({ id, storageId, file }) => {
+        const viewed = viewedFileIds.has(storageId)
+
+        return {
+          id,
+          type: 'diff',
+          fileDiff: file,
+          collapsed: viewed,
+          version: viewed ? 1 : 0,
+        }
+      }),
+    [viewedFileIds, visibleFiles],
   )
   const filePickerEntries = useMemo(
     () =>
@@ -144,9 +169,10 @@ export default function DiffViewer(props: DiffViewerProps) {
           category: file.category,
           additions: file.additions,
           deletions: file.deletions,
+          viewed: viewedFileIds.has(file.storageId),
         })),
       ),
-    [visibleFiles],
+    [viewedFileIds, visibleFiles],
   )
   const renderHeaderPrefix = useCallback(
     (item: CodeViewItem) => {
@@ -155,6 +181,44 @@ export default function DiffViewer(props: DiffViewerProps) {
       return file ? <DiffCategoryBadge category={file.category} /> : null
     },
     [filesById],
+  )
+  const setFileViewed = useCallback(
+    (storageId: string, viewed: boolean) => {
+      setViewedState((current) => {
+        const nextFileIds = new Set(
+          current.reviewId === reviewId
+            ? current.fileIds
+            : readStoredViewedFileIds(reviewId),
+        )
+
+        if (viewed) {
+          nextFileIds.add(storageId)
+        } else {
+          nextFileIds.delete(storageId)
+        }
+
+        return { reviewId, fileIds: nextFileIds }
+      })
+    },
+    [reviewId],
+  )
+  const renderHeaderMetadata = useCallback(
+    (item: CodeViewItem) => {
+      const file = filesById.get(item.id)
+
+      if (!file) {
+        return null
+      }
+
+      const viewed = viewedFileIds.has(file.storageId)
+      return (
+        <ViewedFileControl
+          viewed={viewed}
+          onChange={(nextViewed) => setFileViewed(file.storageId, nextViewed)}
+        />
+      )
+    },
+    [filesById, setFileViewed, viewedFileIds],
   )
   const options = useMemo(
     () => ({
@@ -186,6 +250,19 @@ export default function DiffViewer(props: DiffViewerProps) {
     })
     setFilePickerOpen(false)
   }, [])
+
+  useEffect(() => {
+    setViewedState({
+      reviewId,
+      fileIds: new Set(readStoredViewedFileIds(reviewId)),
+    })
+  }, [reviewId])
+
+  useEffect(() => {
+    if (viewedState.reviewId === reviewId) {
+      writeStoredViewedFileIds(reviewId, viewedState.fileIds)
+    }
+  }, [reviewId, viewedState])
 
   useEffect(() => {
     if (!filePickerOpen) {
@@ -278,6 +355,12 @@ export default function DiffViewer(props: DiffViewerProps) {
                   ? `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`
                   : `Showing ${visibleFiles.length} of ${summary.files}`}
               </span>
+              <span
+                className="border-l border-line pl-3 text-muted"
+                aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
+              >
+                {viewedFileCount} viewed
+              </span>
               {expiresAt ? (
                 <ExpiryCountdown expiresAt={expiresAt} />
               ) : (
@@ -361,8 +444,11 @@ export default function DiffViewer(props: DiffViewerProps) {
           >
             <PanelHeader>
               <span>Files</span>
-              <span className="text-muted tabular-nums">
-                {filePickerEntries.length}
+              <span
+                className="text-muted tabular-nums"
+                aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
+              >
+                {viewedFileCount}/{summary.files} viewed
               </span>
               <IconButton
                 className="ml-auto md:hidden"
@@ -377,7 +463,7 @@ export default function DiffViewer(props: DiffViewerProps) {
               </IconButton>
             </PanelHeader>
             <DiffFilePicker
-              key={`${viewerId}:${categoryFilter}:${fileOrder}`}
+              key={`${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`}
               entries={filePickerEntries}
               onSelect={scrollToFile}
             />
@@ -392,11 +478,35 @@ export default function DiffViewer(props: DiffViewerProps) {
               items={items}
               options={options}
               renderHeaderPrefix={renderHeaderPrefix}
+              renderHeaderMetadata={renderHeaderMetadata}
             />
           </WorkerPoolContextProvider>
         </div>
       )}
     </main>
+  )
+}
+
+const EMPTY_FILE_ID_SET: ReadonlySet<string> = new Set()
+
+function ViewedFileControl({
+  viewed,
+  onChange,
+}: {
+  viewed: boolean
+  onChange: (viewed: boolean) => void
+}) {
+  return (
+    <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-medium text-muted hover:text-foreground">
+      <input
+        className="size-3.5 cursor-pointer rounded-sm"
+        type="checkbox"
+        checked={viewed}
+        style={{ accentColor: 'var(--accent-text)' }}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+      <span>Viewed</span>
+    </label>
   )
 }
 

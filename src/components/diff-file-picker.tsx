@@ -49,12 +49,21 @@ export default function DiffFilePicker({
       }
 
       const category = DIFF_CATEGORY_DETAILS[entry.category]
-      const text = `${category.shortLabel} +${entry.additions} −${entry.deletions}`
+      const viewedText = entry.viewed ? '✓ ' : ''
+      const text = `${viewedText}${category.shortLabel} +${entry.additions} −${entry.deletions}`
 
       return {
         text,
-        title: `${category.label}: +${entry.additions} −${entry.deletions}`,
+        title: `${entry.viewed ? 'Viewed · ' : ''}${category.label}: +${entry.additions} −${entry.deletions}`,
         parts: [
+          ...(entry.viewed
+            ? [
+                {
+                  text: '✓ ',
+                  color: 'var(--accent-text)',
+                },
+              ]
+            : []),
           {
             text: `${category.shortLabel} `,
             color: 'var(--trees-fg-muted-override)',

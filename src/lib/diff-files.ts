@@ -18,6 +18,7 @@ export type DiffSummary = DiffLineSummary & {
 
 export type ClassifiedDiffFile = {
   id: string
+  storageId: string
   file: FileDiffMetadata
   originalIndex: number
   category: DiffCategory
@@ -91,11 +92,26 @@ export function classifyDiffFile(path: string): DiffCategory {
 export function createClassifiedDiffFiles(
   files: readonly FileDiffMetadata[],
 ): ClassifiedDiffFile[] {
+  const storageIdCounts = new Map<string, number>()
+
   return files.map((file, originalIndex) => {
     const { additions, deletions } = getFileLineSummary(file)
+    const storageIdBase = JSON.stringify([
+      file.name,
+      file.prevName ?? '',
+      file.type,
+      file.prevObjectId ?? '',
+      file.newObjectId ?? '',
+    ])
+    const storageIdCount = (storageIdCounts.get(storageIdBase) ?? 0) + 1
+    storageIdCounts.set(storageIdBase, storageIdCount)
 
     return {
       id: `${file.cacheKey ?? file.name}-${originalIndex}`,
+      storageId:
+        storageIdCount === 1
+          ? storageIdBase
+          : `${storageIdBase}:${storageIdCount}`,
       file,
       originalIndex,
       category: classifyDiffFile(file.name),

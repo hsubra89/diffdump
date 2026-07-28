@@ -10,6 +10,7 @@ export type DiffFilePickerSource = {
   category: DiffCategory
   additions: number
   deletions: number
+  viewed: boolean
 }
 
 export type DiffFilePickerEntry = {
@@ -19,6 +20,7 @@ export type DiffFilePickerEntry = {
   category: DiffCategory
   additions: number
   deletions: number
+  viewed: boolean
 }
 
 export function createDiffFilePickerEntries(
@@ -50,6 +52,7 @@ export function createDiffFilePickerEntries(
       category: file.category,
       additions: file.additions,
       deletions: file.deletions,
+      viewed: file.viewed,
     }
   })
 }

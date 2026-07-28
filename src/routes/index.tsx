@@ -17,24 +17,10 @@ import { Wordmark } from '../components/wordmark'
 import { cn } from '../lib/cn'
 import { createSharedDiff } from '../lib/create-shared-diff'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
+import { EXAMPLE_DIFF, EXAMPLE_GITHUB_URL } from '../lib/example-diff'
 
 type CommandCopyState = 'idle' | 'armed' | 'full'
 type PanelTab = 'paste' | 'github'
-
-const EXAMPLE_GITHUB_URL = 'https://github.com/TanStack/router/pull/3092'
-
-const EXAMPLE_DIFF = `diff --git a/src/greeting.ts b/src/greeting.ts
-index ce01362..cc628cc 100644
---- a/src/greeting.ts
-+++ b/src/greeting.ts
-@@ -1,3 +1,5 @@
- export function greeting(name: string) {
--  return \`Hello, \${name}.\`
-+  const hour = new Date().getHours()
-+  const salutation = hour < 12 ? 'Good morning' : 'Hello'
-+  return \`\${salutation}, \${name}.\`
- }
-`
 
 export const Route = createFileRoute('/')({
   head: () => ({

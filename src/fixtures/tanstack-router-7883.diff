@@ -1,0 +1,217 @@
+diff --git a/.changeset/lane-match-loader-rewrite.md b/.changeset/lane-match-loader-rewrite.md
+new file mode 100644
+index 0000000000..ddd71fa4c5
+--- /dev/null
++++ b/.changeset/lane-match-loader-rewrite.md
+@@ -0,0 +1,29 @@
++---
++'@tanstack/router-core': patch
++'@tanstack/react-router': patch
++'@tanstack/solid-router': patch
++'@tanstack/vue-router': patch
++---
++
++Rewrite match loading around a lane-based scheduler that tracks each navigation, preload, and background reload as an ordered unit of work. This fixes pending/redirect/retry state leaking between overlapping navigations, restores correct SSR status codes for redirects, errors, and not-found responses, and closes hydration gaps where the client re-ran work the server had already completed.
++
++- Route `headers()` now only runs on the server, matching the documented behavior — it is no longer invoked during client-side asset projection.
++- Default `gcTime` and `preloadGcTime` are reduced from 30 minutes (`1_800_000`) to 5 minutes (`300_000`).
++
++**Removed / changed public API**
++
++- `RouterState` no longer includes `loadedAt`, `isTransitioning`, `statusCode`, or `redirect`. Use `match.updatedAt` in place of `loadedAt`; subscribe to `router.state.status` / `router.state.isLoading` in place of `isTransitioning`; server response status and redirect handling are now internal to the server loader and are no longer exposed on `router.state`.
++- `RouteMatch.fetchCount` has been removed, with no replacement — it was purely informational.
++- `RouteMatch.status` no longer includes `'redirected'` (it remains `'pending' | 'success' | 'error' | 'notFound'`) — redirected matches are dropped from the match list instead of being rendered.
++- `RouteMatch.globalNotFound` has been renamed and privatized to the internal `_notFound` field. Use `match.status === 'notFound'` instead.
++- Removed `RouterCore` members `getMatch()`, `updateMatch()`, `cancelMatch()`, and `cancelMatches()` — read matches from `router.state.matches` (e.g. `router.state.matches.find((m) => m.id === id)`); there is no replacement for mutating or cancelling an individual in-flight match from outside the router.
++- Removed `hasNotFoundMatch()` — use `router.state.matches.some((m) => m.status === 'notFound')`.
++- Removed `looseRoutesById` — use `routesById`.
++- Removed `isPrerendering()`, `isViewTransitionTypesSupported`, and `viewTransitionPromise`, with no replacement.
++- Removed `getParsedLocationHref()` and `clearExpiredCache()`, with no replacement — expired cache entries are now reconciled automatically as part of match commit.
++- Removed `latestLoadPromise` and `beforeLoad()`, with no replacement.
++- `commitLocationPromise` and `pendingBuiltLocation` are now private (`_commitPromise`, `_pendingLocation`) and no longer part of the public `RouterCore` surface.
++- Removed the exported `GetMatchFn` and `UpdateMatchFn` types, along with the methods they typed.
++- Removed the standalone `getMatchedRoutes()` export from `@tanstack/router-core` — use the `router.getMatchedRoutes()` instance method instead.
++- `MatchRoutesOpts.preload` and `MatchRoutesOpts.dest` have been removed.
++- `StartTransitionFn` is now `(fn, expected, urgent?) => Promise<boolean>` (previously `(fn) => void`). This only affects custom framework adapters that implement `startTransition`.
+diff --git a/packages/react-router/src/Transitioner.tsx b/packages/react-router/src/Transitioner.tsx
+index ccf1373c0e..acbb60b5bf 100644
+--- a/packages/react-router/src/Transitioner.tsx
++++ b/packages/react-router/src/Transitioner.tsx
+@@ -83,5 +83,5 @@ export function Transitioner() {
+     if (mounted?.current) {
+-      return process.env.NODE_ENV !== 'production' ? unsub : undefined
++      return unsub
+     }
+     if (mounted) {
+       mounted.current = true
+@@ -110,5 +110,5 @@ export function Transitioner() {
+         replace: true,
+         ignoreBlocker: true,
+       })
+-      return process.env.NODE_ENV !== 'production' ? unsub : undefined
++      return unsub
+     }
+@@ -136,4 +136,4 @@ export function Transitioner() {
+-    return process.env.NODE_ENV !== 'production' ? unsub : undefined
++    return unsub
+     // `mounted` exists only in development and is a stable ref when present.
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [router, router.history])
+diff --git a/packages/react-router/tests/transitioner-remount.test.tsx b/packages/react-router/tests/transitioner-remount.test.tsx
+new file mode 100644
+index 0000000000..aca37ae2de
+--- /dev/null
++++ b/packages/react-router/tests/transitioner-remount.test.tsx
+@@ -0,0 +1,91 @@
++import { afterEach, describe, expect, it, vi } from 'vitest'
++import { cleanup, render, screen, waitFor } from '@testing-library/react'
++import {
++  Outlet,
++  RouterProvider,
++  createMemoryHistory,
++  createRootRoute,
++  createRoute,
++  createRouter,
++} from '../src'
++
++afterEach(() => {
++  cleanup()
++})
++
++function setup() {
++  const rootRoute = createRootRoute({ component: () => <Outlet /> })
++  const indexRoute = createRoute({
++    getParentRoute: () => rootRoute,
++    path: '/',
++    component: () => <div>Index</div>,
++  })
++  const nextRoute = createRoute({
++    getParentRoute: () => rootRoute,
++    path: '/next',
++    component: () => <div>Next</div>,
++  })
++  const history = createMemoryHistory({ initialEntries: ['/'] })
++  const router = createRouter({
++    routeTree: rootRoute.addChildren([indexRoute, nextRoute]),
++    history,
++  })
++  return { history, router }
++}
++
++describe('Transitioner remount', () => {
++  // Zombie-router pin: once the provider unmounts, the history subscription
++  // must be torn down so a later history change never re-drives the router.
++  it('does not load after the provider unmounts', async () => {
++    const { history, router } = setup()
++    const loadSpy = vi.spyOn(router, 'load')
++
++    const first = render(<RouterProvider router={router} />)
++    expect(await screen.findByText('Index')).toBeInTheDocument()
++    await waitFor(() => expect(router.state.status).toBe('idle'))
++
++    first.unmount()
++    loadSpy.mockClear()
++
++    // A history change while unmounted must not reach the router.
++    history.push('/next')
++    await new Promise((resolve) => setTimeout(resolve, 0))
++
++    expect(loadSpy).not.toHaveBeenCalled()
++    // Raw history advanced...
++    expect(router.history.location.pathname).toBe('/next')
++    // ...but the router never processed it, so its committed state stayed put.
++    expect(router.state.location.pathname).toBe('/')
++
++    loadSpy.mockRestore()
++  })
++
++  // Remounting the same router instance must re-establish the subscription so
++  // navigation keeps working, without leaving a stale duplicate behind.
++  it('re-subscribes and loads on remount with the same router', async () => {
++    const { history, router } = setup()
++    // Spy before the first mount so the subscription captures the spy by
++    // reference — both the first and second mounts subscribe with it.
++    const loadSpy = vi.spyOn(router, 'load')
++
++    const first = render(<RouterProvider router={router} />)
++    expect(await screen.findByText('Index')).toBeInTheDocument()
++    await waitFor(() => expect(router.state.status).toBe('idle'))
++
++    first.unmount()
++
++    render(<RouterProvider router={router} />)
++    expect(await screen.findByText('Index')).toBeInTheDocument()
++    await waitFor(() => expect(router.state.status).toBe('idle'))
++
++    // A push on the remounted provider must drive exactly one load, proving
++    // the subscription was re-established (and is singular).
++    loadSpy.mockClear()
++    history.push('/next')
++    expect(await screen.findByText('Next')).toBeInTheDocument()
++    expect(router.state.location.pathname).toBe('/next')
++    await waitFor(() => expect(loadSpy).toHaveBeenCalledTimes(1))
++
++    loadSpy.mockRestore()
++  })
++})
+diff --git a/packages/router-core/tests/masked-location-state-commit.test.ts b/packages/router-core/tests/masked-location-state-commit.test.ts
+new file mode 100644
+index 0000000000..9738b42261
+--- /dev/null
++++ b/packages/router-core/tests/masked-location-state-commit.test.ts
+@@ -0,0 +1,55 @@
++import { afterEach, describe, expect, test, vi } from 'vitest'
++import { createMemoryHistory } from '@tanstack/history'
++import { BaseRootRoute, BaseRoute } from '../src'
++import { createTestRouter } from './routerTestUtils'
++
++afterEach(() => {
++  vi.restoreAllMocks()
++})
++
++describe('masked location remnants in history state', () => {
++  test('a same-href navigation clears an expired mask from history state', async () => {
++    const makeRoutes = () => {
++      const rootRoute = new BaseRootRoute({})
++      const indexRoute = new BaseRoute({
++        getParentRoute: () => rootRoute,
++        path: '/',
++      })
++      const realRoute = new BaseRoute({
++        getParentRoute: () => rootRoute,
++        path: '/real',
++      })
++      const prettyRoute = new BaseRoute({
++        getParentRoute: () => rootRoute,
++        path: '/pretty',
++      })
++      return rootRoute.addChildren([indexRoute, realRoute, prettyRoute])
++    }
++    const history = createMemoryHistory({ initialEntries: ['/'] })
++
++    const router1 = createTestRouter({
++      routeTree: makeRoutes(),
++      history,
++      unmaskOnReload: true,
++    })
++    await router1.load()
++    await router1.navigate({ to: '/real', mask: { to: '/pretty' } })
++    expect(history.location.state.__tempLocation).toBeDefined()
++
++    // A fresh router over the same history models a page reload: the
++    // per-session temp key no longer matches, so the mask has expired and the
++    // literal URL resolves.
++    const router2 = createTestRouter({
++      routeTree: makeRoutes(),
++      history,
++      unmaskOnReload: true,
++    })
++    await router2.load()
++    expect(router2.state.location.pathname).toBe('/pretty')
++
++    // Navigating to the same href must still commit so the expired mask
++    // payload is dropped from history state, matching pre-lane behavior.
++    await router2.navigate({ to: '/pretty' })
++    expect(history.location.state.__tempLocation).toBeUndefined()
++  })
++})

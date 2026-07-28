@@ -66,6 +66,29 @@ describe('classified diff files', () => {
     ])
   })
 
+  it('keeps stored viewed state tied to the file revision', () => {
+    const firstRevision = {
+      ...createFile('src/parser.ts', 2, 1, 'first'),
+      type: 'change',
+      prevObjectId: '1111111',
+      newObjectId: '2222222',
+    } as FileDiffMetadata
+    const nextRevision = {
+      ...firstRevision,
+      cacheKey: 'next',
+      newObjectId: '3333333',
+    }
+    const repeatedRevision = { ...firstRevision, cacheKey: 'repeat' }
+    const classified = createClassifiedDiffFiles([
+      firstRevision,
+      nextRevision,
+      repeatedRevision,
+    ])
+
+    expect(classified[0].storageId).not.toBe(classified[1].storageId)
+    expect(classified[2].storageId).toBe(`${classified[0].storageId}:2`)
+  })
+
   it('summarizes additions and deletions by category', () => {
     expect(summarizeDiffFiles(createClassifiedDiffFiles(files))).toEqual({
       files: 4,
