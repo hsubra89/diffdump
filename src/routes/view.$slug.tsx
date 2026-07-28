@@ -25,6 +25,7 @@ export const Route = createFileRoute('/view/$slug')({
     ],
   }),
   pendingComponent: DiffLoading,
+  errorComponent: MissingDiffPage,
   component: SharedDiffPage,
 })
 
@@ -95,7 +96,7 @@ function DiffLoading() {
         aria-live="polite"
       >
         <span
-          className="size-2 animate-pulse rounded-full bg-accent"
+          className="size-2 animate-pulse rounded-full bg-accent-text"
           aria-hidden="true"
         />
         Loading shared diff…

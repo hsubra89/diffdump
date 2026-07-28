@@ -23,7 +23,13 @@ export const Route = createRootRoute({
       },
       {
         name: 'theme-color',
-        content: '#0d0f12',
+        media: '(prefers-color-scheme: light)',
+        content: '#f7f7f7',
+      },
+      {
+        name: 'theme-color',
+        media: '(prefers-color-scheme: dark)',
+        content: '#101010',
       },
       {
         property: 'og:type',
@@ -71,8 +77,15 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          // Applies the stored theme before first paint to avoid a flash
+          // of the wrong color scheme.
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.classList.add(t)}catch(e){}`,
+          }}
+        />
         <HeadContent />
       </head>
       <body>

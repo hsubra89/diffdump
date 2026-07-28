@@ -10,9 +10,9 @@ import { cn } from '../../lib/cn'
 export const buttonVariants = cva(
   [
     'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap',
-    'rounded-control border text-[13px] font-semibold',
+    'rounded-control border text-xs font-semibold',
     'transition-[color,background-color,border-color,transform,box-shadow] duration-150',
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
     'disabled:pointer-events-none disabled:opacity-55',
   ],
   {
@@ -28,17 +28,15 @@ export const buttonVariants = cva(
           'border-transparent bg-transparent text-muted hover:bg-surface-raised hover:text-foreground',
       },
       size: {
-        xs: 'h-7 px-2.5 text-[11px]',
-        sm: 'h-8 px-3 text-xs',
-        md: 'h-9 px-3.5',
+        xs: 'h-7 px-2.5',
+        sm: 'h-8 px-3',
         iconXs: 'size-7 p-0 text-sm',
         iconSm: 'size-8 p-0 text-sm',
-        iconMd: 'size-9 p-0 text-base',
       },
     },
     defaultVariants: {
       variant: 'secondary',
-      size: 'md',
+      size: 'sm',
     },
   },
 )
@@ -61,14 +59,14 @@ Button.displayName = 'Button'
 
 type IconButtonProps = Omit<ButtonProps, 'size'> & {
   label: string
-  size?: 'xs' | 'sm' | 'md'
+  size?: 'xs' | 'sm'
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ label, size = 'sm', ...props }, ref) => (
     <Button
       ref={ref}
-      size={size === 'xs' ? 'iconXs' : size === 'md' ? 'iconMd' : 'iconSm'}
+      size={size === 'xs' ? 'iconXs' : 'iconSm'}
       aria-label={label}
       title={props.title ?? label}
       {...props}

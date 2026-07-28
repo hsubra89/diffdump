@@ -34,8 +34,8 @@ export const SegmentedControlItem = forwardRef<
     type={type}
     aria-pressed={active}
     className={cn(
-      'h-[26px] rounded-[5px] px-2.5 text-[11px] font-medium text-muted transition-colors',
-      'hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+      'h-[26px] rounded-[5px] px-2.5 text-xs font-medium text-muted transition-colors',
+      'hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
       active && 'bg-surface-raised text-foreground shadow-sm',
       className,
     )}

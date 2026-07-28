@@ -17,9 +17,11 @@ import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { SegmentedControl, SegmentedControlItem } from './ui/segmented-control'
 import { PanelHeader, Toolbar } from './ui/surfaces'
+import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
 import type { StoredDiff } from '../lib/diffs'
+import { useResolvedTheme } from '../lib/theme'
 import {
   formatAbsoluteExpiry,
   formatExpiryCountdown,
@@ -43,14 +45,20 @@ const workerPoolOptions: WorkerPoolOptions = {
   workerFactory: () => new Worker(DiffWorkerUrl, { type: 'module' }),
 }
 
+const diffThemes = {
+  dark: 'pierre-dark',
+  light: 'pierre-light',
+} as const
+
 const highlighterOptions: WorkerInitializationRenderOptions = {
-  theme: 'pierre-dark',
+  theme: diffThemes,
   lineDiffType: 'word-alt',
 }
 
 export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
   const [wrapLines, setWrapLines] = useState(false)
+  const resolvedTheme = useResolvedTheme()
   const [copied, setCopied] = useState(false)
   const [filePickerOpen, setFilePickerOpen] = useState(false)
   const codeViewRef = useRef<CodeViewHandle<undefined>>(null)
@@ -104,7 +112,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
       diffIndicators: 'bars' as const,
       hunkSeparators: 'line-info' as const,
       itemMetrics: {
-        lineHeight: 19,
+        lineHeight: 20,
       },
       layout: {
         paddingTop: 20,
@@ -112,11 +120,11 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
         gap: 18,
       },
       overflow: wrapLines ? ('wrap' as const) : ('scroll' as const),
-      theme: 'pierre-dark',
-      themeType: 'dark' as const,
+      theme: diffThemes,
+      themeType: resolvedTheme,
       stickyHeaders: true,
     }),
-    [diffStyle, wrapLines],
+    [diffStyle, wrapLines, resolvedTheme],
   )
 
   const scrollToFile = useCallback((itemId: string) => {
@@ -160,6 +168,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
         <Wordmark />
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <Link
             className={cn(
               buttonVariants({ variant: 'outline', size: 'sm' }),
@@ -182,53 +191,59 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
       </header>
 
       <Toolbar
-        className="flex-col items-stretch justify-center gap-2 px-3 py-2 [grid-area:toolbar] md:min-h-12 md:flex-row md:items-center md:px-4 md:py-0"
+        className="items-stretch gap-0 p-0 [grid-area:toolbar] md:grid md:min-h-12 md:grid-cols-[240px_minmax(0,1fr)]"
         aria-label="Diff controls"
       >
-        <div className="flex items-center gap-3 font-mono text-[11px]">
-          <span className="text-muted">
-            {summary.files} {summary.files === 1 ? 'file' : 'files'}
-          </span>
-          <span className="text-addition">+{summary.additions}</span>
-          <span className="text-deletion">−{summary.deletions}</span>
-          <ExpiryCountdown expiresAt={storedDiff.expiresAt} />
-        </div>
+        <div
+          className="hidden border-r border-line md:block"
+          aria-hidden="true"
+        />
+        <div className="flex w-full flex-col items-stretch gap-2 px-3 py-2 md:flex-row md:items-center md:justify-between md:overflow-y-auto md:px-4 md:py-0 md:[scrollbar-gutter:stable]">
+          <div className="flex items-center gap-3 font-mono text-[11px]">
+            <span className="text-muted">
+              {summary.files} {summary.files === 1 ? 'file' : 'files'}
+            </span>
+            <span className="text-addition">+{summary.additions}</span>
+            <span className="text-deletion">−{summary.deletions}</span>
+            <ExpiryCountdown expiresAt={storedDiff.expiresAt} />
+          </div>
 
-        <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-end md:gap-3">
-          <Button
-            className="md:hidden"
-            variant="secondary"
-            size="xs"
-            aria-label={
-              filePickerOpen ? 'Close file picker' : 'Open file picker'
-            }
-            aria-controls="diff-file-picker"
-            aria-expanded={filePickerOpen}
-            onClick={() => setFilePickerOpen((current) => !current)}
-          >
-            <span aria-hidden="true">☷</span>
-            <span className="max-[390px]:sr-only">Files</span>
-          </Button>
-          <SegmentedControl aria-label="Diff layout">
-            <SegmentedControlItem
-              active={diffStyle === 'unified'}
-              onClick={() => setDiffStyle('unified')}
+          <div className="flex w-full items-center justify-between gap-2 md:w-auto md:justify-end md:gap-3">
+            <Button
+              className="md:hidden"
+              variant="secondary"
+              size="sm"
+              aria-label={
+                filePickerOpen ? 'Close file picker' : 'Open file picker'
+              }
+              aria-controls="diff-file-picker"
+              aria-expanded={filePickerOpen}
+              onClick={() => setFilePickerOpen((current) => !current)}
             >
-              Unified
-            </SegmentedControlItem>
-            <SegmentedControlItem
-              active={diffStyle === 'split'}
-              onClick={() => setDiffStyle('split')}
+              <span aria-hidden="true">☷</span>
+              <span className="max-[390px]:sr-only">Files</span>
+            </Button>
+            <SegmentedControl aria-label="Diff layout">
+              <SegmentedControlItem
+                active={diffStyle === 'unified'}
+                onClick={() => setDiffStyle('unified')}
+              >
+                Unified
+              </SegmentedControlItem>
+              <SegmentedControlItem
+                active={diffStyle === 'split'}
+                onClick={() => setDiffStyle('split')}
+              >
+                Split
+              </SegmentedControlItem>
+            </SegmentedControl>
+            <Toggle
+              pressed={wrapLines}
+              onClick={() => setWrapLines((current) => !current)}
             >
-              Split
-            </SegmentedControlItem>
-          </SegmentedControl>
-          <Toggle
-            pressed={wrapLines}
-            onClick={() => setWrapLines((current) => !current)}
-          >
-            Wrap lines
-          </Toggle>
+              Wrap lines
+            </Toggle>
+          </div>
         </div>
       </Toolbar>
 
@@ -237,14 +252,14 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           <p className="mb-5 flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-bright">
             Render error
           </p>
-          <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] leading-[0.98] tracking-[-0.055em]">
+          <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] leading-[1.02] tracking-[-0.035em]">
             This patch needs a second look.
           </h1>
           <p className="mb-7 leading-relaxed text-muted-bright">
             {parsed.error}
           </p>
           <Link
-            className={buttonVariants({ variant: 'primary', size: 'md' })}
+            className={buttonVariants({ variant: 'primary', size: 'sm' })}
             to="/"
           >
             Try another diff
@@ -262,7 +277,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           ) : null}
           <aside
             className={cn(
-              'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-[#111318] shadow-[18px_0_45px_rgb(0_0_0/42%)] transition-[transform,visibility] duration-150 [grid-area:tree]',
+              'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-canvas shadow-[18px_0_45px_light-dark(rgb(0_0_0/14%),rgb(0_0_0/42%))] transition-[transform,visibility] duration-150 [grid-area:tree]',
               'md:visible md:static md:z-auto md:w-auto md:translate-x-0 md:shadow-none',
               filePickerOpen && 'visible translate-x-0',
             )}
@@ -271,7 +286,7 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           >
             <PanelHeader>
               <span>Files</span>
-              <span className="text-[#68707a] tabular-nums">
+              <span className="text-muted tabular-nums">
                 {filePickerEntries.length}
               </span>
               <IconButton
@@ -349,7 +364,7 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
 
   return (
     <time
-      className="cursor-help border-l border-line pl-3 text-muted underline decoration-[#545b65] decoration-dotted underline-offset-[3px]"
+      className="cursor-help border-l border-line pl-3 text-muted underline decoration-line-bright decoration-dotted underline-offset-[3px]"
       dateTime={expiresAt}
       title={absoluteExpiry}
       aria-label={

@@ -17,8 +17,8 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
       type={type}
       aria-pressed={pressed}
       className={cn(
-        'inline-flex h-8 items-center gap-2.5 rounded-control px-1 text-[11px] font-medium text-muted',
-        'transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+        'inline-flex h-8 items-center gap-2.5 rounded-control px-1 text-xs font-medium text-muted',
+        'transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
         className,
       )}
       {...props}
@@ -30,7 +30,7 @@ export const Toggle = forwardRef<HTMLButtonElement, ToggleProps>(
           'relative h-4 w-7 rounded-full border border-line-bright bg-surface transition-colors',
           "after:absolute after:left-0.5 after:top-0.5 after:size-2.5 after:rounded-full after:bg-muted after:transition-[transform,background-color] after:content-['']",
           pressed &&
-            'border-accent/40 bg-accent/20 after:translate-x-[11px] after:bg-accent',
+            'border-accent-text/40 bg-accent-text/20 after:translate-x-[11px] after:bg-accent-text',
         )}
       />
     </button>

@@ -9,6 +9,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
 import { Button } from '../components/ui/button'
+import { ThemeToggle } from '../components/ui/theme-toggle'
 import { Wordmark } from '../components/wordmark'
 import { cn } from '../lib/cn'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
@@ -146,34 +147,37 @@ function Home() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-[min(1120px,calc(100%-24px))] py-[18px] text-foreground min-[721px]:w-[min(1120px,calc(100%-40px))] min-[721px]:py-[28px_22px]">
+    <main className="mx-auto min-h-screen w-[min(1120px,calc(100%-32px))] pt-5 pb-6 text-foreground md:pt-7">
       <nav
         className="flex items-center justify-between"
         aria-label="Primary navigation"
       >
         <Wordmark />
-        <span className="hidden font-mono text-[11px] uppercase tracking-[0.04em] text-muted min-[721px]:inline">
-          Tiny links for big changes
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="hidden font-mono text-[11px] uppercase tracking-[0.04em] text-muted md:inline">
+            Tiny links for big changes
+          </span>
+          <ThemeToggle />
+        </div>
       </nav>
 
-      <section className="py-[64px_36px] min-[721px]:py-[clamp(72px,10vw,120px)_48px]">
-        <h1 className="max-w-[900px] text-[clamp(48px,16vw,74px)] font-semibold leading-[0.9] tracking-[-0.072em] min-[721px]:text-[clamp(52px,8.3vw,104px)]">
+      <section className="pt-16 pb-10 md:pt-24 md:pb-12">
+        <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-semibold leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
           Share a diff.
           <br />
-          <span className="text-[#777e87]">Skip the ceremony.</span>
+          <span className="text-muted">Skip the ceremony.</span>
         </h1>
-        <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright min-[721px]:mt-8 min-[721px]:text-[clamp(16px,2vw,19px)]">
+        <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
           Paste a unified git diff and get a focused, unlisted review link in
           seconds. No account. No repository access.
         </p>
       </section>
 
       <form
-        className="overflow-hidden rounded-[15px] border border-line-bright bg-surface/90 shadow-[0_30px_80px_rgb(0_0_0/26%),inset_0_1px_0_rgb(255_255_255/3%)]"
+        className="overflow-hidden rounded-panel border border-line bg-panel shadow-[0_16px_40px_light-dark(rgb(0_0_0/5%),rgb(0_0_0/35%))]"
         onSubmit={handleSubmit}
       >
-        <div className="flex min-h-[48px] items-center justify-between border-b border-line bg-[#181b20] px-4 font-mono text-xs text-muted">
+        <div className="flex min-h-12 items-center justify-between border-b border-line bg-canvas px-4 font-mono text-xs text-muted">
           <div className="flex items-center gap-4">
             <span className="flex gap-1.5" aria-hidden="true">
               <i className="size-[7px] rounded-full bg-[#f17873]" />
@@ -196,7 +200,7 @@ function Home() {
         </div>
 
         <textarea
-          className="block min-h-[300px] w-full resize-y border-0 bg-[linear-gradient(90deg,rgb(255_255_255/1.5%)_1px,transparent_1px)] bg-[length:44px_100%] bg-panel px-[18px] py-5 font-mono text-xs leading-[1.72] text-[#e8eaed] caret-accent outline-none placeholder:text-[#4e555f] min-[721px]:min-h-80 min-[721px]:px-[26px] min-[721px]:py-6 min-[721px]:text-[13px]"
+          className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted/70 md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
           id="diff-input"
           name="diff"
           value={diff}
@@ -212,23 +216,17 @@ function Home() {
           aria-describedby="diff-help diff-security diff-error"
         />
 
-        <div className="flex min-h-[76px] flex-col items-stretch justify-between gap-5 border-t border-line bg-[#181b20] px-4 py-3.5 min-[721px]:flex-row min-[721px]:items-center min-[721px]:pl-5">
+        <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-5 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
           <div>
             <p id="diff-help" className="text-xs text-muted">
               Unlisted · Expires after 24 hours · 2 MiB max
             </p>
             <p
               id="diff-security"
-              className="mt-1.5 flex max-w-[590px] items-baseline gap-2 text-[11px] leading-snug text-muted-bright"
+              className="mt-1 max-w-[590px] text-xs leading-snug text-muted"
             >
-              <span
-                className="inline-grid size-[15px] shrink-0 place-items-center rounded-full bg-[#e5b95f] text-[10px] font-extrabold leading-none text-accent-ink"
-                aria-hidden="true"
-              >
-                !
-              </span>
-              Anyone with the link can view this diff. Remove secrets and
-              credentials before sharing.
+              Anyone with the link can view this diff — remove secrets before
+              sharing.
             </p>
             <p
               id="diff-error"
@@ -240,7 +238,7 @@ function Home() {
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-4 min-[721px]:justify-start">
+          <div className="flex shrink-0 items-center justify-between gap-4 md:justify-start">
             <span
               className={cn(
                 'min-w-[55px] text-right font-mono text-[11px] text-muted',
@@ -250,9 +248,9 @@ function Home() {
               {formatBytes(byteLength)}
             </span>
             <Button
-              className="min-w-[165px]"
+              className="min-w-[150px]"
               variant="primary"
-              size="md"
+              size="sm"
               type="submit"
               disabled={isSubmitting}
             >
@@ -264,13 +262,13 @@ function Home() {
       </form>
 
       <section
-        className="mt-3.5 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-surface/60 p-[15px] min-[721px]:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] min-[721px]:gap-6 min-[721px]:px-[18px] min-[721px]:py-4"
+        className="mt-4 grid grid-cols-1 items-center gap-3 rounded-panel border border-line bg-panel/60 p-4 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)] md:gap-6"
         aria-labelledby="terminal-upload-title"
       >
         <div>
           <p
             id="terminal-upload-title"
-            className="font-mono text-[11px] font-bold uppercase tracking-[0.06em] text-muted-bright"
+            className="font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-bright"
           >
             From your terminal
           </p>
@@ -278,20 +276,20 @@ function Home() {
             Pipe working-tree changes straight to a share link.
           </p>
         </div>
-        <div className="-mx-0.5 flex min-w-0 items-stretch gap-2 min-[721px]:mx-0">
-          <div className="flex h-9 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-[#252a31] bg-[#0f1114] px-3 [scrollbar-width:thin]">
-            <span className="select-none text-[#5d6570]" aria-hidden="true">
+        <div className="flex min-w-0 items-stretch gap-2">
+          <div className="flex h-8 min-w-0 flex-1 items-center gap-2.5 overflow-x-auto whitespace-nowrap rounded-control border border-line bg-canvas px-3 [scrollbar-width:thin]">
+            <span className="select-none text-muted" aria-hidden="true">
               $
             </span>
-            <code className="font-mono text-xs text-[#dfe3e8]">
+            <code className="font-mono text-xs text-foreground">
               {uploadCommand}
-              <span className="text-[#626a75]"> | xargs open</span>
+              <span className="text-muted"> | xargs open</span>
             </code>
           </div>
           <Button
-            className="min-w-[100px] min-[721px]:min-w-28"
+            className="min-w-[100px] md:min-w-28"
             variant="secondary"
-            size="md"
+            size="sm"
             onClick={copyTerminalCommand}
             disabled={!siteOrigin}
             aria-live="polite"
@@ -308,7 +306,7 @@ function Home() {
                 : undefined
             }
           >
-            <span className="text-accent" aria-hidden="true">
+            <span className="text-accent-text" aria-hidden="true">
               {commandCopyState === 'idle' ? '⧉' : '✓'}
             </span>
             {commandCopyState === 'armed'
@@ -320,19 +318,50 @@ function Home() {
         </div>
       </section>
 
-      <footer className="flex items-center justify-center px-1 pt-[18px] text-[11px] text-[#666d76] min-[721px]:justify-between">
-        <span>Powered by Cloudflare Workers + R2</span>
-        <span className="hidden items-center gap-1 min-[721px]:flex">
-          <kbd className="min-w-[22px] rounded border border-line border-b-[#3b414a] bg-[#171a1e] px-1.5 py-0.5 text-center text-[10px] text-muted">
+      <footer className="flex items-center justify-center px-1 pt-5 text-[11px] text-muted md:justify-between">
+        <span>
+          Powered by <FooterLink href="https://diffs.com">diffs.com</FooterLink>{' '}
+          +{' '}
+          <FooterLink href="https://trees.software">trees.software</FooterLink>{' '}
+          · Deployed on{' '}
+          <FooterLink href="https://workers.cloudflare.com">
+            Cloudflare Workers
+          </FooterLink>{' '}
+          +{' '}
+          <FooterLink href="https://developers.cloudflare.com/r2/">
+            R2
+          </FooterLink>
+        </span>
+        <span className="hidden items-center gap-1 md:flex">
+          <kbd className="min-w-[22px] rounded border border-line border-b-line-bright bg-surface px-1.5 py-0.5 text-center text-[10px] text-muted">
             ⌘
           </kbd>
-          <kbd className="min-w-[22px] rounded border border-line border-b-[#3b414a] bg-[#171a1e] px-1.5 py-0.5 text-center text-[10px] text-muted">
+          <kbd className="min-w-[22px] rounded border border-line border-b-line-bright bg-surface px-1.5 py-0.5 text-center text-[10px] text-muted">
             Enter
           </kbd>
           to share
         </span>
       </footer>
     </main>
+  )
+}
+
+function FooterLink({
+  href,
+  children,
+}: {
+  href: string
+  children: React.ReactNode
+}) {
+  return (
+    <a
+      className="underline-offset-2 transition-colors hover:text-foreground hover:underline"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+    >
+      {children}
+    </a>
   )
 }
 

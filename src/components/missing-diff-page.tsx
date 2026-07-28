@@ -10,14 +10,14 @@ export function MissingDiffPage() {
       <p className="mb-5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-bright">
         404
       </p>
-      <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] leading-[0.98] tracking-[-0.055em]">
+      <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] leading-[1.02] tracking-[-0.035em]">
         This diff is off the map.
       </h1>
       <p className="mb-7 leading-relaxed text-muted-bright">
         The link may be mistyped, expired, or never existed.
       </p>
       <Link
-        className={buttonVariants({ variant: 'primary', size: 'md' })}
+        className={buttonVariants({ variant: 'primary', size: 'sm' })}
         to="/"
       >
         Share a new diff
