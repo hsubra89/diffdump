@@ -1,6 +1,7 @@
 {
   "name": "diffdump",
   "private": true,
+  "packageManager": "pnpm@10.34.4",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
@@ -13,7 +14,7 @@
     "lint": "oxlint --react-plugin --jsx-a11y-plugin --vitest-plugin --deny-warnings --ignore-pattern src/routeTree.gen.ts src vite.config.ts vitest.config.ts && tsc --noEmit",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "pnpm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
     "test": "vitest run"
   },

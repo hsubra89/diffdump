@@ -22,9 +22,9 @@ A minimal, anonymous git diff sharing app built entirely on Cloudflare.
 Requirements: Node.js 22 or newer and a Cloudflare account for deployment.
 
 ```bash
-npm install
-npm run cf-typegen
-npm run dev
+pnpm install
+pnpm run cf-typegen
+pnpm run dev
 ```
 
 The Cloudflare Vite plugin provides a locally persisted R2 binding during
@@ -33,8 +33,8 @@ development.
 ## Validation
 
 ```bash
-npm test
-npm run build
+pnpm test
+pnpm run build
 ```
 
 ## Deploy
@@ -42,10 +42,10 @@ npm run build
 Authenticate Wrangler, create the production bucket once, then deploy:
 
 ```bash
-npx wrangler login
-npx wrangler r2 bucket create diffdump-diffs
-npx wrangler r2 bucket lifecycle add diffdump-diffs expire-diffs-after-one-day diffs/ --expire-days 1
-npm run deploy
+pnpm exec wrangler login
+pnpm exec wrangler r2 bucket create diffdump-diffs
+pnpm exec wrangler r2 bucket lifecycle add diffdump-diffs expire-diffs-after-one-day diffs/ --expire-days 1
+pnpm run deploy
 ```
 
 The R2 bucket is private and is only available to the Worker through the
