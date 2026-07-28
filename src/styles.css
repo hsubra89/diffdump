@@ -1,15 +1,39 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-line: var(--line);
+  --color-line-bright: var(--line-bright);
+  --color-foreground: var(--text);
+  --color-muted: var(--muted);
+  --color-muted-bright: var(--muted-bright);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-addition: var(--addition);
+  --color-deletion: var(--deletion);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+}
+
 :root {
   color-scheme: dark;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
+  --font-ui:
+    Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
+  --font-code: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--font-ui);
   font-synthesis: none;
   color: #f4f1e9;
   background: #0d0f12;
+  --canvas: #0d0f12;
+  --panel: #121419;
   --surface: #15181d;
   --surface-raised: #1b1f25;
   --line: #2a2f37;
@@ -23,6 +47,11 @@
   --danger: #ff8a83;
   --addition: #71e3a0;
   --deletion: #ff8a83;
+  --radius-control: 7px;
+  --radius-panel: 12px;
+  --control-xs: 28px;
+  --control-sm: 32px;
+  --control-md: 36px;
 }
 
 * {
