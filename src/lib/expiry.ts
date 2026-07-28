@@ -49,15 +49,10 @@ export function getExpiryCountdownUpdateDelay(
   const amount = Math.ceil(remainingMs / unit.milliseconds)
   const untilNextCount = remainingMs - (amount - 1) * unit.milliseconds
   const untilSmallerUnit =
-    unit.name === 'second'
-      ? remainingMs
-      : remainingMs - unit.milliseconds
+    unit.name === 'second' ? remainingMs : remainingMs - unit.milliseconds
   const untilNextLabel = Math.min(untilNextCount, untilSmallerUnit)
 
-  return Math.max(
-    MINIMUM_UPDATE_DELAY_MS,
-    Math.ceil(untilNextLabel) + 25,
-  )
+  return Math.max(MINIMUM_UPDATE_DELAY_MS, Math.ceil(untilNextLabel) + 25)
 }
 
 export function formatAbsoluteExpiry(

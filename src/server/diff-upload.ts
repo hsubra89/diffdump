@@ -9,13 +9,19 @@ export async function handleDiffUpload(
   const contentLength = Number(request.headers.get('content-length'))
 
   if (Number.isFinite(contentLength) && contentLength > MAX_DIFF_BYTES) {
-    return textResponse('This diff is larger than the 2 MiB sharing limit.', 413)
+    return textResponse(
+      'This diff is larger than the 2 MiB sharing limit.',
+      413,
+    )
   }
 
   const body = await request.arrayBuffer()
 
   if (body.byteLength > MAX_DIFF_BYTES) {
-    return textResponse('This diff is larger than the 2 MiB sharing limit.', 413)
+    return textResponse(
+      'This diff is larger than the 2 MiB sharing limit.',
+      413,
+    )
   }
 
   let diff: string

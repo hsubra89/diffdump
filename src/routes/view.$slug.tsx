@@ -1,9 +1,5 @@
 import { lazy, Suspense } from 'react'
-import {
-  Link,
-  createFileRoute,
-  notFound,
-} from '@tanstack/react-router'
+import { Link, createFileRoute, notFound } from '@tanstack/react-router'
 
 import { getDiff } from '../server/diffs.functions'
 

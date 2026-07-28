@@ -36,9 +36,9 @@ describe('expiry countdowns', () => {
   })
 
   it('reports expired and invalid timestamps', () => {
-    expect(
-      formatExpiryCountdown(new Date(NOW).toISOString(), NOW, 'en'),
-    ).toBe('Expired')
+    expect(formatExpiryCountdown(new Date(NOW).toISOString(), NOW, 'en')).toBe(
+      'Expired',
+    )
     expect(formatExpiryCountdown('not-a-date', NOW, 'en')).toBe(
       'Expiration unavailable',
     )
@@ -54,9 +54,9 @@ describe('expiry countdowns', () => {
         NOW,
       ),
     ).toBe(250)
-    expect(getExpiryCountdownUpdateDelay(new Date(NOW).toISOString(), NOW)).toBe(
-      null,
-    )
+    expect(
+      getExpiryCountdownUpdateDelay(new Date(NOW).toISOString(), NOW),
+    ).toBe(null)
   })
 })
 

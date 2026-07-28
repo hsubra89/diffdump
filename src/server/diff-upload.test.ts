@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
 import { handleDiffUpload } from './diff-upload'
 
+type SaveUploadedDiff = Parameters<typeof handleDiffUpload>[1]
+
 const VALID_DIFF = `diff --git a/hello.ts b/hello.ts
 --- a/hello.ts
 +++ b/hello.ts
@@ -14,7 +16,7 @@ const VALID_DIFF = `diff --git a/hello.ts b/hello.ts
 describe('PUT /d', () => {
   it('stores stdin exactly and returns the absolute share URL', async () => {
     const saveUploadedDiff = vi
-      .fn()
+      .fn<SaveUploadedDiff>()
       .mockResolvedValue({ slug: 'AAECAwQFBgcICQoL' })
     const request = new Request('https://diffdump.example/d', {
       method: 'PUT',
@@ -34,7 +36,7 @@ describe('PUT /d', () => {
   })
 
   it('returns a useful shell error for malformed input', async () => {
-    const saveUploadedDiff = vi.fn()
+    const saveUploadedDiff = vi.fn<SaveUploadedDiff>()
     const request = new Request('https://diffdump.example/d', {
       method: 'PUT',
       body: 'not a diff',
@@ -50,7 +52,7 @@ describe('PUT /d', () => {
   })
 
   it('rejects oversized content before saving it', async () => {
-    const saveUploadedDiff = vi.fn()
+    const saveUploadedDiff = vi.fn<SaveUploadedDiff>()
     const request = new Request('https://diffdump.example/d', {
       method: 'PUT',
       headers: {

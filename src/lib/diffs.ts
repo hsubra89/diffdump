@@ -58,9 +58,9 @@ export function validateShareSlug(input: unknown): string {
 }
 
 export function generateShareSlug(
-  randomBytes: (
-    target: Uint8Array<ArrayBuffer>,
-  ) => Uint8Array<ArrayBuffer> = (target) => crypto.getRandomValues(target),
+  randomBytes: (target: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer> = (
+    target,
+  ) => crypto.getRandomValues(target),
 ): string {
   const bytes = randomBytes(new Uint8Array(SHARE_SLUG_BYTES))
   return encodeBase64Url(bytes)
@@ -86,8 +86,7 @@ function encodeBase64Url(bytes: Uint8Array): string {
     result += BASE64_URL_ALPHABET[((first & 0b11) << 4) | (second >> 4)]
 
     if (index + 1 < bytes.length) {
-      result +=
-        BASE64_URL_ALPHABET[((second & 0b1111) << 2) | (third >> 6)]
+      result += BASE64_URL_ALPHABET[((second & 0b1111) << 2) | (third >> 6)]
     }
 
     if (index + 2 < bytes.length) {

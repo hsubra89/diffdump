@@ -3,11 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { loadDiff, saveDiff } from './diffs.server'
 
 type DiffBucket = Pick<R2Bucket, 'get' | 'put'>
+type MockR2Get = (key: string) => Promise<unknown>
+type MockR2Put = (...args: unknown[]) => Promise<unknown>
 
 describe('R2 diff storage', () => {
   it('retries a colliding slug without overwriting an object', async () => {
     const put = vi
-      .fn()
+      .fn<MockR2Put>()
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ key: 'diffs/new-slug' })
     const bucket = { put } as unknown as DiffBucket
@@ -44,7 +46,7 @@ describe('R2 diff storage', () => {
 
   it('loads the raw diff and metadata', async () => {
     const bucket = {
-      get: vi.fn().mockResolvedValue({
+      get: vi.fn<MockR2Get>().mockResolvedValue({
         customMetadata: {
           createdAt: '2026-07-27T12:00:00.000Z',
           expiresAt: '2026-07-28T12:00:00.000Z',
@@ -67,16 +69,18 @@ describe('R2 diff storage', () => {
 
   it('returns null for a missing object', async () => {
     const bucket = {
-      get: vi.fn().mockResolvedValue(null),
+      get: vi.fn<MockR2Get>().mockResolvedValue(null),
     } as unknown as DiffBucket
 
     await expect(loadDiff(bucket, 'AAECAwQFBgcICQoL')).resolves.toBeNull()
   })
 
   it('expires a share exactly at its one-day boundary', async () => {
-    const text = vi.fn().mockResolvedValue('diff contents')
+    const text = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValue('diff contents')
     const bucket = {
-      get: vi.fn().mockResolvedValue({
+      get: vi.fn<MockR2Get>().mockResolvedValue({
         customMetadata: {
           createdAt: '2026-07-27T12:00:00.000Z',
           expiresAt: '2026-07-28T12:00:00.000Z',
@@ -96,7 +100,7 @@ describe('R2 diff storage', () => {
 
   it('applies the one-day default to legacy objects', async () => {
     const bucket = {
-      get: vi.fn().mockResolvedValue({
+      get: vi.fn<MockR2Get>().mockResolvedValue({
         customMetadata: {
           createdAt: '2026-07-27T12:00:00.000Z',
         },

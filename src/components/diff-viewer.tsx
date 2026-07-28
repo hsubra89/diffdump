@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   CodeView,
@@ -191,7 +185,9 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           <button
             className="file-picker-toggle"
             type="button"
-            aria-label={filePickerOpen ? 'Close file picker' : 'Open file picker'}
+            aria-label={
+              filePickerOpen ? 'Close file picker' : 'Open file picker'
+            }
             aria-controls="diff-file-picker"
             aria-expanded={filePickerOpen}
             onClick={() => setFilePickerOpen((current) => !current)}
@@ -255,7 +251,9 @@ export default function DiffViewer({ slug, storedDiff }: DiffViewerProps) {
           >
             <div className="file-picker-header">
               <span>Files</span>
-              <span className="file-picker-count">{filePickerEntries.length}</span>
+              <span className="file-picker-count">
+                {filePickerEntries.length}
+              </span>
               <button
                 className="file-picker-close"
                 type="button"

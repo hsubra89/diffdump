@@ -7,7 +7,7 @@
   "r2_buckets": [
     {
       "binding": "DIFFS",
-      "bucket_name": "diffdump-diffs"
-    }
-  ]
+      "bucket_name": "diffdump-diffs",
+    },
+  ],
 }
