@@ -13,6 +13,7 @@ import {
   parseGitHubDiffUrl,
   readStoredGitHubToken,
   writeStoredGitHubToken,
+  type LoadedGitHubDiff,
 } from '../lib/github-diffs'
 
 const DiffViewer = import.meta.env.SSR
@@ -21,7 +22,7 @@ const DiffViewer = import.meta.env.SSR
 
 type GitHubDiffState =
   | { status: 'loading' }
-  | { status: 'loaded'; diff: string }
+  | { status: 'loaded'; loaded: LoadedGitHubDiff }
   | { status: 'error'; message: string; tokenFixable: boolean }
 
 export function GitHubDiffPage({ url }: { url: string }) {
@@ -62,9 +63,9 @@ function GitHubDiffAttempt({
       signal: controller.signal,
       token: readStoredGitHubToken(),
     }).then(
-      (diff) => {
+      (loaded) => {
         if (!controller.signal.aborted) {
-          setState({ status: 'loaded', diff })
+          setState({ status: 'loaded', loaded })
         }
       },
       (error: unknown) => {
@@ -110,7 +111,7 @@ function GitHubDiffAttempt({
 
   return (
     <Suspense fallback={<GitHubDiffLoading />}>
-      <DiffViewer mode="github" githubUrl={url} diff={state.diff} />
+      <DiffViewer mode="github" githubUrl={url} diff={state.loaded.diff} />
     </Suspense>
   )
 }

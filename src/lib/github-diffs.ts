@@ -3,6 +3,7 @@ import { looksLikeUnifiedDiff } from './diffs'
 const GITHUB_API_ROOT = 'https://api.github.com'
 const GITHUB_API_VERSION = '2022-11-28'
 const GITHUB_DIFF_MEDIA_TYPE = 'application/vnd.github.diff'
+const GITHUB_JSON_MEDIA_TYPE = 'application/vnd.github+json'
 
 export const GITHUB_TOKEN_STORAGE_KEY = 'diffdump.github.token'
 export const CREATE_CLASSIC_GITHUB_TOKEN_URL =
@@ -45,16 +46,32 @@ export type GitHubDiffSource =
       range: string
     }
 
-type GitHubFetch = (
+export type GitHubPullReviewTarget = {
+  owner: string
+  repo: string
+  pullNumber: string
+  headSha: string
+}
+
+export type LoadedGitHubDiff = {
+  diff: string
+  source: GitHubDiffSource
+  reviewTarget: GitHubPullReviewTarget | null
+}
+
+export type GitHubFetch = (
   input: string | URL | Request,
   init?: RequestInit,
 ) => Promise<Response>
 
-type LoadGitHubDiffOptions = {
+export type GitHubRequestOptions = {
+  accept?: string
   fetch?: GitHubFetch
   signal?: AbortSignal
   token?: string
 }
+
+type LoadGitHubDiffOptions = Omit<GitHubRequestOptions, 'accept'>
 
 export function parseGitHubDiffUrl(input: string): GitHubDiffSource | null {
   let url: URL
@@ -141,16 +158,31 @@ export function createGitHubUrlFromPath(path: string): string | null {
 export async function loadGitHubDiff(
   input: string,
   options: LoadGitHubDiffOptions = {},
-): Promise<string> {
+): Promise<LoadedGitHubDiff> {
   const source = parseGitHubDiffUrl(input)
   if (!source) {
     throw new Error('Enter a GitHub pull request, commit, or comparison URL.')
   }
 
+  const apiUrl = createGitHubApiUrl(source)
+  const [diff, reviewTarget] = await Promise.all([
+    loadDiffText(apiUrl, options),
+    source.kind === 'pull'
+      ? loadPullReviewTarget(apiUrl, source, options)
+      : null,
+  ])
+
+  return { diff, source, reviewTarget }
+}
+
+export async function fetchGitHubApi(
+  url: string,
+  options: GitHubRequestOptions = {},
+): Promise<Response> {
   const fetcher = options.fetch ?? fetch
   const token = options.token?.trim()
   const headers: Record<string, string> = {
-    Accept: GITHUB_DIFF_MEDIA_TYPE,
+    Accept: options.accept ?? GITHUB_JSON_MEDIA_TYPE,
     'X-GitHub-Api-Version': GITHUB_API_VERSION,
   }
 
@@ -158,15 +190,25 @@ export async function loadGitHubDiff(
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetcher(createGitHubApiUrl(source), {
+  return fetcher(url, {
     cache: 'no-store',
     headers,
     signal: options.signal,
   })
+}
+
+async function loadDiffText(
+  apiUrl: string,
+  options: LoadGitHubDiffOptions,
+): Promise<string> {
+  const response = await fetchGitHubApi(apiUrl, {
+    ...options,
+    accept: GITHUB_DIFF_MEDIA_TYPE,
+  })
 
   if (!response.ok) {
     throw new GitHubDiffLoadError(
-      await githubErrorMessage(response, Boolean(token)),
+      await githubErrorMessage(response, Boolean(options.token?.trim())),
       response.status,
     )
   }
@@ -177,6 +219,57 @@ export async function loadGitHubDiff(
   }
 
   return diff
+}
+
+async function loadPullReviewTarget(
+  apiUrl: string,
+  source: Extract<GitHubDiffSource, { kind: 'pull' }>,
+  options: LoadGitHubDiffOptions,
+): Promise<GitHubPullReviewTarget> {
+  const response = await fetchGitHubApi(apiUrl, options)
+
+  if (!response.ok) {
+    throw new GitHubDiffLoadError(
+      await githubErrorMessage(response, Boolean(options.token?.trim())),
+      response.status,
+    )
+  }
+
+  const headSha = await readPullHeadSha(response)
+  if (!headSha) {
+    throw new Error('GitHub did not return pull request metadata for this URL.')
+  }
+
+  return {
+    owner: source.owner,
+    repo: source.repo,
+    pullNumber: source.number,
+    headSha,
+  }
+}
+
+async function readPullHeadSha(response: Response): Promise<string> {
+  let data: unknown
+
+  try {
+    data = await response.json()
+  } catch {
+    return ''
+  }
+
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'head' in data &&
+    typeof data.head === 'object' &&
+    data.head !== null &&
+    'sha' in data.head &&
+    typeof data.head.sha === 'string'
+  ) {
+    return data.head.sha
+  }
+
+  return ''
 }
 
 export function readStoredGitHubToken(): string {

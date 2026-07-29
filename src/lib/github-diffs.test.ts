@@ -143,20 +143,46 @@ describe('GitHub diff URL parsing', () => {
 })
 
 describe('GitHub diff loading', () => {
-  it('requests the GitHub diff media type with the saved token', async () => {
-    const fetcher = vi.fn<GitHubFetch>(async () => {
-      return new Response(VALID_DIFF, {
+  const HEAD_SHA = '0123456789abcdef0123456789abcdef01234567'
+
+  function createPullFetcher({
+    diffResponse = () =>
+      new Response(VALID_DIFF, {
         headers: { 'Content-Type': 'application/vnd.github.v3.diff' },
-      })
+      }),
+    metadataResponse = () =>
+      new Response(JSON.stringify({ head: { sha: HEAD_SHA } }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+  } = {}) {
+    return vi.fn<GitHubFetch>(async (_input, init) => {
+      const accept = new Headers(init?.headers).get('Accept')
+      return accept === 'application/vnd.github.diff'
+        ? diffResponse()
+        : metadataResponse()
     })
+  }
+
+  it('loads pull request diffs with a review target using the saved token', async () => {
+    const fetcher = createPullFetcher()
 
     await expect(
       loadGitHubDiff('https://github.com/acme/widgets/pull/42', {
         fetch: fetcher,
         token: '  ghp_secret  ',
       }),
-    ).resolves.toBe(VALID_DIFF)
+    ).resolves.toEqual({
+      diff: VALID_DIFF,
+      source: { kind: 'pull', owner: 'acme', repo: 'widgets', number: '42' },
+      reviewTarget: {
+        owner: 'acme',
+        repo: 'widgets',
+        pullNumber: '42',
+        headSha: HEAD_SHA,
+      },
+    })
 
+    expect(fetcher).toHaveBeenCalledTimes(2)
     expect(fetcher).toHaveBeenCalledWith(
       'https://api.github.com/repos/acme/widgets/pulls/42',
       expect.objectContaining({
@@ -168,15 +194,38 @@ describe('GitHub diff loading', () => {
         },
       }),
     )
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://api.github.com/repos/acme/widgets/pulls/42',
+      expect.objectContaining({
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: 'Bearer ghp_secret',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      }),
+    )
   })
 
-  it('loads public diffs without an authorization header', async () => {
+  it('loads commit diffs in one request without a review target', async () => {
     const fetcher = vi.fn<GitHubFetch>(async () => new Response(VALID_DIFF))
 
-    await loadGitHubDiff('https://github.com/acme/widgets/commit/a1b2c3d', {
-      fetch: fetcher,
+    await expect(
+      loadGitHubDiff('https://github.com/acme/widgets/commit/a1b2c3d', {
+        fetch: fetcher,
+      }),
+    ).resolves.toEqual({
+      diff: VALID_DIFF,
+      source: {
+        kind: 'commit',
+        owner: 'acme',
+        repo: 'widgets',
+        sha: 'a1b2c3d',
+      },
+      reviewTarget: null,
     })
 
+    expect(fetcher).toHaveBeenCalledTimes(1)
     expect(fetcher).toHaveBeenCalledWith(
       'https://api.github.com/repos/acme/widgets/commits/a1b2c3d',
       expect.objectContaining({
@@ -210,9 +259,36 @@ describe('GitHub diff loading', () => {
     )
 
     await expect(
-      loadGitHubDiff('https://github.com/acme/widgets/pull/42', {
+      loadGitHubDiff('https://github.com/acme/widgets/commit/a1b2c3d', {
         fetch: fetcher,
       }),
     ).rejects.toThrow('did not return a renderable diff')
+  })
+
+  it('rejects pull diffs whose metadata lacks a head sha', async () => {
+    const fetcher = createPullFetcher({
+      metadataResponse: () => new Response(JSON.stringify({ head: {} })),
+    })
+
+    await expect(
+      loadGitHubDiff('https://github.com/acme/widgets/pull/42', {
+        fetch: fetcher,
+      }),
+    ).rejects.toThrow('did not return pull request metadata')
+  })
+
+  it('surfaces pull metadata request failures', async () => {
+    const fetcher = createPullFetcher({
+      metadataResponse: () =>
+        new Response(JSON.stringify({ message: 'Server Error' }), {
+          status: 500,
+        }),
+    })
+
+    await expect(
+      loadGitHubDiff('https://github.com/acme/widgets/pull/42', {
+        fetch: fetcher,
+      }),
+    ).rejects.toThrow('could not load this diff (500)')
   })
 })
