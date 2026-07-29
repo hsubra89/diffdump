@@ -6,6 +6,7 @@ import {
   type GitHubPullReviewTarget,
 } from './github-diffs'
 import {
+  fingerprintDraftPayloads,
   serializeDraftComment,
   type GitHubCommentSide,
   type GitHubDraftCommentPayload,
@@ -13,6 +14,7 @@ import {
   type GitHubReviewEvent,
   type PullReviewCommentData,
   type ReviewSubmission,
+  type StoredPendingReview,
 } from './review-comments'
 
 const REVIEW_COMMENTS_PAGE_SIZE = 100
@@ -50,6 +52,15 @@ export class PullHeadChangedError extends Error {
     this.name = 'PullHeadChangedError'
     this.expectedHeadSha = expectedHeadSha
     this.currentHeadSha = currentHeadSha
+  }
+}
+
+export class PendingReviewExistsError extends Error {
+  constructor() {
+    super(
+      'You already have a pending review on this pull request, likely started on GitHub or in another browser. Submit or discard it on GitHub, then retry.',
+    )
+    this.name = 'PendingReviewExistsError'
   }
 }
 
@@ -167,11 +178,72 @@ export async function submitPendingReview(
   }
 }
 
+/**
+ * Finds the token owner's PENDING review on the pull, if any. GitHub only
+ * ever lists a pending review to its author, so any PENDING entry belongs to
+ * the current token.
+ */
+export async function findPendingReviewId(
+  target: GitHubPullReviewTarget,
+  options: GitHubReviewRequestOptions = {},
+): Promise<number | null> {
+  let url: string | null = createPullApiUrl(
+    target,
+    `/reviews?per_page=${REVIEW_COMMENTS_PAGE_SIZE}`,
+  )
+
+  while (url !== null) {
+    const response = await fetchGitHubApi(url, options)
+    if (!response.ok) {
+      throw await createReviewApiError(response)
+    }
+
+    const data: unknown = await response.json()
+    if (!Array.isArray(data)) {
+      return null
+    }
+
+    for (const item of data) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'state' in item &&
+        item.state === 'PENDING' &&
+        'id' in item &&
+        typeof item.id === 'number'
+      ) {
+        return item.id
+      }
+    }
+
+    url = readNextPageUrl(response.headers.get('Link'))
+  }
+
+  return null
+}
+
+/** Discards a PENDING review. A 404 means it is already gone. */
+export async function deletePendingReview(
+  target: GitHubPullReviewTarget,
+  reviewId: number,
+  options: GitHubReviewRequestOptions = {},
+): Promise<void> {
+  const response = await fetchGitHubApi(
+    createPullApiUrl(target, `/reviews/${encodeURIComponent(reviewId)}`),
+    { ...options, method: 'DELETE' },
+  )
+
+  if (!response.ok && response.status !== 404) {
+    throw await createReviewApiError(response)
+  }
+}
+
 export type PublishReviewOptions = GitHubReviewRequestOptions & {
-  /** Resume a review whose PENDING creation already succeeded instead of
-   * creating a duplicate. */
-  pendingReviewId?: number | null
-  onPendingReviewCreated?: (reviewId: number) => void
+  /** A pending review retained from an earlier incomplete submission. It is
+   * resumed while the current drafts still match its fingerprint, and
+   * discarded and recreated once they differ. */
+  pendingReview?: StoredPendingReview | null
+  onPendingReviewCreated?: (pending: StoredPendingReview) => void
 }
 
 /**
@@ -180,7 +252,7 @@ export type PublishReviewOptions = GitHubReviewRequestOptions & {
  * comment, then submits it with the chosen event. Returns the review id.
  * All failures leave the caller's drafts untouched; if submission fails after
  * the PENDING review exists, `onPendingReviewCreated` has already delivered
- * the id to retry with.
+ * it to retry with.
  */
 export async function publishReview(
   submission: ReviewSubmission,
@@ -203,11 +275,28 @@ export async function publishReview(
     payloads.push(result.payload)
   }
 
-  let reviewId = options.pendingReviewId ?? null
+  const fingerprint = fingerprintDraftPayloads(payloads)
+  const retained = options.pendingReview ?? null
+  let reviewId =
+    retained !== null && retained.fingerprint === fingerprint
+      ? retained.reviewId
+      : null
+
   if (reviewId === null) {
     await assertPullHeadUnchanged(target, options)
-    reviewId = await createPendingReview(target, payloads, options)
-    options.onPendingReviewCreated?.(reviewId)
+
+    if (retained !== null) {
+      /* The drafts changed since this pending review was created; discard it
+         so the fresh review is the account's only pending one. */
+      await deletePendingReview(target, retained.reviewId, options)
+    }
+
+    try {
+      reviewId = await createPendingReview(target, payloads, options)
+    } catch (error) {
+      throw await detectPendingReviewConflict(error, target, options)
+    }
+    options.onPendingReviewCreated?.({ reviewId, fingerprint })
   }
 
   await submitPendingReview(
@@ -218,6 +307,26 @@ export async function publishReview(
     options,
   )
   return reviewId
+}
+
+/** A 422 from review creation can mean an existing pending review rather
+ * than a bad line anchor; check which, so the caller gets an actionable
+ * error instead of GitHub's opaque validation message. */
+async function detectPendingReviewConflict(
+  error: unknown,
+  target: GitHubPullReviewTarget,
+  options: GitHubReviewRequestOptions,
+): Promise<unknown> {
+  if (error instanceof GitHubReviewApiError && error.status === 422) {
+    const pendingId = await findPendingReviewId(target, options).catch(
+      () => null,
+    )
+    if (pendingId !== null) {
+      return new PendingReviewExistsError()
+    }
+  }
+
+  return error
 }
 
 function createPullApiUrl(target: GitHubPullReviewTarget, suffix = ''): string {

@@ -5,6 +5,10 @@ import type {
 } from '@pierre/diffs'
 
 import {
+  PendingReviewExistsError,
+  PullHeadChangedError,
+} from './github-reviews'
+import {
   createDiffLineIndex,
   createDraftId,
   groupCommentThreads,
@@ -23,11 +27,39 @@ export type ReviewCommentsState =
   | { status: 'loaded'; comments: PullReviewCommentData[] }
   | { status: 'error'; message: string }
 
+/** Which recovery action a failed submission needs: reload the diff, resolve
+ * an existing pending review on GitHub, or plain retry. */
+export type SubmitErrorReason =
+  'head-changed' | 'pending-review-exists' | 'generic'
+
 export type SubmitReviewState =
   | { phase: 'idle' }
   | { phase: 'submitting' }
-  | { phase: 'error'; message: string }
+  | { phase: 'error'; message: string; reason: SubmitErrorReason }
   | { phase: 'success'; reviewId: number }
+
+export function toSubmitErrorState(error: unknown): SubmitReviewState {
+  if (error instanceof PullHeadChangedError) {
+    return { phase: 'error', message: error.message, reason: 'head-changed' }
+  }
+
+  if (error instanceof PendingReviewExistsError) {
+    return {
+      phase: 'error',
+      message: error.message,
+      reason: 'pending-review-exists',
+    }
+  }
+
+  return {
+    phase: 'error',
+    message:
+      error instanceof Error
+        ? error.message
+        : 'The review could not be published.',
+    reason: 'generic',
+  }
+}
 
 /** The inline anchor for a range annotation: GitHub and Pierre both hang the
  * annotation off the range's end line. */

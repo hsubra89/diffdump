@@ -23,10 +23,17 @@ It is hosted at [diffdump.com](https://diffdump.com).
 - GitHub reviews are client-only: the diff is fetched straight from GitHub
   and rendered in the browser without creating a share or storing anything
   on Diffdump.
-- Private repositories are supported with an optional classic personal
-  access token carrying the `repo` scope. The token is saved only in browser
-  `localStorage` and sent only to `api.github.com`; it is never submitted to
-  Diffdump.
+- Pull requests can be reviewed inline: select diff lines to draft comments,
+  browse existing GitHub comment threads, and publish all drafts together as
+  one GitHub review — Comment, Approve, or Request changes. Reviews are
+  published by the browser directly to `api.github.com`; unsent drafts
+  persist in browser `localStorage`, keyed to the pull request's head commit.
+- Private repositories and review publishing use an optional personal access
+  token: preferably a fine-grained PAT with Pull requests read/write and
+  Contents read permissions, or a classic PAT carrying the `repo` scope.
+  Either token can publish the reviews you submit. The token is saved only in
+  browser `localStorage` and sent only to `api.github.com`; it is never
+  submitted to Diffdump.
 
 ### Create a share link
 
@@ -56,14 +63,23 @@ It is hosted at [diffdump.com](https://diffdump.com).
   with file and addition/deletion counts per group.
 - Files can be marked as Viewed and collapsed, with progress saved locally for
   each GitHub diff or shared-view link.
+- On pull-request routes, inline review comments in unified and split
+  layouts: draft on selected lines, inspect drafts and published GitHub
+  threads in a Comments sidebar (including outdated comments, linked back to
+  GitHub), and submit everything as one review.
 - Light and dark themes, one-click share-link copy, and a live countdown to
   link expiry.
 
 ## Architecture
 
 - TanStack Start runs on Cloudflare Workers.
-- GitHub reviews are client-only: the browser fetches the diff directly from
-  GitHub, and neither the token nor the fetched diff is stored by Diffdump.
+- GitHub reviews are client-only: the browser fetches the diff and existing
+  review comments directly from GitHub and publishes pull-request reviews
+  straight to `api.github.com`. Neither the token, the diff, nor any review
+  content passes through Diffdump.
+- Unsent review drafts (and an interrupted submission's pending review id)
+  live only in browser `localStorage`, scoped to the pull request and its
+  head commit.
 - Shared unified diffs are stored as private objects in Cloudflare R2.
 - Share links expire after 24 hours.
 - Share URLs use 96-bit, base64url-encoded random slugs.
@@ -71,8 +87,11 @@ It is hosted at [diffdump.com](https://diffdump.com).
 ## How it works
 
 The direct GitHub routes read the optional token after client hydration and
-request GitHub's diff media type directly from `api.github.com`. They render
-the response without creating a Diffdump share.
+request GitHub's diff media type directly from `api.github.com`. On pull
+requests they also list existing review comments and publish new reviews with
+the same direct browser calls. Every response renders without creating a
+Diffdump share, and review drafts stay in the browser until they are
+published to GitHub.
 
 Shared diffs take the server path:
 

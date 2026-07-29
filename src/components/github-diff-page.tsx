@@ -8,6 +8,7 @@ import { eyebrowClassName } from './ui/surfaces'
 import { cn } from '../lib/cn'
 import {
   CREATE_CLASSIC_GITHUB_TOKEN_URL,
+  CREATE_FINE_GRAINED_GITHUB_TOKEN_URL,
   isTokenFixableGitHubError,
   loadGitHubDiff,
   parseGitHubDiffUrl,
@@ -151,6 +152,7 @@ function GitHubDiffAttempt({
         reviewTarget={state.loaded.reviewTarget}
         reviewComments={commentsState}
         onReloadComments={() => setCommentsAttempt((current) => current + 1)}
+        onReloadDiff={onRetry}
       />
     </Suspense>
   )
@@ -242,13 +244,27 @@ function GitHubTokenPrompt({
         <p className="mt-3 text-xs leading-snug text-muted">
           <a
             className="text-accent-text underline underline-offset-2 hover:no-underline"
+            href={CREATE_FINE_GRAINED_GITHUB_TOKEN_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            Create a fine-grained PAT
+          </a>{' '}
+          with{' '}
+          <span className="text-foreground">Pull requests: Read and write</span>{' '}
+          (loads pull requests and publishes the reviews you submit) and{' '}
+          <span className="text-foreground">Contents: Read</span> (commit and
+          comparison diffs), or a{' '}
+          <a
+            className="text-accent-text underline underline-offset-2 hover:no-underline"
             href={CREATE_CLASSIC_GITHUB_TOKEN_URL}
             target="_blank"
             rel="noreferrer noopener"
           >
-            Create a classic PAT
+            classic PAT
           </a>{' '}
-          with <code className="font-mono">repo</code> scope. Saved only in this
+          with <code className="font-mono">repo</code> scope. Either token can
+          publish pull-request reviews from this browser. Saved only in this
           browser, sent only to GitHub.
         </p>
 

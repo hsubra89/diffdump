@@ -4,14 +4,17 @@ import { parsePatchFiles } from '@pierre/diffs'
 import {
   createDiffLineIndex,
   createDraftStorageKey,
+  createPendingReviewStorageKey,
   groupCommentThreads,
   isRangeInDiff,
   readStoredDrafts,
+  readStoredPendingReview,
   resolveCommentPath,
   serializeDraftComment,
   toGitHubReviewComment,
   toSelectedLineRange,
   writeStoredDrafts,
+  writeStoredPendingReview,
   type DraftReviewComment,
   type GitHubReviewComment,
   type PullReviewCommentData,
@@ -430,5 +433,33 @@ describe('draft storage', () => {
     stubLocalStorage({ [createDraftStorageKey(TARGET)]: 'not json' })
 
     expect(readStoredDrafts(TARGET)).toEqual([])
+  })
+
+  it('scopes pending review keys by owner, repo, pull, and head SHA', () => {
+    expect(createPendingReviewStorageKey(TARGET)).toBe(
+      `diffdump.pending-review.acme/widgets/42@${HEAD_SHA}`,
+    )
+  })
+
+  it('round-trips the pending review and clears the slot on null', () => {
+    const values = stubLocalStorage()
+    const pending = { reviewId: 555, fingerprint: '[{"line":12}]' }
+
+    writeStoredPendingReview(TARGET, pending)
+    expect(readStoredPendingReview(TARGET)).toEqual(pending)
+
+    writeStoredPendingReview(TARGET, null)
+    expect(values.size).toBe(0)
+    expect(readStoredPendingReview(TARGET)).toBeNull()
+  })
+
+  it('ignores malformed pending review entries', () => {
+    stubLocalStorage({
+      [createPendingReviewStorageKey(TARGET)]: JSON.stringify({
+        reviewId: 'not-a-number',
+      }),
+    })
+
+    expect(readStoredPendingReview(TARGET)).toBeNull()
   })
 })
