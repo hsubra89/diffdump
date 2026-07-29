@@ -53,8 +53,10 @@ import { publishReview } from '../lib/github-reviews'
 import {
   createDraftStorageKey,
   readStoredDrafts,
+  readStoredPendingReview,
   resolveCommentPath,
   writeStoredDrafts,
+  writeStoredPendingReview,
   type DraftReviewComment,
   type GitHubReviewEvent,
   type ReviewCommentMetadata,
@@ -65,6 +67,7 @@ import {
   buildReviewAnnotations,
   createComposerDraft,
   removeDraft,
+  toSubmitErrorState,
   upsertDraft,
   type ReviewCommentsState,
   type SubmitReviewState,
@@ -109,6 +112,7 @@ type DiffViewerProps =
       reviewTarget: GitHubPullReviewTarget | null
       reviewComments: ReviewCommentsState
       onReloadComments: () => void
+      onReloadDiff: () => void
     }
 
 const workerPoolOptions: WorkerPoolOptions = {
@@ -165,6 +169,7 @@ export default function DiffViewer(props: DiffViewerProps) {
     ? props.reviewComments
     : IDLE_REVIEW_COMMENTS
   const onReloadComments = isGitHubDiff ? props.onReloadComments : undefined
+  const onReloadDiff = isGitHubDiff ? props.onReloadDiff : undefined
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
   const [wrapLines, setWrapLines] = useState(false)
   const [categoryFilter, setCategoryFilter] =
@@ -203,9 +208,6 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [submitState, setSubmitState] = useState<SubmitReviewState>({
     phase: 'idle',
   })
-  /* A pending review GitHub created before a failed submit; retried
-     submissions resume it instead of creating duplicates. */
-  const pendingReviewIdRef = useRef<number | null>(null)
 
   const parsed = useMemo(() => {
     try {
@@ -534,27 +536,23 @@ export default function DiffViewer(props: DiffViewerProps) {
           { event, body, comments: [...drafts], target: reviewTarget },
           {
             token: readStoredGitHubToken(),
-            pendingReviewId: pendingReviewIdRef.current,
-            onPendingReviewCreated: (id) => {
-              pendingReviewIdRef.current = id
-            },
+            /* The pending review is persisted next to the drafts, so a
+               submission interrupted by an error — or a closed tab — resumes
+               it instead of hitting GitHub's one-pending-review limit. */
+            pendingReview: readStoredPendingReview(reviewTarget),
+            onPendingReviewCreated: (pending) =>
+              writeStoredPendingReview(reviewTarget, pending),
           },
         )
 
-        pendingReviewIdRef.current = null
+        writeStoredPendingReview(reviewTarget, null)
         updateDrafts(() => [])
         setComposer(null)
         setSelectedLines(null)
         setSubmitState({ phase: 'success', reviewId })
         onReloadComments?.()
       } catch (error) {
-        setSubmitState({
-          phase: 'error',
-          message:
-            error instanceof Error
-              ? error.message
-              : 'The review could not be published.',
-        })
+        setSubmitState(toSubmitErrorState(error))
       }
     },
     [drafts, onReloadComments, reviewTarget, updateDrafts],
@@ -663,7 +661,6 @@ export default function DiffViewer(props: DiffViewerProps) {
     setSubmitState({ phase: 'idle' })
     setSubmitPanelOpen(false)
     setSidebarTab('files')
-    pendingReviewIdRef.current = null
   }, [reviewKey, reviewTarget])
 
   useEffect(() => {
@@ -923,7 +920,13 @@ export default function DiffViewer(props: DiffViewerProps) {
                     ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}#pullrequestreview-${submitState.reviewId}`
                     : null
                 }
+                pullRequestUrl={
+                  reviewTarget
+                    ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}`
+                    : null
+                }
                 onSubmit={submitReview}
+                onReloadDiff={onReloadDiff ?? NOOP}
                 onClose={() => {
                   setSubmitPanelOpen(false)
                   if (submitState.phase === 'success') {

@@ -3,15 +3,24 @@ import { describe, expect, it, vi } from 'vitest'
 import type { GitHubPullReviewTarget } from './github-diffs'
 import {
   GitHubReviewApiError,
+  PendingReviewExistsError,
   PullHeadChangedError,
   assertPullHeadUnchanged,
   createPendingReview,
+  deletePendingReview,
   fetchPullHeadSha,
+  findPendingReviewId,
   listPullReviewComments,
   publishReview,
   submitPendingReview,
 } from './github-reviews'
-import type { DraftReviewComment, ReviewSubmission } from './review-comments'
+import {
+  fingerprintDraftPayloads,
+  serializeDraftComment,
+  type DraftReviewComment,
+  type ReviewSubmission,
+  type StoredPendingReview,
+} from './review-comments'
 
 type GitHubFetch = (
   input: string | URL | Request,
@@ -303,17 +312,101 @@ describe('review creation and submission', () => {
   })
 })
 
+describe('pending review lookup and deletion', () => {
+  const REVIEWS_LIST_URL = `${REVIEWS_URL}?per_page=100`
+
+  it('finds the PENDING review among submitted ones', async () => {
+    const fetcher = vi.fn<GitHubFetch>(async () =>
+      jsonResponse([
+        { id: 1, state: 'APPROVED' },
+        { id: 2, state: 'PENDING' },
+      ]),
+    )
+
+    await expect(findPendingReviewId(TARGET, { fetch: fetcher })).resolves.toBe(
+      2,
+    )
+    expect(fetcher).toHaveBeenCalledWith(REVIEWS_LIST_URL, expect.anything())
+  })
+
+  it('reports no pending review when every review is submitted', async () => {
+    const fetcher = vi.fn<GitHubFetch>(async () =>
+      jsonResponse([{ id: 1, state: 'COMMENTED' }]),
+    )
+
+    await expect(
+      findPendingReviewId(TARGET, { fetch: fetcher }),
+    ).resolves.toBeNull()
+  })
+
+  it('deletes a pending review and tolerates one already gone', async () => {
+    const fetcher = vi.fn<GitHubFetch>(async () => jsonResponse({}))
+    const goneFetcher = vi.fn<GitHubFetch>(async () =>
+      jsonResponse({ message: 'Not Found' }, { status: 404 }),
+    )
+
+    await expect(
+      deletePendingReview(TARGET, 555, { fetch: fetcher }),
+    ).resolves.toBeUndefined()
+    await expect(
+      deletePendingReview(TARGET, 555, { fetch: goneFetcher }),
+    ).resolves.toBeUndefined()
+
+    expect(fetcher).toHaveBeenCalledWith(
+      `${REVIEWS_URL}/555`,
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+  })
+
+  it('surfaces failures other than 404 when deleting', async () => {
+    const fetcher = vi.fn<GitHubFetch>(async () =>
+      jsonResponse({ message: 'boom' }, { status: 500 }),
+    )
+
+    await expect(
+      deletePendingReview(TARGET, 555, { fetch: fetcher }),
+    ).rejects.toBeInstanceOf(GitHubReviewApiError)
+  })
+})
+
 describe('publishing a review', () => {
+  const REVIEWS_LIST_URL = `${REVIEWS_URL}?per_page=100`
+
+  function fingerprintOf(drafts: readonly DraftReviewComment[]): string {
+    return fingerprintDraftPayloads(
+      drafts.map((draft) => {
+        const result = serializeDraftComment(draft)
+        if (!result.ok) {
+          throw new Error(result.error)
+        }
+        return result.payload
+      }),
+    )
+  }
+
   function createPublishFetcher({
     currentHeadSha = HEAD_SHA,
+    createStatus = 200,
     submitStatus = 200,
+    existingReviews = [] as unknown[],
   } = {}) {
     return vi.fn<GitHubFetch>(async (input, init) => {
       if (input === PULL_URL) {
         return jsonResponse({ head: { sha: currentHeadSha } })
       }
       if (input === REVIEWS_URL && init?.method === 'POST') {
-        return jsonResponse({ id: 555, state: 'PENDING' })
+        return createStatus === 200
+          ? jsonResponse({ id: 555, state: 'PENDING' })
+          : jsonResponse(
+              { message: 'Validation Failed' },
+              { status: createStatus },
+            )
+      }
+      if (input === REVIEWS_LIST_URL) {
+        return jsonResponse(existingReviews)
+      }
+      if (input === `${REVIEWS_URL}/444` && init?.method === 'DELETE') {
+        return jsonResponse({})
       }
       if (input === `${REVIEWS_URL}/555/events`) {
         return jsonResponse(
@@ -327,7 +420,8 @@ describe('publishing a review', () => {
 
   it('verifies the head SHA, creates the pending review, then submits it', async () => {
     const fetcher = createPublishFetcher()
-    const onPendingReviewCreated = vi.fn<(reviewId: number) => void>()
+    const onPendingReviewCreated =
+      vi.fn<(pending: StoredPendingReview) => void>()
 
     await expect(
       publishReview(createSubmission(), {
@@ -336,7 +430,10 @@ describe('publishing a review', () => {
       }),
     ).resolves.toBe(555)
 
-    expect(onPendingReviewCreated).toHaveBeenCalledWith(555)
+    expect(onPendingReviewCreated).toHaveBeenCalledWith({
+      reviewId: 555,
+      fingerprint: fingerprintOf([createDraft()]),
+    })
     expect(fetcher.mock.calls.map(([input]) => input)).toEqual([
       PULL_URL,
       REVIEWS_URL,
@@ -353,17 +450,44 @@ describe('publishing a review', () => {
     expect(fetcher).toHaveBeenCalledTimes(1)
   })
 
-  it('resumes an existing pending review instead of creating another', async () => {
+  it('resumes a retained pending review while the drafts still match', async () => {
     const fetcher = createPublishFetcher()
 
     await expect(
       publishReview(createSubmission(), {
         fetch: fetcher,
-        pendingReviewId: 555,
+        pendingReview: {
+          reviewId: 555,
+          fingerprint: fingerprintOf([createDraft()]),
+        },
       }),
     ).resolves.toBe(555)
 
     expect(fetcher.mock.calls.map(([input]) => input)).toEqual([
+      `${REVIEWS_URL}/555/events`,
+    ])
+  })
+
+  it('discards a retained pending review once the drafts changed', async () => {
+    const fetcher = createPublishFetcher()
+    const onPendingReviewCreated =
+      vi.fn<(pending: StoredPendingReview) => void>()
+
+    await expect(
+      publishReview(createSubmission(), {
+        fetch: fetcher,
+        pendingReview: { reviewId: 444, fingerprint: 'outdated' },
+        onPendingReviewCreated,
+      }),
+    ).resolves.toBe(555)
+
+    expect(onPendingReviewCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewId: 555 }),
+    )
+    expect(fetcher.mock.calls.map(([input]) => input)).toEqual([
+      PULL_URL,
+      `${REVIEWS_URL}/444`,
+      REVIEWS_URL,
       `${REVIEWS_URL}/555/events`,
     ])
   })
@@ -395,9 +519,10 @@ describe('publishing a review', () => {
     expect(fetcher).not.toHaveBeenCalled()
   })
 
-  it('keeps the pending review id when submission fails, for retry', async () => {
+  it('keeps the pending review when submission fails, for retry', async () => {
     const fetcher = createPublishFetcher({ submitStatus: 500 })
-    const onPendingReviewCreated = vi.fn<(reviewId: number) => void>()
+    const onPendingReviewCreated =
+      vi.fn<(pending: StoredPendingReview) => void>()
 
     await expect(
       publishReview(createSubmission(), {
@@ -405,6 +530,33 @@ describe('publishing a review', () => {
         onPendingReviewCreated,
       }),
     ).rejects.toThrow('GitHub review request failed (500)')
-    expect(onPendingReviewCreated).toHaveBeenCalledWith(555)
+    expect(onPendingReviewCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewId: 555 }),
+    )
+  })
+
+  it('reports an existing pending review hidden behind a 422 creation failure', async () => {
+    const fetcher = createPublishFetcher({
+      createStatus: 422,
+      existingReviews: [{ id: 999, state: 'PENDING' }],
+    })
+
+    await expect(
+      publishReview(createSubmission(), { fetch: fetcher }),
+    ).rejects.toBeInstanceOf(PendingReviewExistsError)
+  })
+
+  it('passes a 422 through unchanged when no pending review exists', async () => {
+    const fetcher = createPublishFetcher({
+      createStatus: 422,
+      existingReviews: [{ id: 1, state: 'APPROVED' }],
+    })
+
+    const error = await publishReview(createSubmission(), {
+      fetch: fetcher,
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(GitHubReviewApiError)
+    expect(error).toMatchObject({ status: 422 })
   })
 })

@@ -31,23 +31,33 @@ export default function SubmitReviewPanel({
   draftCount,
   submitState,
   reviewUrl,
+  pullRequestUrl,
   onSubmit,
+  onReloadDiff,
   onClose,
 }: {
   draftCount: number
   submitState: SubmitReviewState
   /** GitHub URL of the published review once submission succeeds. */
   reviewUrl: string | null
+  /** GitHub URL of the pull request under review. */
+  pullRequestUrl: string | null
   onSubmit: (event: GitHubReviewEvent, body: string) => void
+  onReloadDiff: () => void
   onClose: () => void
 }) {
   const [event, setEvent] = useState<GitHubReviewEvent>('COMMENT')
   const [body, setBody] = useState('')
   const submitting = submitState.phase === 'submitting'
   const succeeded = submitState.phase === 'success'
-  /* GitHub rejects a review that carries no comments and no summary. */
+  const errorReason = submitState.phase === 'error' ? submitState.reason : null
+  /* GitHub rejects a review that carries no comments and no summary. A moved
+     head SHA blocks submission entirely until the diff is reloaded. */
   const canSubmit =
-    !submitting && !succeeded && (draftCount > 0 || body.trim() !== '')
+    !submitting &&
+    !succeeded &&
+    errorReason !== 'head-changed' &&
+    (draftCount > 0 || body.trim() !== '')
 
   return (
     <form
@@ -110,10 +120,27 @@ export default function SubmitReviewPanel({
         ))}
       </fieldset>
 
+      <p className="leading-snug text-muted">
+        Publishes this review to GitHub from this browser with your saved token.
+      </p>
+
       {submitState.phase === 'error' && (
         <p className="leading-snug text-deletion" role="alert">
           {submitState.message}
+          {errorReason === 'head-changed' &&
+            ' Your drafts stay saved for the revision they were written on.'}
         </p>
+      )}
+
+      {errorReason === 'pending-review-exists' && pullRequestUrl !== null && (
+        <a
+          className="self-start text-accent-text underline underline-offset-2 hover:no-underline"
+          href={pullRequestUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          Resolve the pending review on GitHub ↗
+        </a>
       )}
 
       {succeeded ? (
@@ -135,18 +162,24 @@ export default function SubmitReviewPanel({
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            type="submit"
-            disabled={!canSubmit}
-          >
-            {submitting
-              ? 'Publishing…'
-              : submitState.phase === 'error'
-                ? 'Retry submission'
-                : 'Submit review'}
-          </Button>
+          {errorReason === 'head-changed' ? (
+            <Button variant="primary" size="sm" onClick={onReloadDiff}>
+              Reload diff
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              disabled={!canSubmit}
+            >
+              {submitting
+                ? 'Publishing…'
+                : submitState.phase === 'error'
+                  ? 'Retry submission'
+                  : 'Submit review'}
+            </Button>
+          )}
         </div>
       )}
     </form>

@@ -3,6 +3,7 @@ import type { FileDiffMetadata, SelectedLineRange } from '@pierre/diffs'
 import type { GitHubPullReviewTarget } from './github-diffs'
 
 const DRAFT_STORAGE_PREFIX = 'diffdump.review-drafts.'
+const PENDING_REVIEW_STORAGE_PREFIX = 'diffdump.pending-review.'
 
 export type PierreCommentSide = 'deletions' | 'additions'
 export type GitHubCommentSide = 'LEFT' | 'RIGHT'
@@ -334,6 +335,82 @@ export function writeStoredDrafts(
   } catch {
     // Drafts held in memory still work when browser storage is unavailable.
   }
+}
+
+/** A PENDING review GitHub created for a submission that has not completed.
+ * The fingerprint records which serialized comments it holds, so it is only
+ * resumed while the local drafts still match. */
+export type StoredPendingReview = {
+  reviewId: number
+  fingerprint: string
+}
+
+export function fingerprintDraftPayloads(
+  payloads: readonly GitHubDraftCommentPayload[],
+): string {
+  return JSON.stringify(payloads)
+}
+
+export function createPendingReviewStorageKey(
+  target: GitHubPullReviewTarget,
+): string {
+  return `${PENDING_REVIEW_STORAGE_PREFIX}${target.owner}/${target.repo}/${target.pullNumber}@${target.headSha}`
+}
+
+export function readStoredPendingReview(
+  target: GitHubPullReviewTarget,
+): StoredPendingReview | null {
+  let raw: string | null
+
+  try {
+    raw =
+      globalThis.localStorage?.getItem(createPendingReviewStorageKey(target)) ??
+      null
+  } catch {
+    return null
+  }
+
+  if (raw === null) {
+    return null
+  }
+
+  let data: unknown
+  try {
+    data = JSON.parse(raw)
+  } catch {
+    return null
+  }
+
+  return isStoredPendingReview(data) ? data : null
+}
+
+export function writeStoredPendingReview(
+  target: GitHubPullReviewTarget,
+  pending: StoredPendingReview | null,
+): void {
+  try {
+    if (pending === null) {
+      globalThis.localStorage?.removeItem(createPendingReviewStorageKey(target))
+    } else {
+      globalThis.localStorage?.setItem(
+        createPendingReviewStorageKey(target),
+        JSON.stringify(pending),
+      )
+    }
+  } catch {
+    // Without storage, an interrupted submission just cannot resume later.
+  }
+}
+
+function isStoredPendingReview(value: unknown): value is StoredPendingReview {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'reviewId' in value &&
+    typeof value.reviewId === 'number' &&
+    'fingerprint' in value &&
+    typeof value.fingerprint === 'string'
+  )
 }
 
 function isDraftReviewComment(value: unknown): value is DraftReviewComment {

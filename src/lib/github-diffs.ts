@@ -6,8 +6,15 @@ const GITHUB_DIFF_MEDIA_TYPE = 'application/vnd.github.diff'
 const GITHUB_JSON_MEDIA_TYPE = 'application/vnd.github+json'
 
 export const GITHUB_TOKEN_STORAGE_KEY = 'diffdump.github.token'
+/* Preferred: scoped to selected repositories with Pull requests read/write
+   (loading PRs and publishing reviews) plus Contents read (commit and
+   comparison diffs). The permissions are picked on GitHub's form. */
+export const CREATE_FINE_GRAINED_GITHUB_TOKEN_URL =
+  'https://github.com/settings/personal-access-tokens/new'
+/* The classic `repo` scope grants read and write, including publishing
+   reviews — the description must not suggest read-only access. */
 export const CREATE_CLASSIC_GITHUB_TOKEN_URL =
-  'https://github.com/settings/tokens/new?description=Diffdump%20Private%20Repo%20Read%20Access&scopes=repo&default_expires_at=90'
+  'https://github.com/settings/tokens/new?description=Diffdump%20GitHub%20Access&scopes=repo&default_expires_at=90'
 
 export class GitHubDiffLoadError extends Error {
   readonly status: number

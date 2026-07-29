@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { parsePatchFiles } from '@pierre/diffs'
 
+import {
+  PendingReviewExistsError,
+  PullHeadChangedError,
+} from './github-reviews'
 import type {
   DraftReviewComment,
   GitHubReviewComment,
@@ -13,6 +17,7 @@ import {
   buildReviewAnnotations,
   createComposerDraft,
   removeDraft,
+  toSubmitErrorState,
   upsertDraft,
 } from './review-state'
 
@@ -166,6 +171,30 @@ describe('anchoring review threads', () => {
       id: 3,
       outdated: true,
       range: null,
+    })
+  })
+})
+
+describe('mapping submission failures', () => {
+  const OTHER_SHA = 'fedcba9876543210fedcba9876543210fedcba98'
+
+  it('routes each failure to its recovery action', () => {
+    expect(
+      toSubmitErrorState(new PullHeadChangedError(HEAD_SHA, OTHER_SHA)),
+    ).toMatchObject({ phase: 'error', reason: 'head-changed' })
+    expect(toSubmitErrorState(new PendingReviewExistsError())).toMatchObject({
+      phase: 'error',
+      reason: 'pending-review-exists',
+    })
+    expect(toSubmitErrorState(new Error('boom'))).toEqual({
+      phase: 'error',
+      message: 'boom',
+      reason: 'generic',
+    })
+    expect(toSubmitErrorState('not an error')).toEqual({
+      phase: 'error',
+      message: 'The review could not be published.',
+      reason: 'generic',
     })
   })
 })
