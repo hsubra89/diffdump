@@ -182,7 +182,6 @@ describe('GitHub diff loading', () => {
       },
     })
 
-    expect(fetcher).toHaveBeenCalledTimes(2)
     expect(fetcher).toHaveBeenCalledWith(
       'https://api.github.com/repos/acme/widgets/pulls/42',
       expect.objectContaining({
@@ -205,6 +204,58 @@ describe('GitHub diff loading', () => {
         },
       }),
     )
+    /* The head is read before the diff so a racing push can only record a
+       head older than the diff, which the submit-time head check blocks. The
+       trailing re-check catches heads that moved while the diff downloaded. */
+    expect(
+      fetcher.mock.calls.map(([, init]) =>
+        new Headers(init?.headers).get('Accept'),
+      ),
+    ).toEqual([
+      'application/vnd.github+json',
+      'application/vnd.github.diff',
+      'application/vnd.github+json',
+    ])
+  })
+
+  it('reloads once when the head advances while the diff downloads', async () => {
+    const NEW_SHA = 'fedcba9876543210fedcba9876543210fedcba98'
+    const NEW_DIFF = VALID_DIFF.replace('hello world', 'hello universe')
+    let metadataCalls = 0
+    let diffCalls = 0
+    const fetcher = createPullFetcher({
+      metadataResponse: () => {
+        metadataCalls += 1
+        return new Response(
+          JSON.stringify({
+            head: { sha: metadataCalls === 1 ? HEAD_SHA : NEW_SHA },
+          }),
+          { headers: { 'Content-Type': 'application/json' } },
+        )
+      },
+      diffResponse: () => {
+        diffCalls += 1
+        return new Response(diffCalls === 1 ? VALID_DIFF : NEW_DIFF, {
+          headers: { 'Content-Type': 'application/vnd.github.v3.diff' },
+        })
+      },
+    })
+
+    await expect(
+      loadGitHubDiff('https://github.com/acme/widgets/pull/42', {
+        fetch: fetcher,
+      }),
+    ).resolves.toEqual({
+      diff: NEW_DIFF,
+      source: { kind: 'pull', owner: 'acme', repo: 'widgets', number: '42' },
+      reviewTarget: {
+        owner: 'acme',
+        repo: 'widgets',
+        pullNumber: '42',
+        headSha: NEW_SHA,
+      },
+    })
+    expect(fetcher).toHaveBeenCalledTimes(4)
   })
 
   it('loads commit diffs in one request without a review target', async () => {

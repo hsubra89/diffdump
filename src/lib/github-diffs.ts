@@ -177,12 +177,29 @@ export async function loadGitHubDiff(
   }
 
   const apiUrl = createGitHubApiUrl(source)
-  const [diff, reviewTarget] = await Promise.all([
-    loadDiffText(apiUrl, options),
-    source.kind === 'pull'
-      ? loadPullReviewTarget(apiUrl, source, options)
-      : null,
-  ])
+  if (source.kind !== 'pull') {
+    return {
+      diff: await loadDiffText(apiUrl, options),
+      source,
+      reviewTarget: null,
+    }
+  }
+
+  /* The head SHA is read before the diff so a push racing the load can only
+     record a head older than the diff revision — a divergence the submit-time
+     head check turns into a head-changed block. Read after the diff, a fresh
+     push could key drafts to the new head while every anchor was computed
+     against the old revision, and the submit-time check would pass. */
+  let reviewTarget = await loadPullReviewTarget(apiUrl, source, options)
+  let diff = await loadDiffText(apiUrl, options)
+
+  /* One re-check converts the common race from a submit-time head-changed
+     block into a load of the newer revision. */
+  const recheckedTarget = await loadPullReviewTarget(apiUrl, source, options)
+  if (recheckedTarget.headSha !== reviewTarget.headSha) {
+    reviewTarget = recheckedTarget
+    diff = await loadDiffText(apiUrl, options)
+  }
 
   return { diff, source, reviewTarget }
 }
