@@ -7,6 +7,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
 } from 'react'
+import type { CodeViewLineSelection } from '@pierre/diffs'
 import type { CodeViewHandle } from '@pierre/diffs/react'
 
 import { IconButton } from './ui/button'
@@ -16,12 +17,16 @@ import {
   searchDiffCorpus,
   type DiffSearchMatch,
 } from '../lib/diff-search'
+import type { ReviewCommentMetadata } from '../lib/review-comments'
 
 type DiffFindBarProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   visibleFiles: readonly ClassifiedDiffFile[]
-  codeViewRef: RefObject<CodeViewHandle<undefined> | null>
+  codeViewRef: RefObject<CodeViewHandle<ReviewCommentMetadata> | null>
+  /* The viewer controls line selection, so match highlights flow through its
+     state instead of the imperative handle. */
+  onSelectLines: (selection: CodeViewLineSelection | null) => void
   onRevealFile: (storageId: string) => void
 }
 
@@ -37,6 +42,7 @@ export default function DiffFindBar({
   onOpenChange,
   visibleFiles,
   codeViewRef,
+  onSelectLines,
   onRevealFile,
 }: DiffFindBarProps) {
   const [inputValue, setInputValue] = useState('')
@@ -63,9 +69,9 @@ export default function DiffFindBar({
   useEffect(() => {
     if (!open) {
       setSearch(null)
-      codeViewRef.current?.clearSelectedLines()
+      onSelectLines(null)
     }
-  }, [codeViewRef, open])
+  }, [onSelectLines, open])
 
   useEffect(() => {
     function handleFindShortcut(event: KeyboardEvent) {
@@ -130,7 +136,7 @@ export default function DiffFindBar({
           align: 'center',
           behavior: 'smooth-auto',
         })
-        codeViewRef.current?.setSelectedLines({
+        onSelectLines({
           id: match.fileId,
           range: {
             start: match.lineNumber,
@@ -140,7 +146,7 @@ export default function DiffFindBar({
         })
       })
     },
-    [codeViewRef, onRevealFile, storageIdsByFileId],
+    [codeViewRef, onRevealFile, onSelectLines, storageIdsByFileId],
   )
 
   const submit = useCallback(
@@ -164,7 +170,7 @@ export default function DiffFindBar({
 
       if (inputValue === '') {
         setSearch(null)
-        codeViewRef.current?.clearSelectedLines()
+        onSelectLines(null)
         return
       }
 
@@ -174,10 +180,10 @@ export default function DiffFindBar({
       if (matches.length > 0) {
         navigateToMatch(matches[0])
       } else {
-        codeViewRef.current?.clearSelectedLines()
+        onSelectLines(null)
       }
     },
-    [codeViewRef, corpus, inputValue, navigateToMatch, search],
+    [corpus, inputValue, navigateToMatch, onSelectLines, search],
   )
 
   function handleInputKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {

@@ -13,8 +13,11 @@ import {
   parseGitHubDiffUrl,
   readStoredGitHubToken,
   writeStoredGitHubToken,
+  type GitHubPullReviewTarget,
   type LoadedGitHubDiff,
 } from '../lib/github-diffs'
+import { listPullReviewComments } from '../lib/github-reviews'
+import type { ReviewCommentsState } from '../lib/review-state'
 
 const DiffViewer = import.meta.env.SSR
   ? null
@@ -45,6 +48,12 @@ function GitHubDiffAttempt({
   onRetry: () => void
 }) {
   const [state, setState] = useState<GitHubDiffState>({ status: 'loading' })
+  const reviewTarget =
+    state.status === 'loaded' ? state.loaded.reviewTarget : null
+  const [commentsState, setCommentsState] = useState<ReviewCommentsState>({
+    status: 'idle',
+  })
+  const [commentsAttempt, setCommentsAttempt] = useState(0)
 
   useEffect(() => {
     if (!parseGitHubDiffUrl(url)) {
@@ -85,6 +94,30 @@ function GitHubDiffAttempt({
     return () => controller.abort()
   }, [url])
 
+  /* Published review comments load client-side after the diff, and reload
+     after a review is published so drafts reconcile into GitHub-backed
+     annotations. A failure here never blocks the diff itself. */
+  useEffect(() => {
+    if (!reviewTarget) {
+      setCommentsState({ status: 'idle' })
+      return
+    }
+
+    const controller = new AbortController()
+    setCommentsState({ status: 'loading' })
+
+    void loadReviewComments(reviewTarget, controller.signal).then(
+      (loaded) => {
+        if (!controller.signal.aborted) {
+          setCommentsState(loaded)
+        }
+      },
+      () => {},
+    )
+
+    return () => controller.abort()
+  }, [commentsAttempt, reviewTarget])
+
   if (state.status === 'error') {
     if (state.tokenFixable) {
       return <GitHubTokenPrompt message={state.message} onRetry={onRetry} />
@@ -111,9 +144,37 @@ function GitHubDiffAttempt({
 
   return (
     <Suspense fallback={<GitHubDiffLoading />}>
-      <DiffViewer mode="github" githubUrl={url} diff={state.loaded.diff} />
+      <DiffViewer
+        mode="github"
+        githubUrl={url}
+        diff={state.loaded.diff}
+        reviewTarget={state.loaded.reviewTarget}
+        reviewComments={commentsState}
+        onReloadComments={() => setCommentsAttempt((current) => current + 1)}
+      />
     </Suspense>
   )
+}
+
+async function loadReviewComments(
+  reviewTarget: GitHubPullReviewTarget,
+  signal: AbortSignal,
+): Promise<ReviewCommentsState> {
+  try {
+    const comments = await listPullReviewComments(reviewTarget, {
+      signal,
+      token: readStoredGitHubToken(),
+    })
+    return { status: 'loaded', comments }
+  } catch (error) {
+    return {
+      status: 'error',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'GitHub review comments could not be loaded.',
+    }
+  }
 }
 
 function GitHubTokenPrompt({
