@@ -34,6 +34,7 @@ import {
   DraftReviewComposer,
 } from './draft-review-annotation'
 import { ErrorHero } from './error-hero'
+import { GitHubRepoLink } from './github-repo-link'
 import { GitHubReviewAnnotation } from './github-review-annotation'
 import ReviewCommentsPanel from './review-comments-panel'
 import SubmitReviewPanel from './submit-review-panel'
@@ -753,6 +754,7 @@ export default function DiffViewer(props: DiffViewerProps) {
         <Wordmark />
 
         <div className="flex items-center gap-2">
+          <GitHubRepoLink />
           <ThemeToggle />
           <Link
             className={cn(
@@ -770,7 +772,7 @@ export default function DiffViewer(props: DiffViewerProps) {
               target="_blank"
               rel="noreferrer noopener"
             >
-              View on GitHub
+              {reviewTarget ? 'Open PR' : 'Open on GitHub'}
               <span aria-hidden="true">↗</span>
             </a>
           ) : (

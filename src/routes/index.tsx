@@ -10,6 +10,7 @@ import {
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { GitHubOpenPanel } from '../components/github-open-panel'
+import { GitHubRepoLink } from '../components/github-repo-link'
 import { Button } from '../components/ui/button'
 import { eyebrowClassName } from '../components/ui/surfaces'
 import { ThemeToggle } from '../components/ui/theme-toggle'
@@ -170,6 +171,7 @@ function Home() {
           <span className={cn(eyebrowClassName, 'hidden text-muted md:inline')}>
             Code review without the clutter
           </span>
+          <GitHubRepoLink />
           <ThemeToggle />
         </div>
       </nav>

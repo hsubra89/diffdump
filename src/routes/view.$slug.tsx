@@ -2,8 +2,10 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 
+import { GitHubRepoLink } from '../components/github-repo-link'
 import { MissingDiffPage } from '../components/missing-diff-page'
 import { Wordmark } from '../components/wordmark'
+import { ThemeToggle } from '../components/ui/theme-toggle'
 import type { StoredDiff } from '../lib/diffs'
 import { getDiff } from '../server/diffs.functions'
 
@@ -88,8 +90,12 @@ function SharedDiffPage() {
 function DiffLoading() {
   return (
     <main className="grid h-svh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground">
-      <header className="flex items-center border-b border-line bg-canvas/95 px-3 sm:px-5">
+      <header className="flex items-center justify-between border-b border-line bg-canvas/95 px-3 sm:px-5">
         <Wordmark />
+        <div className="flex items-center gap-2">
+          <GitHubRepoLink />
+          <ThemeToggle />
+        </div>
       </header>
       <div
         className="flex items-center justify-center gap-3 font-mono text-xs text-muted"

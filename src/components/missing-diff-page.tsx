@@ -1,9 +1,11 @@
 import { ErrorHero } from './error-hero'
+import { HeroPageActions } from './github-repo-link'
 import { Wordmark } from './wordmark'
 
 export function MissingDiffPage() {
   return (
-    <main className="grid min-h-screen text-foreground">
+    <main className="relative grid min-h-screen text-foreground">
+      <HeroPageActions />
       <ErrorHero
         className="justify-self-center"
         eyebrow="404"

@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
 
 import { ErrorHero } from './error-hero'
+import { GitHubRepoLink, HeroPageActions } from './github-repo-link'
 import { Wordmark } from './wordmark'
+import { ThemeToggle } from './ui/theme-toggle'
 import { Button, buttonVariants } from './ui/button'
 import { eyebrowClassName } from './ui/surfaces'
 import { cn } from '../lib/cn'
@@ -125,7 +127,8 @@ function GitHubDiffAttempt({
     }
 
     return (
-      <main className="grid min-h-screen text-foreground">
+      <main className="relative grid min-h-screen text-foreground">
+        <HeroPageActions />
         <ErrorHero
           className="justify-self-center"
           eyebrow="GitHub access"
@@ -204,7 +207,8 @@ function GitHubTokenPrompt({
   }
 
   return (
-    <main className="grid min-h-screen text-foreground">
+    <main className="relative grid min-h-screen text-foreground">
+      <HeroPageActions />
       <section className="flex w-[min(580px,calc(100%-40px))] flex-col items-start justify-center justify-self-center">
         <Wordmark className="mb-9" />
         <p className={cn(eyebrowClassName, 'mb-5 text-muted-bright')}>
@@ -297,8 +301,12 @@ function GitHubTokenPrompt({
 function GitHubDiffLoading() {
   return (
     <main className="grid h-svh grid-rows-[56px_minmax(0,1fr)] overflow-hidden bg-canvas text-foreground">
-      <header className="flex items-center border-b border-line bg-canvas/95 px-3 sm:px-5">
+      <header className="flex items-center justify-between border-b border-line bg-canvas/95 px-3 sm:px-5">
         <Wordmark />
+        <div className="flex items-center gap-2">
+          <GitHubRepoLink />
+          <ThemeToggle />
+        </div>
       </header>
       <div
         className="flex items-center justify-center gap-3 font-mono text-xs text-muted"
