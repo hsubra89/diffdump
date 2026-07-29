@@ -120,6 +120,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const resolvedTheme = useResolvedTheme()
   const [copied, setCopied] = useState(false)
   const [filePickerOpen, setFilePickerOpen] = useState(false)
+  const [findBarOpen, setFindBarOpen] = useState(false)
   const codeViewRef = useRef<CodeViewHandle<undefined>>(null)
   const mainRef = useRef<HTMLElement>(null)
   const [viewedState, setViewedState] = useState(() => ({
@@ -490,6 +491,28 @@ export default function DiffViewer(props: DiffViewerProps) {
               <span aria-hidden="true">☷</span>
               <span className="max-[390px]:sr-only">Files</span>
             </Button>
+            <IconButton
+              label="Find in diff"
+              title={`Find in diff (${FIND_SHORTCUT_HINT})`}
+              variant="secondary"
+              aria-controls="diff-find-bar"
+              aria-expanded={findBarOpen}
+              disabled={parsed.error !== null}
+              onClick={() => setFindBarOpen((current) => !current)}
+            >
+              <svg
+                className="size-4"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="7" cy="7" r="4.5" />
+                <path d="m10.4 10.4 3.4 3.4" />
+              </svg>
+            </IconButton>
             <FileOrderControl order={fileOrder} onChange={setFileOrder} />
             <SegmentedControl aria-label="Diff layout">
               <SegmentedControlItem
@@ -582,6 +605,8 @@ export default function DiffViewer(props: DiffViewerProps) {
             />
           </WorkerPoolContextProvider>
           <DiffFindBar
+            open={findBarOpen}
+            onOpenChange={setFindBarOpen}
             visibleFiles={visibleFiles}
             codeViewRef={codeViewRef}
             onRevealFile={revealFileForSearch}
@@ -593,6 +618,10 @@ export default function DiffViewer(props: DiffViewerProps) {
 }
 
 const EMPTY_FILE_ID_SET: ReadonlySet<string> = new Set()
+
+const FIND_SHORTCUT_HINT = /Mac|iP/.test(globalThis.navigator?.platform ?? '')
+  ? '⌘F'
+  : 'Ctrl+F'
 
 function ViewedFileControl({
   viewed,

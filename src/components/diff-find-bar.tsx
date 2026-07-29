@@ -18,6 +18,8 @@ import {
 } from '../lib/diff-search'
 
 type DiffFindBarProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   visibleFiles: readonly ClassifiedDiffFile[]
   codeViewRef: RefObject<CodeViewHandle<undefined> | null>
   onRevealFile: (storageId: string) => void
@@ -31,11 +33,12 @@ type ExecutedSearch = {
 }
 
 export default function DiffFindBar({
+  open,
+  onOpenChange,
   visibleFiles,
   codeViewRef,
   onRevealFile,
 }: DiffFindBarProps) {
-  const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [search, setSearch] = useState<ExecutedSearch | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -55,11 +58,14 @@ export default function DiffFindBar({
     setSearch(null)
   }, [visibleFiles])
 
-  const close = useCallback(() => {
-    setOpen(false)
-    setSearch(null)
-    codeViewRef.current?.clearSelectedLines()
-  }, [codeViewRef])
+  /* The bar can be closed from outside (toolbar toggle) as well as from the
+     Esc/× handlers here, so tie the cleanup to the open flag itself. */
+  useEffect(() => {
+    if (!open) {
+      setSearch(null)
+      codeViewRef.current?.clearSelectedLines()
+    }
+  }, [codeViewRef, open])
 
   useEffect(() => {
     function handleFindShortcut(event: KeyboardEvent) {
@@ -72,7 +78,7 @@ export default function DiffFindBar({
         /* Native find silently misses everything the virtualized CodeView
            has not rendered, so take the shortcut over. */
         event.preventDefault()
-        setOpen(true)
+        onOpenChange(true)
         inputRef.current?.focus()
         inputRef.current?.select()
       }
@@ -80,7 +86,7 @@ export default function DiffFindBar({
 
     window.addEventListener('keydown', handleFindShortcut)
     return () => window.removeEventListener('keydown', handleFindShortcut)
-  }, [])
+  }, [onOpenChange])
 
   useEffect(() => {
     if (open) {
@@ -96,13 +102,13 @@ export default function DiffFindBar({
 
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        close()
+        onOpenChange(false)
       }
     }
 
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [close, open])
+  }, [onOpenChange, open])
 
   const navigateToMatch = useCallback(
     (match: DiffSearchMatch) => {
@@ -187,12 +193,13 @@ export default function DiffFindBar({
 
   return (
     <search
+      id="diff-find-bar"
       aria-label="Find in diff"
-      className="absolute right-3 top-3 z-30 flex items-center gap-1 rounded-control border border-line-bright bg-panel p-1 shadow-[0_2px_8px_light-dark(rgb(0_0_0/12%),rgb(0_0_0/45%)),0_12px_36px_light-dark(rgb(0_0_0/22%),rgb(0_0_0/65%))] focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-solid focus-within:outline-accent-text md:right-4"
+      className="absolute left-3 right-3 top-3 z-30 flex items-center gap-1 rounded-control border border-line-bright bg-panel p-1 shadow-[0_2px_8px_light-dark(rgb(0_0_0/12%),rgb(0_0_0/45%)),0_12px_36px_light-dark(rgb(0_0_0/22%),rgb(0_0_0/65%))] focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-solid focus-within:outline-accent-text sm:left-auto md:right-4"
     >
       <input
         ref={inputRef}
-        className="h-7 w-40 min-w-0 bg-transparent px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted/70 sm:w-52"
+        className="h-8 min-w-0 flex-1 bg-transparent px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted/70 sm:h-7 sm:w-52 sm:flex-none"
         type="text"
         value={inputValue}
         placeholder="Find in diff"
@@ -210,6 +217,7 @@ export default function DiffFindBar({
         {search ? formatMatchCounter(search) : ''}
       </span>
       <IconButton
+        className="max-sm:size-8"
         label="Previous match"
         variant="ghost"
         size="xs"
@@ -219,6 +227,7 @@ export default function DiffFindBar({
         <span aria-hidden="true">↑</span>
       </IconButton>
       <IconButton
+        className="max-sm:size-8"
         label="Next match"
         variant="ghost"
         size="xs"
@@ -228,10 +237,11 @@ export default function DiffFindBar({
         <span aria-hidden="true">↓</span>
       </IconButton>
       <IconButton
+        className="max-sm:size-8"
         label="Close find bar"
         variant="ghost"
         size="xs"
-        onClick={close}
+        onClick={() => onOpenChange(false)}
       >
         <span className="text-lg leading-none" aria-hidden="true">
           ×
