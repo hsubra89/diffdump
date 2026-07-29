@@ -16,18 +16,18 @@ export function Wordmark({ className }: WordmarkProps) {
       to="/"
     >
       <svg className="size-6 shrink-0" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="9" fill="var(--logo-add)" />
+        <rect width="32" height="32" rx="9" fill="var(--logo-accent)" />
         <path
-          d="M21.8 0H23a9 9 0 0 1 9 9v14a9 9 0 0 1-9 9H10.2Z"
-          fill="var(--logo-del)"
+          d="M22 0h1a9 9 0 0 1 9 9v14a9 9 0 0 1-9 9H10Z"
+          fill="var(--logo-neutral)"
         />
         <line
-          x1="12.6"
-          y1="25.4"
-          x2="19.4"
-          y2="6.6"
+          x1="13"
+          y1="25"
+          x2="19"
+          y2="7"
           stroke="var(--accent-ink)"
-          strokeWidth="3.6"
+          strokeWidth="4"
           strokeLinecap="round"
         />
       </svg>
