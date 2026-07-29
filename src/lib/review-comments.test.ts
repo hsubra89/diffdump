@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { parsePatchFiles } from '@pierre/diffs'
+import { parsePatchFiles, type SelectedLineRange } from '@pierre/diffs'
 
 import {
+  createContextLineMap,
   createDiffLineIndex,
   createDraftStorageKey,
   createPendingReviewStorageKey,
@@ -9,6 +10,7 @@ import {
   isRangeInDiff,
   readStoredDrafts,
   readStoredPendingReview,
+  remapContextSelection,
   resolveCommentPath,
   serializeDraftComment,
   toGitHubReviewComment,
@@ -230,6 +232,90 @@ describe('draft serialization', () => {
     expect(serializeDraftComment(createDraft({ body: '  ' }))).toEqual({
       ok: false,
       error: expect.stringContaining('empty'),
+    })
+  })
+})
+
+/* Split view reports left-pane selections as `deletions` with old-file line
+   numbers even on context lines; GitHub only accepts context anchors as RIGHT
+   with new-file numbers. The src/app.ts hunk is asymmetric, so old-file and
+   new-file numbers diverge below the deleted line. */
+describe('split-view context selection remapping', () => {
+  const contextLines = createContextLineMap(FILES[0])
+
+  it('maps context lines from old-file to new-file numbers, skipping deletions', () => {
+    expect(contextLines).toEqual(
+      new Map([
+        [10, 10],
+        [12, 11],
+      ]),
+    )
+  })
+
+  it('serializes a left-pane context selection as RIGHT with new-file numbers', () => {
+    const range = remapContextSelection(
+      { start: 10, side: 'deletions', end: 12, endSide: 'deletions' },
+      contextLines,
+    )
+
+    expect(range).toEqual({
+      start: 10,
+      side: 'additions',
+      end: 11,
+      endSide: 'additions',
+    })
+    expect(serializeDraftComment(createDraft({ range }))).toEqual({
+      ok: true,
+      payload: {
+        path: 'src/app.ts',
+        body: 'Consider renaming this.',
+        line: 11,
+        side: 'RIGHT',
+        start_line: 10,
+        start_side: 'RIGHT',
+      },
+    })
+  })
+
+  it('keeps selections on deleted lines on the LEFT side', () => {
+    const range: SelectedLineRange = {
+      start: 11,
+      side: 'deletions',
+      end: 11,
+      endSide: 'deletions',
+    }
+
+    expect(remapContextSelection(range, contextLines)).toBe(range)
+  })
+
+  it('keeps additions-side and side-less selections untouched', () => {
+    const additions: SelectedLineRange = {
+      start: 12,
+      side: 'additions',
+      end: 13,
+      endSide: 'additions',
+    }
+    const sideless: SelectedLineRange = { start: 10, end: 10 }
+
+    expect(remapContextSelection(additions, contextLines)).toBe(additions)
+    expect(remapContextSelection(sideless, contextLines)).toBe(sideless)
+  })
+
+  it('remaps only the context endpoint of a deletion-plus-context selection', () => {
+    const range = remapContextSelection(
+      { start: 11, side: 'deletions', end: 12, endSide: 'deletions' },
+      contextLines,
+    )
+
+    expect(range).toEqual({
+      start: 11,
+      side: 'deletions',
+      end: 11,
+      endSide: 'additions',
+    })
+    expect(serializeDraftComment(createDraft({ range }))).toEqual({
+      ok: false,
+      error: expect.stringContaining('one comment per side'),
     })
   })
 })

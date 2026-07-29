@@ -101,6 +101,66 @@ export function resolveCommentPath(
   return file.name
 }
 
+/**
+ * Maps every unchanged (context) line rendered by the patch from its old-file
+ * line number to its new-file line number. Old-file lines the patch actually
+ * deletes are absent.
+ */
+export function createContextLineMap(
+  file: Pick<FileDiffMetadata, 'hunks'>,
+): ReadonlyMap<number, number> {
+  const contextLines = new Map<number, number>()
+
+  for (const hunk of file.hunks) {
+    let oldLine = hunk.deletionStart
+    let newLine = hunk.additionStart
+
+    for (const content of hunk.hunkContent) {
+      if (content.type === 'context') {
+        for (let offset = 0; offset < content.lines; offset += 1) {
+          contextLines.set(oldLine + offset, newLine + offset)
+        }
+        oldLine += content.lines
+        newLine += content.lines
+      } else {
+        oldLine += content.deletions
+        newLine += content.additions
+      }
+    }
+  }
+
+  return contextLines
+}
+
+/**
+ * GitHub only addresses unchanged lines as RIGHT with new-file line numbers,
+ * but split view reports selections made in its left pane as `deletions` with
+ * old-file numbers even on context lines. Remaps each deletion-side endpoint
+ * that lands on a context line to the additions side so the draft serializes
+ * to coordinates GitHub accepts.
+ */
+export function remapContextSelection(
+  range: SelectedLineRange,
+  contextLines: ReadonlyMap<number, number>,
+): SelectedLineRange {
+  const startSide = range.side ?? 'additions'
+  const endSide = range.endSide ?? startSide
+  const start =
+    startSide === 'deletions' ? contextLines.get(range.start) : undefined
+  const end = endSide === 'deletions' ? contextLines.get(range.end) : undefined
+
+  if (start === undefined && end === undefined) {
+    return range
+  }
+
+  return {
+    start: start ?? range.start,
+    side: start === undefined ? startSide : 'additions',
+    end: end ?? range.end,
+    endSide: end === undefined ? endSide : 'additions',
+  }
+}
+
 export function serializeDraftComment(
   draft: DraftReviewComment,
 ): DraftSerializationResult {

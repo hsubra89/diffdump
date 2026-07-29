@@ -51,9 +51,11 @@ import {
 } from '../lib/github-diffs'
 import { publishReview } from '../lib/github-reviews'
 import {
+  createContextLineMap,
   createDraftStorageKey,
   readStoredDrafts,
   readStoredPendingReview,
+  remapContextSelection,
   resolveCommentPath,
   writeStoredDrafts,
   writeStoredPendingReview,
@@ -471,7 +473,10 @@ export default function DiffViewer(props: DiffViewerProps) {
         createComposerDraft({
           itemId,
           path: resolveCommentPath(fileDiff),
-          range,
+          /* Split view reports left-pane context selections as deletions with
+             old-file numbers; GitHub needs them as RIGHT with new-file
+             numbers. */
+          range: remapContextSelection(range, createContextLineMap(fileDiff)),
           headSha: reviewTarget.headSha,
         }),
       )
