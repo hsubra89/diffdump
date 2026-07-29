@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .add { fill: #40774f }
+    .del { fill: #8b4b4f }
+    @media (prefers-color-scheme: dark) {
+      .add { fill: #3a6848 }
+      .del { fill: #7c464a }
+    }
+  </style>
+  <rect class="add" width="32" height="32" rx="9"/>
+  <path class="del" d="M21.8 0H23a9 9 0 0 1 9 9v14a9 9 0 0 1-9 9H10.2Z"/>
+  <line x1="12.6" y1="25.4" x2="19.4" y2="6.6" stroke="#fff" stroke-width="3.6" stroke-linecap="round"/>
+</svg>

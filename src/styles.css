@@ -52,6 +52,10 @@
   --accent: light-dark(#1f883d, #238636);
   --accent-strong: light-dark(#1a7f37, #2ea043);
   --accent-ink: #ffffff;
+  /* Desaturated addition/deletion tones for the logo tile, quiet enough to
+     sit beside the neutral chrome. Mirrored in public/favicon.svg. */
+  --logo-add: light-dark(#40774f, #3a6848);
+  --logo-del: light-dark(#8b4b4f, #7c464a);
   --accent-text: light-dark(#0969da, #2f81f7);
   --danger: light-dark(#cf222e, #f85149);
   --addition: light-dark(#1a7f37, #3fb950);

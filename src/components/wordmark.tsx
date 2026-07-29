@@ -15,12 +15,22 @@ export function Wordmark({ className }: WordmarkProps) {
       )}
       to="/"
     >
-      <span
-        className="grid size-6 place-items-center rounded-control bg-accent text-[17px] font-black text-accent-ink"
-        aria-hidden="true"
-      >
-        /
-      </span>
+      <svg className="size-6 shrink-0" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="var(--logo-add)" />
+        <path
+          d="M21.8 0H23a9 9 0 0 1 9 9v14a9 9 0 0 1-9 9H10.2Z"
+          fill="var(--logo-del)"
+        />
+        <line
+          x1="12.6"
+          y1="25.4"
+          x2="19.4"
+          y2="6.6"
+          stroke="var(--accent-ink)"
+          strokeWidth="3.6"
+          strokeLinecap="round"
+        />
+      </svg>
       diffdump
     </Link>
   )
