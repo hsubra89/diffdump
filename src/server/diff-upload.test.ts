@@ -180,6 +180,50 @@ describe('PUT /d', () => {
     expect(saveUploadedDiff).not.toHaveBeenCalled()
   })
 
+  it('cancels a chunked upload as soon as it crosses the size limit', async () => {
+    const saveUploadedDiff = vi.fn<SaveUploadedDiff>()
+    const cancel = vi.fn<UnderlyingSourceCancelCallback>()
+    const request = streamingRequest(
+      [
+        new Uint8Array(MAX_DIFF_BYTES),
+        new Uint8Array([0]),
+        new TextEncoder().encode(VALID_DIFF),
+      ],
+      cancel,
+    )
+
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff,
+    })
+
+    expect(response.status).toBe(413)
+    await expect(response.text()).resolves.toContain('2 MiB')
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(saveUploadedDiff).not.toHaveBeenCalled()
+  })
+
+  it('preserves a chunked diff split inside a multibyte character', async () => {
+    const diff = VALID_DIFF.replace('hello world', 'hello 🌎')
+    const encodedDiff = new TextEncoder().encode(diff)
+    const multibyteStart = encodedDiff.indexOf(0xf0)
+    const request = streamingRequest([
+      encodedDiff.subarray(0, multibyteStart + 2),
+      encodedDiff.subarray(multibyteStart + 2),
+    ])
+    const saveUploadedDiff = vi
+      .fn<SaveUploadedDiff>()
+      .mockResolvedValue({ slug: 'AAECAwQFBgcICQoL' })
+
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff,
+    })
+
+    expect(response.status).toBe(201)
+    expect(saveUploadedDiff).toHaveBeenCalledWith(diff)
+  })
+
   it('does not expose storage errors', async () => {
     const request = new Request('https://diffdump.example/d', {
       method: 'PUT',
@@ -206,4 +250,30 @@ function allowingRateLimiter(): RateLimiter {
       success: true,
     }),
   }
+}
+
+function streamingRequest(
+  chunks: Uint8Array[],
+  cancel?: UnderlyingSourceCancelCallback,
+): Request {
+  let index = 0
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      const chunk = chunks[index]
+      index += 1
+
+      if (chunk) {
+        controller.enqueue(chunk)
+      } else {
+        controller.close()
+      }
+    },
+    cancel,
+  })
+
+  return new Request('https://diffdump.example/d', {
+    method: 'PUT',
+    body,
+    duplex: 'half',
+  } as RequestInit & { duplex: 'half' })
 }

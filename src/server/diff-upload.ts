@@ -15,6 +15,8 @@ export const DIFF_CREATION_RATE_LIMIT_PERIOD_SECONDS = 60
 const RATE_LIMITED_MESSAGE = 'Too many diff shares. Try again in 60 seconds.'
 const RATE_LIMIT_UNAVAILABLE_MESSAGE =
   'Diff sharing is temporarily unavailable. Please try again soon.'
+const DIFF_TOO_LARGE_MESSAGE =
+  'This diff is larger than the 2 MiB sharing limit.'
 
 export async function handleDiffUpload(
   request: Request,
@@ -58,19 +60,15 @@ export async function handleDiffUpload(
   const contentLength = Number(request.headers.get('content-length'))
 
   if (Number.isFinite(contentLength) && contentLength > MAX_DIFF_BYTES) {
-    return textResponse(
-      'This diff is larger than the 2 MiB sharing limit.',
-      413,
-    )
+    await cancelBody(request.body)
+
+    return textResponse(DIFF_TOO_LARGE_MESSAGE, 413)
   }
 
-  const body = await request.arrayBuffer()
+  const body = await readBodyWithinLimit(request.body, MAX_DIFF_BYTES)
 
-  if (body.byteLength > MAX_DIFF_BYTES) {
-    return textResponse(
-      'This diff is larger than the 2 MiB sharing limit.',
-      413,
-    )
+  if (!body) {
+    return textResponse(DIFF_TOO_LARGE_MESSAGE, 413)
   }
 
   let diff: string
@@ -96,6 +94,65 @@ export async function handleDiffUpload(
       'The share link could not be created. Please try again.',
       500,
     )
+  }
+}
+
+async function readBodyWithinLimit(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  if (!body) {
+    return new Uint8Array()
+  }
+
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let byteLength = 0
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+
+      if (done) {
+        break
+      }
+
+      if (value.byteLength > maxBytes - byteLength) {
+        await cancelReader(reader)
+        return null
+      }
+
+      chunks.push(value)
+      byteLength += value.byteLength
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const result = new Uint8Array(byteLength)
+  let offset = 0
+
+  for (const chunk of chunks) {
+    result.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  return result
+}
+
+async function cancelBody(body: ReadableStream<Uint8Array> | null) {
+  try {
+    await body?.cancel(DIFF_TOO_LARGE_MESSAGE)
+  } catch {
+    // The response should remain a 413 even if the client stream cannot cancel.
+  }
+}
+
+async function cancelReader(reader: ReadableStreamDefaultReader<Uint8Array>) {
+  try {
+    await reader.cancel(DIFF_TOO_LARGE_MESSAGE)
+  } catch {
+    // The response should remain a 413 even if the client stream cannot cancel.
   }
 }
 
