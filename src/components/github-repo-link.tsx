@@ -2,7 +2,7 @@ import { buttonVariants } from './ui/button'
 import { ThemeToggle } from './ui/theme-toggle'
 import { cn } from '../lib/cn'
 
-export const DIFFDUMP_REPO_URL = 'https://github.com/hsubra89/diffdump'
+export const DIFFDUMP_REPO_URL = 'https://github.com/hsyntax/diffdump'
 
 /** Icon link to the Diffdump source repository, styled as header chrome so it
  * reads as part of the app rather than a content action. */

@@ -31,7 +31,7 @@ Shared diffs use random 96-bit URL slugs, are stored in a private Cloudflare R2 
 
 - [Diffdump](https://diffdump.com/): Review a GitHub diff or create an unlisted diff share.
 - [GitHub diff form](https://diffdump.com/github): Open a public or private GitHub pull request, commit, or comparison.
-- [Source and documentation](https://github.com/hsubra89/diffdump): Source code, complete capabilities, architecture, local development, and deployment instructions.
+- [Source and documentation](https://github.com/hsyntax/diffdump): Source code, complete capabilities, architecture, local development, and deployment instructions.
 
 ## Optional
 
