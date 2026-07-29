@@ -132,6 +132,44 @@ export function createContextLineMap(
   return contextLines
 }
 
+export type DiffLineKind = 'addition' | 'deletion' | 'context'
+
+/** Classifies the line an anchor points at — added, deleted, or unchanged
+ * (context) — or null when the patch does not render that line. */
+export function classifyDiffLine(
+  file: Pick<FileDiffMetadata, 'hunks'>,
+  side: PierreCommentSide,
+  line: number,
+): DiffLineKind | null {
+  for (const hunk of file.hunks) {
+    let oldLine = hunk.deletionStart
+    let newLine = hunk.additionStart
+
+    for (const content of hunk.hunkContent) {
+      if (content.type === 'context') {
+        const start = side === 'additions' ? newLine : oldLine
+        if (line >= start && line < start + content.lines) {
+          return 'context'
+        }
+        oldLine += content.lines
+        newLine += content.lines
+      } else {
+        if (
+          side === 'additions'
+            ? line >= newLine && line < newLine + content.additions
+            : line >= oldLine && line < oldLine + content.deletions
+        ) {
+          return side === 'additions' ? 'addition' : 'deletion'
+        }
+        oldLine += content.deletions
+        newLine += content.additions
+      }
+    }
+  }
+
+  return null
+}
+
 /**
  * GitHub only addresses unchanged lines as RIGHT with new-file line numbers,
  * but split view reports selections made in its left pane as `deletions` with
@@ -161,6 +199,21 @@ export function remapContextSelection(
   }
 }
 
+/**
+ * Whether a selection can serialize to one GitHub comment, checkable at
+ * draft time before any body exists. Returns the reason it cannot, or null.
+ */
+export function draftRangeError(range: SelectedLineRange): string | null {
+  /* Pierre leaves `side` unset for selections that start on context lines;
+     GitHub addresses context lines on the RIGHT side. */
+  const startSide = range.side ?? 'additions'
+  const endSide = range.endSide ?? startSide
+
+  return startSide === endSide
+    ? null
+    : 'GitHub cannot publish one comment across deleted and added lines. Split it into one comment per side.'
+}
+
 export function serializeDraftComment(
   draft: DraftReviewComment,
 ): DraftSerializationResult {
@@ -168,18 +221,13 @@ export function serializeDraftComment(
     return { ok: false, error: 'This comment is empty.' }
   }
 
-  /* Pierre leaves `side` unset for selections that start on context lines;
-     GitHub addresses context lines on the RIGHT side. */
+  const rangeError = draftRangeError(draft.range)
+  if (rangeError !== null) {
+    return { ok: false, error: rangeError }
+  }
+
   const startSide = draft.range.side ?? 'additions'
   const endSide = draft.range.endSide ?? startSide
-
-  if (startSide !== endSide) {
-    return {
-      ok: false,
-      error:
-        'GitHub cannot publish one comment across deleted and added lines. Split it into one comment per side.',
-    }
-  }
 
   const start = Math.min(draft.range.start, draft.range.end)
   const end = Math.max(draft.range.start, draft.range.end)

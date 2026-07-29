@@ -32,6 +32,7 @@ import DiffFindBar from './diff-find-bar'
 import {
   DraftReviewAnnotation,
   DraftReviewComposer,
+  type ComposerBodyStore,
   type DraftReviewComposerHandle,
 } from './draft-review-annotation'
 import { ErrorHero } from './error-hero'
@@ -53,6 +54,7 @@ import {
 } from '../lib/github-diffs'
 import { publishReview } from '../lib/github-reviews'
 import {
+  classifyDiffLine,
   createContextLineMap,
   createDraftStorageKey,
   readStoredDrafts,
@@ -206,6 +208,11 @@ export default function DiffViewer(props: DiffViewerProps) {
     draftsState.reviewKey === reviewKey ? draftsState.drafts : EMPTY_DRAFTS
   const [composer, setComposer] = useState<DraftReviewComment | null>(null)
   const composerRef = useRef<DraftReviewComposerHandle>(null)
+  /* The composer unmounts (taking its React state with it) whenever its
+     diff item leaves the virtualization window; the text it has typed so
+     far lives here so scrolling away and back does not lose it. Cleared on
+     every composer open/close/switch. */
+  const composerBodyRef = useRef<ComposerBodyStore | null>(null)
   const [selectedLines, setSelectedLines] =
     useState<CodeViewLineSelection | null>(null)
   const [sidebarTab, setSidebarTab] = useState<'files' | 'comments'>('files')
@@ -473,22 +480,39 @@ export default function DiffViewer(props: DiffViewerProps) {
   )
   /* An open composer with unsaved text refuses to be replaced: it switches
      to its discard prompt and is scrolled into view so the blocked click is
-     never silent. */
+     never silent. When the composer is unmounted (its item is outside the
+     virtualization window) the same decision reads composerBodyRef, and a
+     dirty composer is scrolled back into view instead of prompting. */
   const guardOpenComposer = useCallback(() => {
     const handle = composerRef.current
-    if (!handle || handle.requestClose()) {
-      return true
+    if (handle) {
+      if (handle.requestClose()) {
+        return true
+      }
+
+      revealReviewRange(handle.draft.itemId, handle.draft.range)
+      return false
     }
 
-    revealReviewRange(handle.draft.itemId, handle.draft.range)
-    return false
-  }, [revealReviewRange])
+    if (composer !== null) {
+      const stored = composerBodyRef.current
+      const body =
+        stored?.localId === composer.localId ? stored.body : composer.body
+      if (body.trim() !== composer.body.trim()) {
+        revealReviewRange(composer.itemId, composer.range)
+        return false
+      }
+    }
+
+    return true
+  }, [composer, revealReviewRange])
   const openComposer = useCallback(
     (range: SelectedLineRange, itemId: string, fileDiff: FileDiffMetadata) => {
       if (!reviewTarget || !guardOpenComposer()) {
         return
       }
 
+      composerBodyRef.current = null
       setComposer(
         createComposerDraft({
           itemId,
@@ -504,6 +528,7 @@ export default function DiffViewer(props: DiffViewerProps) {
     [guardOpenComposer, reviewTarget],
   )
   const closeComposer = useCallback(() => {
+    composerBodyRef.current = null
     setComposer(null)
     setSelectedLines(null)
   }, [])
@@ -514,6 +539,7 @@ export default function DiffViewer(props: DiffViewerProps) {
       }
 
       updateDrafts((current) => upsertDraft(current, { ...composer, body }))
+      composerBodyRef.current = null
       setComposer(null)
       setSelectedLines(null)
     },
@@ -521,17 +547,18 @@ export default function DiffViewer(props: DiffViewerProps) {
   )
   const editDraft = useCallback(
     (draft: DraftReviewComment): boolean => {
-      if (composerRef.current?.draft.localId === draft.localId) {
+      if (composer?.localId === draft.localId) {
         return true
       }
       if (!guardOpenComposer()) {
         return false
       }
 
+      composerBodyRef.current = null
       setComposer(draft)
       return true
     },
-    [guardOpenComposer],
+    [composer, guardOpenComposer],
   )
   const editDraftFromPanel = useCallback(
     (draft: DraftReviewComment) => {
@@ -544,6 +571,9 @@ export default function DiffViewer(props: DiffViewerProps) {
   const deleteDraft = useCallback(
     (localId: string) => {
       updateDrafts((current) => removeDraft(current, localId))
+      if (composerBodyRef.current?.localId === localId) {
+        composerBodyRef.current = null
+      }
       setComposer((current) => (current?.localId === localId ? null : current))
     },
     [updateDrafts],
@@ -551,6 +581,23 @@ export default function DiffViewer(props: DiffViewerProps) {
   const selectDraftInPanel = useCallback(
     (draft: DraftReviewComment) => revealReviewRange(draft.itemId, draft.range),
     [revealReviewRange],
+  )
+  /* Labels a sidebar anchor as an added, deleted, or unchanged line. */
+  const classifyAnchor = useCallback(
+    (path: string, range: SelectedLineRange) => {
+      const itemId = itemIdByPath.get(path)
+      const file = itemId === undefined ? undefined : filesById.get(itemId)
+      if (!file) {
+        return null
+      }
+
+      return classifyDiffLine(
+        file.file,
+        range.endSide ?? range.side ?? 'additions',
+        range.end,
+      )
+    },
+    [filesById, itemIdByPath],
   )
   const selectThreadInPanel = useCallback(
     (thread: ReviewCommentThread) => {
@@ -584,6 +631,7 @@ export default function DiffViewer(props: DiffViewerProps) {
 
         writeStoredPendingReview(reviewTarget, null)
         updateDrafts(() => [])
+        composerBodyRef.current = null
         setComposer(null)
         setSelectedLines(null)
         setSubmitState({ phase: 'success', reviewId: publishedReviewId })
@@ -618,6 +666,7 @@ export default function DiffViewer(props: DiffViewerProps) {
             key={metadata.localId}
             ref={composerRef}
             draft={composer}
+            bodyStore={composerBodyRef}
             onSave={saveComposer}
             onCancel={closeComposer}
           />
@@ -701,6 +750,7 @@ export default function DiffViewer(props: DiffViewerProps) {
       reviewKey,
       drafts: reviewTarget ? readStoredDrafts(reviewTarget) : EMPTY_DRAFTS,
     })
+    composerBodyRef.current = null
     setComposer(null)
     setSelectedLines(null)
     setSubmitState({ phase: 'idle' })
@@ -1034,6 +1084,7 @@ export default function DiffViewer(props: DiffViewerProps) {
                 drafts={drafts}
                 threads={reviewThreads}
                 commentsState={reviewComments}
+                classifyAnchor={classifyAnchor}
                 onSelectDraft={selectDraftInPanel}
                 onEditDraft={editDraftFromPanel}
                 onDeleteDraft={deleteDraft}

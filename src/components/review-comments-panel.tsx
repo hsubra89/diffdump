@@ -1,10 +1,14 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, type MouseEvent, type ReactNode } from 'react'
+import type { SelectedLineRange } from '@pierre/diffs'
 
+import { DraftInvalidBadge } from './draft-review-annotation'
 import { Button } from './ui/button'
 import { cn } from '../lib/cn'
-import type {
-  DraftReviewComment,
-  ReviewCommentThread,
+import {
+  draftRangeError,
+  type DiffLineKind,
+  type DraftReviewComment,
+  type ReviewCommentThread,
 } from '../lib/review-comments'
 import type { ReviewCommentsState } from '../lib/review-state'
 
@@ -13,10 +17,31 @@ const rowClassName =
 const clickableRowClassName =
   'cursor-pointer hover:border-line hover:bg-surface-raised'
 
+export type AnchorClassifier = (
+  path: string,
+  range: SelectedLineRange,
+) => DiffLineKind | null
+
+/** Rows navigate on click, but their comment text is selectable — a click
+ * that just finished selecting text inside the row is not navigation. */
+function clickSelectsRowText(event: MouseEvent<HTMLElement>): boolean {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed) {
+    return false
+  }
+
+  const row = event.currentTarget
+  return (
+    (selection.anchorNode !== null && row.contains(selection.anchorNode)) ||
+    (selection.focusNode !== null && row.contains(selection.focusNode))
+  )
+}
+
 export default function ReviewCommentsPanel({
   drafts,
   threads,
   commentsState,
+  classifyAnchor,
   onSelectDraft,
   onEditDraft,
   onDeleteDraft,
@@ -26,6 +51,7 @@ export default function ReviewCommentsPanel({
   drafts: readonly DraftReviewComment[]
   threads: readonly ReviewCommentThread[]
   commentsState: ReviewCommentsState
+  classifyAnchor: AnchorClassifier
   onSelectDraft: (draft: DraftReviewComment) => void
   onEditDraft: (draft: DraftReviewComment) => void
   onDeleteDraft: (localId: string) => void
@@ -64,40 +90,57 @@ export default function ReviewCommentsPanel({
           </p>
         ) : (
           <ul className="flex flex-col gap-0.5">
-            {drafts.map((draft) => (
-              <li key={draft.localId} className={cn(rowClassName, 'gap-1.5')}>
-                <button
-                  className={cn(
-                    'flex w-full cursor-pointer flex-col items-start gap-1 rounded-control text-left',
-                    'hover:text-foreground',
-                  )}
-                  type="button"
-                  title="Show in diff"
-                  onClick={() => onSelectDraft(draft)}
-                >
-                  <CommentLocation path={draft.path} line={draft.range.end} />
-                  <span className="line-clamp-2 w-full break-words text-muted-bright">
-                    {draft.body}
+            {drafts.map((draft) => {
+              const rangeError = draftRangeError(draft.range)
+
+              return (
+                <li key={draft.localId} className={cn(rowClassName, 'gap-1.5')}>
+                  <button
+                    className={cn(
+                      'flex w-full cursor-pointer flex-col items-start gap-1 rounded-control text-left',
+                      'hover:text-foreground',
+                    )}
+                    type="button"
+                    title="Show in diff"
+                    onClick={(event) => {
+                      if (!clickSelectsRowText(event)) {
+                        onSelectDraft(draft)
+                      }
+                    }}
+                  >
+                    <span className="flex w-full items-center gap-1.5">
+                      <CommentLocation
+                        path={draft.path}
+                        line={draft.range.end}
+                        kind={classifyAnchor(draft.path, draft.range)}
+                      />
+                      {rangeError !== null && (
+                        <DraftInvalidBadge error={rangeError} />
+                      )}
+                    </span>
+                    <span className="line-clamp-2 w-full select-text break-words text-muted-bright">
+                      {draft.body}
+                    </span>
+                  </button>
+                  <span className="flex gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onEditDraft(draft)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => onDeleteDraft(draft.localId)}
+                    >
+                      Delete
+                    </Button>
                   </span>
-                </button>
-                <span className="flex gap-1.5">
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => onEditDraft(draft)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => onDeleteDraft(draft.localId)}
-                  >
-                    Delete
-                  </Button>
-                </span>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
@@ -145,7 +188,11 @@ export default function ReviewCommentsPanel({
                   <ul className="flex flex-col gap-0.5">
                     {fileThreads.map((thread) => (
                       <li key={thread.root.id}>
-                        <ThreadRow thread={thread} onSelect={onSelectThread} />
+                        <ThreadRow
+                          thread={thread}
+                          classifyAnchor={classifyAnchor}
+                          onSelect={onSelectThread}
+                        />
                       </li>
                     ))}
                   </ul>
@@ -160,9 +207,11 @@ export default function ReviewCommentsPanel({
 
 function ThreadRow({
   thread,
+  classifyAnchor,
   onSelect,
 }: {
   thread: ReviewCommentThread
+  classifyAnchor: AnchorClassifier
   onSelect: (thread: ReviewCommentThread) => void
 }) {
   const { root, replies } = thread
@@ -181,7 +230,7 @@ function ThreadRow({
           </span>
         )}
       </span>
-      <span className="line-clamp-2 w-full break-words text-muted-bright">
+      <span className="line-clamp-2 w-full select-text break-words text-muted-bright">
         {root.body}
       </span>
     </>
@@ -196,6 +245,11 @@ function ThreadRow({
         href={root.htmlUrl}
         target="_blank"
         rel="noreferrer noopener"
+        onClick={(event) => {
+          if (clickSelectsRowText(event)) {
+            event.preventDefault()
+          }
+        }}
       >
         {meta}
         <span className="text-accent-text">View on GitHub ↗</span>
@@ -207,34 +261,61 @@ function ThreadRow({
     <button
       className={cn(rowClassName, clickableRowClassName)}
       type="button"
-      onClick={() => onSelect(thread)}
+      onClick={(event) => {
+        if (!clickSelectsRowText(event)) {
+          onSelect(thread)
+        }
+      }}
     >
       <CommentLocation
         path={null}
         line={root.range === null ? null : root.range.end}
+        kind={
+          root.range === null ? null : classifyAnchor(root.path, root.range)
+        }
       />
       {meta}
     </button>
   )
 }
 
+const DIFF_LINE_KIND_LABELS: Record<DiffLineKind, string> = {
+  addition: 'added line',
+  deletion: 'deleted line',
+  context: 'unchanged line',
+}
+
 function CommentLocation({
   path,
   line,
+  kind,
 }: {
   path: string | null
   line: number | null
+  kind: DiffLineKind | null
 }) {
   if (path === null && line === null) {
     return null
   }
 
+  /* Bare line numbers are ambiguous between the old and new file, so anchors
+     carry their diff marker: +N for added lines, −N for deleted (old-file)
+     lines, plain N for unchanged lines. */
+  const marker = kind === 'addition' ? '+' : kind === 'deletion' ? '−' : ''
+
   return (
-    <span className="w-full truncate font-mono text-[10px] text-muted">
+    <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">
       {path !== null && <span title={path}>{path}</span>}
       {line !== null && (
-        <span>
+        <span
+          title={
+            kind !== null
+              ? `Comment on ${DIFF_LINE_KIND_LABELS[kind]} ${line}`
+              : undefined
+          }
+        >
           {path !== null ? ':' : 'Line '}
+          {marker}
           {line}
         </span>
       )}

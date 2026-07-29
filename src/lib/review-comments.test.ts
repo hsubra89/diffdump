@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parsePatchFiles, type SelectedLineRange } from '@pierre/diffs'
 
 import {
+  classifyDiffLine,
   createContextLineMap,
+  draftRangeError,
   createDiffLineIndex,
   createDraftStorageKey,
   createPendingReviewStorageKey,
@@ -317,6 +319,48 @@ describe('split-view context selection remapping', () => {
       ok: false,
       error: expect.stringContaining('one comment per side'),
     })
+  })
+})
+
+describe('draft range validation', () => {
+  it('accepts same-side and side-less ranges', () => {
+    expect(
+      draftRangeError({
+        start: 12,
+        side: 'additions',
+        end: 13,
+        endSide: 'additions',
+      }),
+    ).toBeNull()
+    expect(draftRangeError({ start: 10, end: 10 })).toBeNull()
+  })
+
+  it('rejects cross-side ranges at draft time', () => {
+    expect(
+      draftRangeError({
+        start: 11,
+        side: 'deletions',
+        end: 12,
+        endSide: 'additions',
+      }),
+    ).toContain('one comment per side')
+  })
+})
+
+describe('anchor line classification', () => {
+  it('classifies added, deleted, and context lines on either side', () => {
+    expect(classifyDiffLine(FILES[0], 'additions', 12)).toBe('addition')
+    expect(classifyDiffLine(FILES[0], 'additions', 13)).toBe('addition')
+    expect(classifyDiffLine(FILES[0], 'deletions', 11)).toBe('deletion')
+    expect(classifyDiffLine(FILES[0], 'additions', 10)).toBe('context')
+    expect(classifyDiffLine(FILES[0], 'additions', 11)).toBe('context')
+    expect(classifyDiffLine(FILES[0], 'deletions', 12)).toBe('context')
+  })
+
+  it('returns null for lines the patch does not render', () => {
+    expect(classifyDiffLine(FILES[0], 'additions', 99)).toBeNull()
+    expect(classifyDiffLine(FILES[0], 'deletions', 13)).toBeNull()
+    expect(classifyDiffLine(FILES[1], 'deletions', 1)).toBeNull()
   })
 })
 

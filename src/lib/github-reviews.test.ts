@@ -510,11 +510,12 @@ describe('publishing a review', () => {
       comments: [createDraft({ headSha: OTHER_SHA })],
     })
 
+    /* The error names the offending draft so the reviewer can find it. */
     await expect(publishReview(crossSide, { fetch: fetcher })).rejects.toThrow(
-      'one comment per side',
+      'src/app.ts:12 — GitHub cannot publish one comment across deleted and added lines.',
     )
     await expect(publishReview(staleDraft, { fetch: fetcher })).rejects.toThrow(
-      'different revision',
+      'src/app.ts:12 — This draft was written against a different revision',
     )
     expect(fetcher).not.toHaveBeenCalled()
   })

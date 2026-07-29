@@ -262,15 +262,18 @@ export async function publishReview(
   const payloads: GitHubDraftCommentPayload[] = []
 
   for (const draft of submission.comments) {
+    /* Validation failures name the draft so the reviewer can find it. */
+    const anchor = `${draft.path}:${draft.range.end}`
+
     if (draft.headSha !== target.headSha) {
       throw new Error(
-        'A draft comment was written against a different revision of this pull request. Reload the diff and remap your drafts.',
+        `${anchor} — This draft was written against a different revision of this pull request. Reload the diff and remap your drafts.`,
       )
     }
 
     const result = serializeDraftComment(draft)
     if (!result.ok) {
-      throw new Error(result.error)
+      throw new Error(`${anchor} — ${result.error}`)
     }
     payloads.push(result.payload)
   }
