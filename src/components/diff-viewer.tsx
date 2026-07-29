@@ -453,12 +453,17 @@ export default function DiffViewer(props: DiffViewerProps) {
         revealFileForSearch(file.storageId)
       }
 
-      codeViewRef.current?.scrollTo({
-        type: 'range',
-        id: itemId,
-        range,
-        align: 'center',
-        behavior: 'smooth-auto',
+      /* Revealing a viewed (collapsed) file flows through React state into
+         the CodeView's items, and scroll targets resolve against the layout
+         at call time — wait a frame so the expanded layout is in place. */
+      requestAnimationFrame(() => {
+        codeViewRef.current?.scrollTo({
+          type: 'range',
+          id: itemId,
+          range,
+          align: 'center',
+          behavior: 'smooth-auto',
+        })
       })
       setFilePickerOpen(false)
     },
@@ -538,7 +543,7 @@ export default function DiffViewer(props: DiffViewerProps) {
 
       setSubmitState({ phase: 'submitting' })
       try {
-        const reviewId = await publishReview(
+        const publishedReviewId = await publishReview(
           { event, body, comments: [...drafts], target: reviewTarget },
           {
             token: readStoredGitHubToken(),
@@ -555,7 +560,7 @@ export default function DiffViewer(props: DiffViewerProps) {
         updateDrafts(() => [])
         setComposer(null)
         setSelectedLines(null)
-        setSubmitState({ phase: 'success', reviewId })
+        setSubmitState({ phase: 'success', reviewId: publishedReviewId })
         onReloadComments?.()
       } catch (error) {
         setSubmitState(toSubmitErrorState(error))
@@ -571,14 +576,20 @@ export default function DiffViewer(props: DiffViewerProps) {
     ) => {
       const metadata = annotation.metadata
 
+      /* The library keys annotation slots by array index, so per-comment
+         keys are what pin each card — and the composer's textarea state —
+         to its comment when the annotation set shifts. */
       if (metadata.kind === 'github') {
         const thread = threadByRootId.get(metadata.id)
-        return thread ? <GitHubReviewAnnotation thread={thread} /> : null
+        return thread ? (
+          <GitHubReviewAnnotation key={metadata.id} thread={thread} />
+        ) : null
       }
 
       if (composer !== null && metadata.localId === composer.localId) {
         return (
           <DraftReviewComposer
+            key={metadata.localId}
             draft={composer}
             onSave={saveComposer}
             onCancel={closeComposer}
@@ -588,6 +599,7 @@ export default function DiffViewer(props: DiffViewerProps) {
 
       return (
         <DraftReviewAnnotation
+          key={metadata.localId}
           draft={metadata}
           onEdit={editDraft}
           onDelete={deleteDraft}
