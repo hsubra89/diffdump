@@ -1,6 +1,6 @@
 import { looksLikeUnifiedDiff } from './diffs'
 
-const GITHUB_API_ROOT = 'https://api.github.com'
+export const GITHUB_API_ROOT = 'https://api.github.com'
 const GITHUB_API_VERSION = '2022-11-28'
 const GITHUB_DIFF_MEDIA_TYPE = 'application/vnd.github.diff'
 const GITHUB_JSON_MEDIA_TYPE = 'application/vnd.github+json'
@@ -66,12 +66,17 @@ export type GitHubFetch = (
 
 export type GitHubRequestOptions = {
   accept?: string
+  body?: string
   fetch?: GitHubFetch
+  method?: string
   signal?: AbortSignal
   token?: string
 }
 
-type LoadGitHubDiffOptions = Omit<GitHubRequestOptions, 'accept'>
+type LoadGitHubDiffOptions = Omit<
+  GitHubRequestOptions,
+  'accept' | 'body' | 'method'
+>
 
 export function parseGitHubDiffUrl(input: string): GitHubDiffSource | null {
   let url: URL
@@ -190,9 +195,15 @@ export async function fetchGitHubApi(
     headers.Authorization = `Bearer ${token}`
   }
 
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json'
+  }
+
   return fetcher(url, {
+    body: options.body,
     cache: 'no-store',
     headers,
+    method: options.method,
     signal: options.signal,
   })
 }
@@ -248,7 +259,7 @@ async function loadPullReviewTarget(
   }
 }
 
-async function readPullHeadSha(response: Response): Promise<string> {
+export async function readPullHeadSha(response: Response): Promise<string> {
   let data: unknown
 
   try {
