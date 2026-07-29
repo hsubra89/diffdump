@@ -808,13 +808,7 @@ export default function DiffViewer(props: DiffViewerProps) {
             >
               {viewedFileCount} viewed
             </span>
-            {expiresAt ? (
-              <ExpiryCountdown expiresAt={expiresAt} />
-            ) : (
-              <span className="text-accent-text">
-                Private GitHub view · not shared
-              </span>
-            )}
+            {expiresAt && <ExpiryCountdown expiresAt={expiresAt} />}
           </div>
 
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end md:flex-nowrap md:gap-3">
@@ -973,14 +967,6 @@ export default function DiffViewer(props: DiffViewerProps) {
                 </div>
               ) : (
                 <span>Files</span>
-              )}
-              {(!reviewEnabled || sidebarTab === 'files') && (
-                <span
-                  className="text-muted tabular-nums"
-                  aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
-                >
-                  {viewedFileCount}/{summary.files} viewed
-                </span>
               )}
               <IconButton
                 className="ml-auto md:hidden"
