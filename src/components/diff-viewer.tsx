@@ -32,6 +32,7 @@ import DiffFindBar from './diff-find-bar'
 import {
   DraftReviewAnnotation,
   DraftReviewComposer,
+  type DraftReviewComposerHandle,
 } from './draft-review-annotation'
 import { ErrorHero } from './error-hero'
 import { GitHubRepoLink } from './github-repo-link'
@@ -204,6 +205,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const drafts =
     draftsState.reviewKey === reviewKey ? draftsState.drafts : EMPTY_DRAFTS
   const [composer, setComposer] = useState<DraftReviewComment | null>(null)
+  const composerRef = useRef<DraftReviewComposerHandle>(null)
   const [selectedLines, setSelectedLines] =
     useState<CodeViewLineSelection | null>(null)
   const [sidebarTab, setSidebarTab] = useState<'files' | 'comments'>('files')
@@ -469,9 +471,21 @@ export default function DiffViewer(props: DiffViewerProps) {
     },
     [filesById, revealFileForSearch],
   )
+  /* An open composer with unsaved text refuses to be replaced: it switches
+     to its discard prompt and is scrolled into view so the blocked click is
+     never silent. */
+  const guardOpenComposer = useCallback(() => {
+    const handle = composerRef.current
+    if (!handle || handle.requestClose()) {
+      return true
+    }
+
+    revealReviewRange(handle.draft.itemId, handle.draft.range)
+    return false
+  }, [revealReviewRange])
   const openComposer = useCallback(
     (range: SelectedLineRange, itemId: string, fileDiff: FileDiffMetadata) => {
-      if (!reviewTarget) {
+      if (!reviewTarget || !guardOpenComposer()) {
         return
       }
 
@@ -487,7 +501,7 @@ export default function DiffViewer(props: DiffViewerProps) {
         }),
       )
     },
-    [reviewTarget],
+    [guardOpenComposer, reviewTarget],
   )
   const closeComposer = useCallback(() => {
     setComposer(null)
@@ -505,15 +519,27 @@ export default function DiffViewer(props: DiffViewerProps) {
     },
     [composer, updateDrafts],
   )
-  const editDraft = useCallback((draft: DraftReviewComment) => {
-    setComposer(draft)
-  }, [])
+  const editDraft = useCallback(
+    (draft: DraftReviewComment): boolean => {
+      if (composerRef.current?.draft.localId === draft.localId) {
+        return true
+      }
+      if (!guardOpenComposer()) {
+        return false
+      }
+
+      setComposer(draft)
+      return true
+    },
+    [guardOpenComposer],
+  )
   const editDraftFromPanel = useCallback(
     (draft: DraftReviewComment) => {
-      setComposer(draft)
-      revealReviewRange(draft.itemId, draft.range)
+      if (editDraft(draft)) {
+        revealReviewRange(draft.itemId, draft.range)
+      }
     },
-    [revealReviewRange],
+    [editDraft, revealReviewRange],
   )
   const deleteDraft = useCallback(
     (localId: string) => {
@@ -590,6 +616,7 @@ export default function DiffViewer(props: DiffViewerProps) {
         return (
           <DraftReviewComposer
             key={metadata.localId}
+            ref={composerRef}
             draft={composer}
             onSave={saveComposer}
             onCancel={closeComposer}
