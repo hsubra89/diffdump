@@ -14,6 +14,7 @@ import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
 import { Link } from '@tanstack/react-router'
 
 import DiffFilePicker from './diff-file-picker'
+import DiffFindBar from './diff-find-bar'
 import { ErrorHero } from './error-hero'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
@@ -127,6 +128,10 @@ export default function DiffViewer(props: DiffViewerProps) {
   }))
   const viewedFileIds =
     viewedState.reviewId === reviewId ? viewedState.fileIds : EMPTY_FILE_ID_SET
+  /* Viewed files render collapsed; search navigation expands a match's file
+     without unticking its Viewed checkbox. */
+  const [expandedOverrides, setExpandedOverrides] =
+    useState<ReadonlySet<string>>(EMPTY_FILE_ID_SET)
 
   const parsed = useMemo(() => {
     try {
@@ -177,17 +182,18 @@ export default function DiffViewer(props: DiffViewerProps) {
   const items = useMemo<CodeViewDiffItem[]>(
     () =>
       visibleFiles.map(({ id, storageId, file }) => {
-        const viewed = viewedFileIds.has(storageId)
+        const collapsed =
+          viewedFileIds.has(storageId) && !expandedOverrides.has(storageId)
 
         return {
           id,
           type: 'diff',
           fileDiff: file,
-          collapsed: viewed,
-          version: viewed ? 1 : 0,
+          collapsed,
+          version: collapsed ? 1 : 0,
         }
       }),
-    [viewedFileIds, visibleFiles],
+    [expandedOverrides, viewedFileIds, visibleFiles],
   )
   const filePickerEntries = useMemo(
     () =>
@@ -229,8 +235,37 @@ export default function DiffViewer(props: DiffViewerProps) {
 
         return { reviewId, fileIds: nextFileIds }
       })
+      /* Manually toggling Viewed retires any search expansion so the
+         checkbox collapses and expands the card again. */
+      setExpandedOverrides((current) => {
+        if (!current.has(storageId)) {
+          return current
+        }
+
+        const next = new Set(current)
+        next.delete(storageId)
+        return next
+      })
     },
     [reviewId],
+  )
+  const revealFileForSearch = useCallback(
+    (storageId: string) => {
+      if (!viewedFileIds.has(storageId)) {
+        return
+      }
+
+      setExpandedOverrides((current) => {
+        if (current.has(storageId)) {
+          return current
+        }
+
+        const next = new Set(current)
+        next.add(storageId)
+        return next
+      })
+    },
+    [viewedFileIds],
   )
   const renderHeaderMetadata = useCallback(
     (item: CodeViewItem) => {
@@ -286,6 +321,7 @@ export default function DiffViewer(props: DiffViewerProps) {
       reviewId,
       fileIds: new Set(readStoredViewedFileIds(reviewId)),
     })
+    setExpandedOverrides(EMPTY_FILE_ID_SET)
   }, [reviewId])
 
   useEffect(() => {
@@ -545,6 +581,11 @@ export default function DiffViewer(props: DiffViewerProps) {
               renderHeaderMetadata={renderHeaderMetadata}
             />
           </WorkerPoolContextProvider>
+          <DiffFindBar
+            visibleFiles={visibleFiles}
+            codeViewRef={codeViewRef}
+            onRevealFile={revealFileForSearch}
+          />
         </div>
       )}
     </main>
