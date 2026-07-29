@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   CodeView,
   WorkerPoolContextProvider,
@@ -9,13 +16,27 @@ import {
   type WorkerInitializationRenderOptions,
   type WorkerPoolOptions,
 } from '@pierre/diffs/react'
-import { parsePatchFiles } from '@pierre/diffs'
+import {
+  parsePatchFiles,
+  type CodeViewLineSelection,
+  type CodeViewOptions,
+  type DiffLineAnnotation,
+  type LineAnnotation,
+  type SelectedLineRange,
+} from '@pierre/diffs'
 import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
 import { Link } from '@tanstack/react-router'
 
 import DiffFilePicker from './diff-file-picker'
 import DiffFindBar from './diff-find-bar'
+import {
+  DraftReviewAnnotation,
+  DraftReviewComposer,
+} from './draft-review-annotation'
 import { ErrorHero } from './error-hero'
+import { GitHubReviewAnnotation } from './github-review-annotation'
+import ReviewCommentsPanel from './review-comments-panel'
+import SubmitReviewPanel from './submit-review-panel'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { SegmentedControl, SegmentedControlItem } from './ui/segmented-control'
@@ -24,6 +45,30 @@ import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
 import { diffThemes } from '../lib/diff-themes'
+import {
+  readStoredGitHubToken,
+  type GitHubPullReviewTarget,
+} from '../lib/github-diffs'
+import { publishReview } from '../lib/github-reviews'
+import {
+  createDraftStorageKey,
+  readStoredDrafts,
+  resolveCommentPath,
+  writeStoredDrafts,
+  type DraftReviewComment,
+  type GitHubReviewEvent,
+  type ReviewCommentMetadata,
+  type ReviewCommentThread,
+} from '../lib/review-comments'
+import {
+  anchorReviewThreads,
+  buildReviewAnnotations,
+  createComposerDraft,
+  removeDraft,
+  upsertDraft,
+  type ReviewCommentsState,
+  type SubmitReviewState,
+} from '../lib/review-state'
 import {
   DIFF_CATEGORIES,
   DIFF_CATEGORY_DETAILS,
@@ -61,6 +106,9 @@ type DiffViewerProps =
       mode: 'github'
       githubUrl: string
       diff: string
+      reviewTarget: GitHubPullReviewTarget | null
+      reviewComments: ReviewCommentsState
+      onReloadComments: () => void
     }
 
 const workerPoolOptions: WorkerPoolOptions = {
@@ -112,6 +160,11 @@ export default function DiffViewer(props: DiffViewerProps) {
   const reviewId = `${isGitHubDiff ? 'github' : 'shared'}:${viewerId}`
   const diff = isGitHubDiff ? props.diff : props.storedDiff.diff
   const expiresAt = isGitHubDiff ? null : props.storedDiff.expiresAt
+  const reviewTarget = isGitHubDiff ? props.reviewTarget : null
+  const reviewComments = isGitHubDiff
+    ? props.reviewComments
+    : IDLE_REVIEW_COMMENTS
+  const onReloadComments = isGitHubDiff ? props.onReloadComments : undefined
   const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
   const [wrapLines, setWrapLines] = useState(false)
   const [categoryFilter, setCategoryFilter] =
@@ -121,7 +174,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [copied, setCopied] = useState(false)
   const [filePickerOpen, setFilePickerOpen] = useState(false)
   const [findBarOpen, setFindBarOpen] = useState(false)
-  const codeViewRef = useRef<CodeViewHandle<undefined>>(null)
+  const codeViewRef = useRef<CodeViewHandle<ReviewCommentMetadata>>(null)
   const mainRef = useRef<HTMLElement>(null)
   const [viewedState, setViewedState] = useState(() => ({
     reviewId,
@@ -133,6 +186,26 @@ export default function DiffViewer(props: DiffViewerProps) {
      without unticking its Viewed checkbox. */
   const [expandedOverrides, setExpandedOverrides] =
     useState<ReadonlySet<string>>(EMPTY_FILE_ID_SET)
+  /* Unsent drafts are keyed by owner/repo/pull/headSha so they never restore
+     onto a different revision of the pull request. */
+  const reviewKey = reviewTarget ? createDraftStorageKey(reviewTarget) : null
+  const [draftsState, setDraftsState] = useState(() => ({
+    reviewKey,
+    drafts: reviewTarget ? readStoredDrafts(reviewTarget) : EMPTY_DRAFTS,
+  }))
+  const drafts =
+    draftsState.reviewKey === reviewKey ? draftsState.drafts : EMPTY_DRAFTS
+  const [composer, setComposer] = useState<DraftReviewComment | null>(null)
+  const [selectedLines, setSelectedLines] =
+    useState<CodeViewLineSelection | null>(null)
+  const [sidebarTab, setSidebarTab] = useState<'files' | 'comments'>('files')
+  const [submitPanelOpen, setSubmitPanelOpen] = useState(false)
+  const [submitState, setSubmitState] = useState<SubmitReviewState>({
+    phase: 'idle',
+  })
+  /* A pending review GitHub created before a failed submit; retried
+     submissions resume it instead of creating duplicates. */
+  const pendingReviewIdRef = useRef<number | null>(null)
 
   const parsed = useMemo(() => {
     try {
@@ -180,21 +253,84 @@ export default function DiffViewer(props: DiffViewerProps) {
       ),
     [classifiedFiles, viewedFileIds],
   )
-  const items = useMemo<CodeViewDiffItem[]>(
+  const reviewEnabled = reviewTarget !== null && parsed.error === null
+  const itemIdByPath = useMemo(
+    () =>
+      new Map(
+        classifiedFiles.map(({ id, file }) => [resolveCommentPath(file), id]),
+      ),
+    [classifiedFiles],
+  )
+  const reviewThreads = useMemo(
+    () =>
+      reviewComments.status === 'loaded'
+        ? anchorReviewThreads(reviewComments.comments, parsed.files)
+        : EMPTY_THREADS,
+    [reviewComments, parsed.files],
+  )
+  const threadByRootId = useMemo(
+    () => new Map(reviewThreads.map((thread) => [thread.root.id, thread])),
+    [reviewThreads],
+  )
+  const currentThreads = useMemo(
+    () => reviewThreads.filter((thread) => !thread.root.outdated),
+    [reviewThreads],
+  )
+  const reviewAnnotations = useMemo(
+    () =>
+      reviewEnabled
+        ? buildReviewAnnotations({
+            drafts,
+            composer,
+            threads: currentThreads,
+            itemIdByPath,
+          })
+        : EMPTY_ANNOTATION_MAP,
+    [composer, currentThreads, drafts, itemIdByPath, reviewEnabled],
+  )
+  /* Controlled CodeView items only re-render when `version` changes, so each
+     item's version carries an annotation epoch next to the collapsed bit. The
+     epoch advances whenever the item's annotation set — anchors or metadata
+     identities — changes; the ref cache is only mutated on such changes, so
+     repeated renders with the same inputs stay idempotent. */
+  const annotationVersionsRef = useRef({
+    metadataIds: new WeakMap<ReviewCommentMetadata, number>(),
+    nextMetadataId: 1,
+    epochs: new Map<string, { signature: string; epoch: number }>(),
+  })
+  const items = useMemo<CodeViewDiffItem<ReviewCommentMetadata>[]>(
     () =>
       visibleFiles.map(({ id, storageId, file }) => {
         const collapsed =
           viewedFileIds.has(storageId) && !expandedOverrides.has(storageId)
+        const annotations = reviewAnnotations.get(id)
+        const tracker = annotationVersionsRef.current
+        const signature = (annotations ?? EMPTY_ANNOTATION_LIST)
+          .map((annotation) => {
+            let metadataId = tracker.metadataIds.get(annotation.metadata)
+            if (metadataId === undefined) {
+              metadataId = tracker.nextMetadataId++
+              tracker.metadataIds.set(annotation.metadata, metadataId)
+            }
+            return `${annotation.side}:${annotation.lineNumber}:${metadataId}`
+          })
+          .join('|')
+        let versions = tracker.epochs.get(id)
+        if (versions === undefined || versions.signature !== signature) {
+          versions = { signature, epoch: (versions?.epoch ?? -1) + 1 }
+          tracker.epochs.set(id, versions)
+        }
 
         return {
           id,
           type: 'diff',
           fileDiff: file,
           collapsed,
-          version: collapsed ? 1 : 0,
+          annotations,
+          version: versions.epoch * 2 + (collapsed ? 1 : 0),
         }
       }),
-    [expandedOverrides, viewedFileIds, visibleFiles],
+    [expandedOverrides, reviewAnnotations, viewedFileIds, visibleFiles],
   )
   const filePickerEntries = useMemo(
     () =>
@@ -212,7 +348,7 @@ export default function DiffViewer(props: DiffViewerProps) {
     [viewedFileIds, visibleFiles],
   )
   const renderHeaderPrefix = useCallback(
-    (item: CodeViewItem) => {
+    (item: CodeViewItem<ReviewCommentMetadata>) => {
       const file = filesById.get(item.id)
 
       return file ? <DiffCategoryBadge category={file.category} /> : null
@@ -269,7 +405,7 @@ export default function DiffViewer(props: DiffViewerProps) {
     [viewedFileIds],
   )
   const renderHeaderMetadata = useCallback(
-    (item: CodeViewItem) => {
+    (item: CodeViewItem<ReviewCommentMetadata>) => {
       const file = filesById.get(item.id)
 
       if (!file) {
@@ -286,7 +422,184 @@ export default function DiffViewer(props: DiffViewerProps) {
     },
     [filesById, setFileViewed, viewedFileIds],
   )
-  const options = useMemo(
+  const updateDrafts = useCallback(
+    (
+      update: (drafts: readonly DraftReviewComment[]) => DraftReviewComment[],
+    ) => {
+      setDraftsState((current) => ({
+        reviewKey,
+        drafts: update(
+          current.reviewKey === reviewKey
+            ? current.drafts
+            : reviewTarget
+              ? readStoredDrafts(reviewTarget)
+              : EMPTY_DRAFTS,
+        ),
+      }))
+    },
+    [reviewKey, reviewTarget],
+  )
+  /* Expands a viewed (collapsed) file if needed, then scrolls the annotated
+     range into view. */
+  const revealReviewRange = useCallback(
+    (itemId: string, range: SelectedLineRange) => {
+      const file = filesById.get(itemId)
+      if (file) {
+        revealFileForSearch(file.storageId)
+      }
+
+      codeViewRef.current?.scrollTo({
+        type: 'range',
+        id: itemId,
+        range,
+        align: 'center',
+        behavior: 'smooth-auto',
+      })
+      setFilePickerOpen(false)
+    },
+    [filesById, revealFileForSearch],
+  )
+  const openComposer = useCallback(
+    (range: SelectedLineRange, itemId: string, fileDiff: FileDiffMetadata) => {
+      if (!reviewTarget) {
+        return
+      }
+
+      setComposer(
+        createComposerDraft({
+          itemId,
+          path: resolveCommentPath(fileDiff),
+          range,
+          headSha: reviewTarget.headSha,
+        }),
+      )
+    },
+    [reviewTarget],
+  )
+  const closeComposer = useCallback(() => {
+    setComposer(null)
+    setSelectedLines(null)
+  }, [])
+  const saveComposer = useCallback(
+    (body: string) => {
+      if (!composer) {
+        return
+      }
+
+      updateDrafts((current) => upsertDraft(current, { ...composer, body }))
+      setComposer(null)
+      setSelectedLines(null)
+    },
+    [composer, updateDrafts],
+  )
+  const editDraft = useCallback((draft: DraftReviewComment) => {
+    setComposer(draft)
+  }, [])
+  const editDraftFromPanel = useCallback(
+    (draft: DraftReviewComment) => {
+      setComposer(draft)
+      revealReviewRange(draft.itemId, draft.range)
+    },
+    [revealReviewRange],
+  )
+  const deleteDraft = useCallback(
+    (localId: string) => {
+      updateDrafts((current) => removeDraft(current, localId))
+      setComposer((current) => (current?.localId === localId ? null : current))
+    },
+    [updateDrafts],
+  )
+  const selectDraftInPanel = useCallback(
+    (draft: DraftReviewComment) => revealReviewRange(draft.itemId, draft.range),
+    [revealReviewRange],
+  )
+  const selectThreadInPanel = useCallback(
+    (thread: ReviewCommentThread) => {
+      const itemId = itemIdByPath.get(thread.root.path)
+      if (itemId !== undefined && thread.root.range !== null) {
+        revealReviewRange(itemId, thread.root.range)
+      }
+    },
+    [itemIdByPath, revealReviewRange],
+  )
+  const submitReview = useCallback(
+    async (event: GitHubReviewEvent, body: string) => {
+      if (!reviewTarget) {
+        return
+      }
+
+      setSubmitState({ phase: 'submitting' })
+      try {
+        const reviewId = await publishReview(
+          { event, body, comments: [...drafts], target: reviewTarget },
+          {
+            token: readStoredGitHubToken(),
+            pendingReviewId: pendingReviewIdRef.current,
+            onPendingReviewCreated: (id) => {
+              pendingReviewIdRef.current = id
+            },
+          },
+        )
+
+        pendingReviewIdRef.current = null
+        updateDrafts(() => [])
+        setComposer(null)
+        setSelectedLines(null)
+        setSubmitState({ phase: 'success', reviewId })
+        onReloadComments?.()
+      } catch (error) {
+        setSubmitState({
+          phase: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'The review could not be published.',
+        })
+      }
+    },
+    [drafts, onReloadComments, reviewTarget, updateDrafts],
+  )
+  const renderReviewAnnotation = useCallback(
+    (
+      annotation:
+        | LineAnnotation<ReviewCommentMetadata>
+        | DiffLineAnnotation<ReviewCommentMetadata>,
+    ) => {
+      const metadata = annotation.metadata
+
+      if (metadata.kind === 'github') {
+        const thread = threadByRootId.get(metadata.id)
+        return thread ? <GitHubReviewAnnotation thread={thread} /> : null
+      }
+
+      if (composer !== null && metadata.localId === composer.localId) {
+        return (
+          <DraftReviewComposer
+            draft={composer}
+            onSave={saveComposer}
+            onCancel={closeComposer}
+          />
+        )
+      }
+
+      return (
+        <DraftReviewAnnotation
+          draft={metadata}
+          onEdit={editDraft}
+          onDelete={deleteDraft}
+        />
+      )
+    },
+    [
+      closeComposer,
+      composer,
+      deleteDraft,
+      editDraft,
+      saveComposer,
+      threadByRootId,
+    ],
+  )
+  const options = useMemo<CodeViewOptions<ReviewCommentMetadata>>(
     () => ({
       diffStyle,
       diffIndicators: 'bars' as const,
@@ -303,8 +616,17 @@ export default function DiffViewer(props: DiffViewerProps) {
       theme: diffThemes,
       themeType: resolvedTheme,
       stickyHeaders: true,
+      enableLineSelection: reviewEnabled,
+      enableGutterUtility: reviewEnabled,
+      onGutterUtilityClick: reviewEnabled
+        ? (range: SelectedLineRange, context) => {
+            if (context.item.type === 'diff') {
+              openComposer(range, context.item.id, context.item.fileDiff)
+            }
+          }
+        : undefined,
     }),
-    [diffStyle, wrapLines, resolvedTheme],
+    [diffStyle, openComposer, resolvedTheme, reviewEnabled, wrapLines],
   )
 
   const scrollToFile = useCallback((itemId: string) => {
@@ -330,6 +652,25 @@ export default function DiffViewer(props: DiffViewerProps) {
       writeStoredViewedFileIds(reviewId, viewedState.fileIds)
     }
   }, [reviewId, viewedState])
+
+  useEffect(() => {
+    setDraftsState({
+      reviewKey,
+      drafts: reviewTarget ? readStoredDrafts(reviewTarget) : EMPTY_DRAFTS,
+    })
+    setComposer(null)
+    setSelectedLines(null)
+    setSubmitState({ phase: 'idle' })
+    setSubmitPanelOpen(false)
+    setSidebarTab('files')
+    pendingReviewIdRef.current = null
+  }, [reviewKey, reviewTarget])
+
+  useEffect(() => {
+    if (reviewTarget && draftsState.reviewKey === reviewKey) {
+      writeStoredDrafts(reviewTarget, draftsState.drafts)
+    }
+  }, [draftsState, reviewKey, reviewTarget])
 
   useEffect(() => {
     if (parsed.error) {
@@ -513,6 +854,25 @@ export default function DiffViewer(props: DiffViewerProps) {
                 <path d="m10.4 10.4 3.4 3.4" />
               </svg>
             </IconButton>
+            {reviewEnabled && (
+              <Button
+                variant="primary"
+                size="sm"
+                aria-expanded={submitPanelOpen}
+                aria-controls="submit-review-panel"
+                onClick={() => {
+                  if (submitPanelOpen && submitState.phase === 'success') {
+                    setSubmitState({ phase: 'idle' })
+                  }
+                  setSubmitPanelOpen(!submitPanelOpen)
+                }}
+              >
+                Review
+                {drafts.length > 0 && (
+                  <span className="tabular-nums">({drafts.length})</span>
+                )}
+              </Button>
+            )}
             <FileOrderControl order={fileOrder} onChange={setFileOrder} />
             <SegmentedControl aria-label="Diff layout">
               <SegmentedControlItem
@@ -556,6 +916,29 @@ export default function DiffViewer(props: DiffViewerProps) {
               onClick={() => setFilePickerOpen(false)}
             />
           ) : null}
+          {reviewEnabled && submitPanelOpen && (
+            <div
+              className="absolute right-3 top-2 z-30 md:right-4"
+              id="submit-review-panel"
+            >
+              <SubmitReviewPanel
+                draftCount={drafts.length}
+                submitState={submitState}
+                reviewUrl={
+                  submitState.phase === 'success' && reviewTarget
+                    ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}#pullrequestreview-${submitState.reviewId}`
+                    : null
+                }
+                onSubmit={submitReview}
+                onClose={() => {
+                  setSubmitPanelOpen(false)
+                  if (submitState.phase === 'success') {
+                    setSubmitState({ phase: 'idle' })
+                  }
+                }}
+              />
+            </div>
+          )}
           <aside
             className={cn(
               'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-canvas shadow-[18px_0_45px_light-dark(rgb(0_0_0/14%),rgb(0_0_0/42%))] transition-[transform,visibility] duration-150 [grid-area:tree]',
@@ -566,13 +949,39 @@ export default function DiffViewer(props: DiffViewerProps) {
             aria-label="Changed files"
           >
             <PanelHeader>
-              <span>Files</span>
-              <span
-                className="text-muted tabular-nums"
-                aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
-              >
-                {viewedFileCount}/{summary.files} viewed
-              </span>
+              {reviewEnabled ? (
+                <div
+                  className="flex items-center gap-1"
+                  role="tablist"
+                  aria-label="Sidebar sections"
+                >
+                  <SidebarTab
+                    active={sidebarTab === 'files'}
+                    onClick={() => setSidebarTab('files')}
+                  >
+                    Files
+                  </SidebarTab>
+                  <SidebarTab
+                    active={sidebarTab === 'comments'}
+                    onClick={() => setSidebarTab('comments')}
+                  >
+                    Comments
+                    <span className="text-muted tabular-nums">
+                      {reviewThreads.length + drafts.length}
+                    </span>
+                  </SidebarTab>
+                </div>
+              ) : (
+                <span>Files</span>
+              )}
+              {(!reviewEnabled || sidebarTab === 'files') && (
+                <span
+                  className="text-muted tabular-nums"
+                  aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
+                >
+                  {viewedFileCount}/{summary.files} viewed
+                </span>
+              )}
               <IconButton
                 className="ml-auto md:hidden"
                 label="Close file picker"
@@ -585,11 +994,24 @@ export default function DiffViewer(props: DiffViewerProps) {
                 </span>
               </IconButton>
             </PanelHeader>
-            <DiffFilePicker
-              key={`${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`}
-              entries={filePickerEntries}
-              onSelect={scrollToFile}
-            />
+            {reviewEnabled && sidebarTab === 'comments' ? (
+              <ReviewCommentsPanel
+                drafts={drafts}
+                threads={reviewThreads}
+                commentsState={reviewComments}
+                onSelectDraft={selectDraftInPanel}
+                onEditDraft={editDraftFromPanel}
+                onDeleteDraft={deleteDraft}
+                onSelectThread={selectThreadInPanel}
+                onReloadComments={onReloadComments ?? NOOP}
+              />
+            ) : (
+              <DiffFilePicker
+                key={`${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`}
+                entries={filePickerEntries}
+                onSelect={scrollToFile}
+              />
+            )}
           </aside>
           <WorkerPoolContextProvider
             poolOptions={workerPoolOptions}
@@ -600,8 +1022,13 @@ export default function DiffViewer(props: DiffViewerProps) {
               className="diff-scroll min-h-0 min-w-0 overflow-auto [grid-area:viewer]"
               items={items}
               options={options}
+              selectedLines={selectedLines}
+              onSelectedLinesChange={setSelectedLines}
               renderHeaderPrefix={renderHeaderPrefix}
               renderHeaderMetadata={renderHeaderMetadata}
+              renderAnnotation={
+                reviewEnabled ? renderReviewAnnotation : undefined
+              }
             />
           </WorkerPoolContextProvider>
           <DiffFindBar
@@ -609,6 +1036,7 @@ export default function DiffViewer(props: DiffViewerProps) {
             onOpenChange={setFindBarOpen}
             visibleFiles={visibleFiles}
             codeViewRef={codeViewRef}
+            onSelectLines={setSelectedLines}
             onRevealFile={revealFileForSearch}
           />
         </div>
@@ -618,10 +1046,44 @@ export default function DiffViewer(props: DiffViewerProps) {
 }
 
 const EMPTY_FILE_ID_SET: ReadonlySet<string> = new Set()
+const EMPTY_DRAFTS: DraftReviewComment[] = []
+const EMPTY_THREADS: ReviewCommentThread[] = []
+const EMPTY_ANNOTATION_LIST: DiffLineAnnotation<ReviewCommentMetadata>[] = []
+const EMPTY_ANNOTATION_MAP: ReadonlyMap<
+  string,
+  DiffLineAnnotation<ReviewCommentMetadata>[]
+> = new Map()
+const IDLE_REVIEW_COMMENTS: ReviewCommentsState = { status: 'idle' }
+const NOOP = () => {}
 
 const FIND_SHORTCUT_HINT = /Mac|iP/.test(globalThis.navigator?.platform ?? '')
   ? '⌘F'
   : 'Ctrl+F'
+
+function SidebarTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      className={cn(
+        'inline-flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted transition-colors hover:text-foreground',
+        active && 'border-line bg-surface-raised text-foreground',
+      )}
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  )
+}
 
 function ViewedFileControl({
   viewed,
