@@ -171,6 +171,25 @@ export function classifyDiffLine(
 }
 
 /**
+ * Whether both endpoints of a selection anchor to lines the patch itself
+ * renders. Expanding a hunk reveals surrounding file context, but GitHub
+ * review comments can only anchor inside the patch, so ranges touching
+ * expanded lines are not commentable.
+ */
+export function isPatchAnchoredRange(
+  file: Pick<FileDiffMetadata, 'hunks'>,
+  range: SelectedLineRange,
+): boolean {
+  const startSide = range.side ?? 'additions'
+  const endSide = range.endSide ?? startSide
+
+  return (
+    classifyDiffLine(file, startSide, range.start) !== null &&
+    classifyDiffLine(file, endSide, range.end) !== null
+  )
+}
+
+/**
  * GitHub only addresses unchanged lines as RIGHT with new-file line numbers,
  * but split view reports selections made in its left pane as `deletions` with
  * old-file numbers even on context lines. Remaps each deletion-side endpoint

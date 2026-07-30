@@ -9,6 +9,7 @@ import {
   createDraftStorageKey,
   createPendingReviewStorageKey,
   groupCommentThreads,
+  isPatchAnchoredRange,
   isRangeInDiff,
   readStoredDrafts,
   readStoredPendingReview,
@@ -361,6 +362,42 @@ describe('anchor line classification', () => {
     expect(classifyDiffLine(FILES[0], 'additions', 99)).toBeNull()
     expect(classifyDiffLine(FILES[0], 'deletions', 13)).toBeNull()
     expect(classifyDiffLine(FILES[1], 'deletions', 1)).toBeNull()
+  })
+})
+
+describe('patch-anchored range guard', () => {
+  it('accepts ranges whose endpoints are rendered by the patch', () => {
+    expect(
+      isPatchAnchoredRange(FILES[0], {
+        start: 10,
+        side: 'additions',
+        end: 13,
+        endSide: 'additions',
+      }),
+    ).toBe(true)
+    /* Pierre leaves `side` unset for context selections. */
+    expect(isPatchAnchoredRange(FILES[0], { start: 10, end: 10 })).toBe(true)
+    expect(
+      isPatchAnchoredRange(FILES[0], {
+        start: 11,
+        side: 'deletions',
+        end: 11,
+        endSide: 'deletions',
+      }),
+    ).toBe(true)
+  })
+
+  it('rejects ranges touching expanded context outside the patch hunks', () => {
+    expect(isPatchAnchoredRange(FILES[0], { start: 5, end: 5 })).toBe(false)
+    expect(isPatchAnchoredRange(FILES[0], { start: 5, end: 10 })).toBe(false)
+    expect(
+      isPatchAnchoredRange(FILES[0], {
+        start: 12,
+        side: 'additions',
+        end: 99,
+        endSide: 'additions',
+      }),
+    ).toBe(false)
   })
 })
 

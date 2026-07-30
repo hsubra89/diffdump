@@ -49,14 +49,17 @@ import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
 import { diffThemes } from '../lib/diff-themes'
 import {
+  parseGitHubDiffUrl,
   readStoredGitHubToken,
   type GitHubPullReviewTarget,
 } from '../lib/github-diffs'
+import { createGitHubFileContentsLoader } from '../lib/github-file-contents'
 import { publishReview } from '../lib/github-reviews'
 import {
   classifyDiffLine,
   createContextLineMap,
   createDraftStorageKey,
+  isPatchAnchoredRange,
   readStoredDrafts,
   readStoredPendingReview,
   remapContextSelection,
@@ -508,7 +511,15 @@ export default function DiffViewer(props: DiffViewerProps) {
   }, [composer, revealReviewRange])
   const openComposer = useCallback(
     (range: SelectedLineRange, itemId: string, fileDiff: FileDiffMetadata) => {
-      if (!reviewTarget || !guardOpenComposer()) {
+      /* Expanded hunks render full-file context GitHub cannot anchor review
+         comments to; ranges touching those lines never open a composer. The
+         check runs before guardOpenComposer so an ineligible click leaves an
+         already-open composer untouched. */
+      if (
+        !reviewTarget ||
+        !isPatchAnchoredRange(fileDiff, range) ||
+        !guardOpenComposer()
+      ) {
         return
       }
 
@@ -691,11 +702,30 @@ export default function DiffViewer(props: DiffViewerProps) {
       threadByRootId,
     ],
   )
+  /* GitHub-backed diffs hydrate collapsed context on demand, which puts
+     GitHub-style expand arrows on the hunk separators. Shared raw diffs have
+     no repository to read full files from, so they get no loader and their
+     separators stay plain. Keyed on the review target so a reloaded pull
+     starts from fresh ref and file caches. */
+  const loadDiffFiles = useMemo(() => {
+    if (!isGitHubDiff) {
+      return undefined
+    }
+
+    const source = parseGitHubDiffUrl(viewerId)
+    return source
+      ? createGitHubFileContentsLoader(source, {
+          pinnedHeadSha: reviewTarget?.headSha ?? null,
+        })
+      : undefined
+  }, [isGitHubDiff, reviewTarget, viewerId])
   const options = useMemo<CodeViewOptions<ReviewCommentMetadata>>(
     () => ({
       diffStyle,
       diffIndicators: 'bars' as const,
       hunkSeparators: 'line-info' as const,
+      loadDiffFiles,
+      expansionLineCount: 20,
       itemMetrics: {
         lineHeight: 20,
       },
@@ -718,7 +748,14 @@ export default function DiffViewer(props: DiffViewerProps) {
           }
         : undefined,
     }),
-    [diffStyle, openComposer, resolvedTheme, reviewEnabled, wrapLines],
+    [
+      diffStyle,
+      loadDiffFiles,
+      openComposer,
+      resolvedTheme,
+      reviewEnabled,
+      wrapLines,
+    ],
   )
 
   const scrollToFile = useCallback((itemId: string) => {

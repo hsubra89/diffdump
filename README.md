@@ -23,6 +23,9 @@ It is hosted at [diffdump.com](https://diffdump.com).
 - GitHub reviews are client-only: the diff is fetched straight from GitHub
   and rendered in the browser without creating a share or storing anything
   on Diffdump.
+- Collapsed context expands like on GitHub: the arrows on each hunk
+  separator reveal the unchanged lines around a change, fetched on demand
+  from `api.github.com` at the exact revisions the diff compares.
 - Pull requests can be reviewed inline: select diff lines to draft comments,
   browse existing GitHub comment threads, and publish all drafts together as
   one GitHub review — Comment, Approve, or Request changes. Reviews are
