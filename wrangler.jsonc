@@ -9,6 +9,10 @@
       "pattern": "diffdump.com",
       "custom_domain": true,
     },
+    {
+      "pattern": "www.diffdump.com",
+      "custom_domain": true,
+    },
   ],
   "main": "@tanstack/react-start/server-entry",
   "r2_buckets": [
