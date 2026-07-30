@@ -7,6 +7,7 @@ import { MissingDiffPage } from '../components/missing-diff-page'
 import { Wordmark } from '../components/wordmark'
 import { ThemeToggle } from '../components/ui/theme-toggle'
 import type { StoredDiff } from '../lib/diffs'
+import { createNoIndexPageHead } from '../lib/seo'
 import { getDiff } from '../server/diffs.functions'
 
 const DiffViewer = import.meta.env.SSR
@@ -15,17 +16,12 @@ const DiffViewer = import.meta.env.SSR
 
 export const Route = createFileRoute('/view/$slug')({
   ssr: false,
-  head: () => ({
-    meta: [
-      {
-        title: 'Shared diff — Diffdump',
-      },
-      {
-        name: 'robots',
-        content: 'noindex, nofollow',
-      },
-    ],
-  }),
+  head: () =>
+    createNoIndexPageHead({
+      title: 'Shared diff — Diffdump',
+      description:
+        'Review a shared code diff in Diffdump’s focused, syntax-highlighted diff viewer.',
+    }),
   pendingComponent: DiffLoading,
   errorComponent: MissingDiffPage,
   component: SharedDiffPage,

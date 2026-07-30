@@ -2,9 +2,9 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 
 import { GitHubDiffPage } from '../components/github-diff-page'
 import { createGitHubUrlFromPath } from '../lib/github-diffs'
+import { createNoIndexPageHead } from '../lib/seo'
 
 export const Route = createFileRoute('/$')({
-  ssr: false,
   beforeLoad: ({ params }) => {
     if (!params._splat) {
       throw notFound()
@@ -18,17 +18,12 @@ export const Route = createFileRoute('/$')({
 
     return { githubUrl }
   },
-  head: () => ({
-    meta: [
-      {
-        title: 'GitHub diff — Diffdump',
-      },
-      {
-        name: 'robots',
-        content: 'noindex, nofollow',
-      },
-    ],
-  }),
+  head: () =>
+    createNoIndexPageHead({
+      title: 'GitHub diff — Diffdump',
+      description:
+        'Review this GitHub code change in Diffdump’s focused, syntax-highlighted diff viewer.',
+    }),
   component: DirectGitHubDiffPage,
 })
 

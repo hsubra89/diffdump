@@ -10,24 +10,35 @@ import {
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 import { GitHubOpenPanel } from '../components/github-open-panel'
-import { GitHubRepoLink } from '../components/github-repo-link'
+import { SiteFooter, SiteHeader } from '../components/site-chrome'
 import { Button } from '../components/ui/button'
 import { eyebrowClassName } from '../components/ui/surfaces'
-import { ThemeToggle } from '../components/ui/theme-toggle'
-import { Wordmark } from '../components/wordmark'
 import { cn } from '../lib/cn'
 import { createSharedDiff } from '../lib/create-shared-diff'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
 import { EXAMPLE_DIFF, EXAMPLE_GITHUB_URL } from '../lib/example-diff'
+import { createPageHead, createWebApplicationStructuredData } from '../lib/seo'
 
 type CommandCopyState = 'idle' | 'armed' | 'full'
 type PanelTab = 'paste' | 'github'
 
+const title = 'Diffdump — Review and Share Code Changes'
+const description =
+  'Review any GitHub pull request, commit, or comparison in a fast, focused diff viewer, or create an unlisted 24-hour link for a raw Git diff.'
+
 export const Route = createFileRoute('/')({
   head: () => ({
-    meta: [
+    ...createPageHead({
+      title,
+      description,
+      path: '/',
+    }),
+    scripts: [
       {
-        title: 'Diffdump — Review any GitHub diff',
+        type: 'application/ld+json',
+        children: JSON.stringify(
+          createWebApplicationStructuredData(description),
+        ),
       },
     ],
   }),
@@ -162,19 +173,7 @@ function Home() {
 
   return (
     <main className="mx-auto min-h-screen w-[min(1120px,calc(100%-32px))] pt-5 pb-6 text-foreground md:pt-7">
-      <nav
-        className="flex items-center justify-between"
-        aria-label="Primary navigation"
-      >
-        <Wordmark />
-        <div className="flex items-center gap-3">
-          <span className={cn(eyebrowClassName, 'hidden text-muted md:inline')}>
-            Code review without the clutter
-          </span>
-          <GitHubRepoLink />
-          <ThemeToggle />
-        </div>
-      </nav>
+      <SiteHeader />
 
       <section className="pt-16 pb-10 md:pt-24 md:pb-12">
         <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-[560] leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
@@ -432,21 +431,9 @@ function Home() {
         )}
       </section>
 
-      <footer className="flex items-center justify-center px-1 pt-10 text-[11px] text-muted md:justify-between">
-        <span>
-          Powered by <FooterLink href="https://diffs.com">diffs.com</FooterLink>{' '}
-          +{' '}
-          <FooterLink href="https://trees.software">trees.software</FooterLink>{' '}
-          · Deployed on{' '}
-          <FooterLink href="https://workers.cloudflare.com">
-            Cloudflare Workers
-          </FooterLink>{' '}
-          +{' '}
-          <FooterLink href="https://developers.cloudflare.com/r2/">
-            R2
-          </FooterLink>
-        </span>
-      </footer>
+      <div className="pt-10">
+        <SiteFooter />
+      </div>
     </main>
   )
 }
@@ -483,25 +470,6 @@ function PanelTabButton({
     >
       {children}
     </button>
-  )
-}
-
-function FooterLink({
-  href,
-  children,
-}: {
-  href: string
-  children: React.ReactNode
-}) {
-  return (
-    <a
-      className="underline-offset-2 transition-colors hover:text-foreground hover:underline"
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-    >
-      {children}
-    </a>
   )
 }
 

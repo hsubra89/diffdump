@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /
 Allow: /llms.txt
-Disallow: /d
-Disallow: /github
+Disallow: /d$
+Disallow: /d?
+Disallow: /github$
+Disallow: /github?
 Disallow: /view/
+
+Sitemap: https://diffdump.com/sitemap.xml

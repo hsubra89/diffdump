@@ -10,16 +10,16 @@ export const Route = createRootRoute({
         charSet: 'utf-8',
       },
       {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'Diffdump — Review any GitHub diff',
+        title: 'Diffdump',
       },
       {
         name: 'description',
         content:
-          'Open any GitHub pull request, commit, or comparison in a clean, focused review view — or paste a git diff for an unlisted share link.',
+          'Review GitHub diffs and share code changes in a fast, focused diff viewer.',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
       },
       {
         name: 'theme-color',
@@ -30,38 +30,6 @@ export const Route = createRootRoute({
         name: 'theme-color',
         media: '(prefers-color-scheme: dark)',
         content: '#09090b',
-      },
-      {
-        property: 'og:type',
-        content: 'website',
-      },
-      {
-        property: 'og:title',
-        content: 'Diffdump — Review any GitHub diff',
-      },
-      {
-        property: 'og:description',
-        content: 'Any pull request. One clean review.',
-      },
-      {
-        property: 'og:image',
-        content: '/og.png',
-      },
-      {
-        name: 'twitter:card',
-        content: 'summary_large_image',
-      },
-      {
-        name: 'twitter:title',
-        content: 'Diffdump — Review any GitHub diff',
-      },
-      {
-        name: 'twitter:description',
-        content: 'Any pull request. One clean review.',
-      },
-      {
-        name: 'twitter:image',
-        content: '/og.png',
       },
     ],
     links: [

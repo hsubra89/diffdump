@@ -1,23 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { GitHubDiffPage } from '../components/github-diff-page'
+import { createNoIndexPageHead } from '../lib/seo'
 
 export const Route = createFileRoute('/github')({
   ssr: false,
   validateSearch: (search): { url: string } => ({
     url: typeof search.url === 'string' ? search.url : '',
   }),
-  head: () => ({
-    meta: [
-      {
-        title: 'Private GitHub diff — Diffdump',
-      },
-      {
-        name: 'robots',
-        content: 'noindex, nofollow',
-      },
-    ],
-  }),
+  head: () =>
+    createNoIndexPageHead({
+      title: 'Private GitHub diff — Diffdump',
+      description:
+        'Review a private GitHub code change in Diffdump’s focused, syntax-highlighted diff viewer.',
+    }),
   component: GitHubSearchPage,
 })
 
