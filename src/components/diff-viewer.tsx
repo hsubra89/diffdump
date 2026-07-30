@@ -38,6 +38,10 @@ import {
 import { ErrorHero } from './error-hero'
 import { GitHubRepoLink } from './github-repo-link'
 import { GitHubReviewAnnotation } from './github-review-annotation'
+import {
+  GitHubStackSelector,
+  type GitHubPullStackLoadState,
+} from './github-stack-selector'
 import ReviewCommentsPanel from './review-comments-panel'
 import SubmitReviewPanel from './submit-review-panel'
 import { Wordmark } from './wordmark'
@@ -52,6 +56,7 @@ import {
   parseGitHubDiffUrl,
   readStoredGitHubToken,
   type GitHubPullReviewTarget,
+  type GitHubPullStackSummary,
 } from '../lib/github-diffs'
 import { createGitHubFileContentsLoader } from '../lib/github-file-contents'
 import { publishReview } from '../lib/github-reviews'
@@ -125,9 +130,12 @@ type DiffViewerProps =
       githubUrl: string
       diff: string
       reviewTarget: GitHubPullReviewTarget | null
+      stackSummary: GitHubPullStackSummary | null
+      stackState: GitHubPullStackLoadState
       reviewComments: ReviewCommentsState
       onReloadComments: () => void
       onReloadDiff: () => void
+      onReloadStack: () => void
     }
 
 const workerPoolOptions: WorkerPoolOptions = {
@@ -977,6 +985,17 @@ export default function DiffViewer(props: DiffViewerProps) {
         className="min-w-0 max-w-full flex-col items-stretch gap-0 overflow-hidden p-0 [grid-area:toolbar]"
         aria-label="Diff controls"
       >
+        {isGitHubDiff && props.stackSummary && reviewTarget && (
+          <GitHubStackSelector
+            owner={reviewTarget.owner}
+            repo={reviewTarget.repo}
+            pullNumber={reviewTarget.pullNumber}
+            summary={props.stackSummary}
+            state={props.stackState}
+            onRetry={props.onReloadStack}
+          />
+        )}
+
         <CategoryFilters
           activeFilter={categoryFilter}
           summary={summary}

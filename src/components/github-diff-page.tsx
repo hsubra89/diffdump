@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 
 import { ErrorHero } from './error-hero'
 import { GitHubRepoLink, HeroPageActions } from './github-repo-link'
+import type { GitHubPullStackLoadState } from './github-stack-selector'
 import { Wordmark } from './wordmark'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Button, buttonVariants } from './ui/button'
@@ -13,6 +14,7 @@ import {
   CREATE_FINE_GRAINED_GITHUB_TOKEN_URL,
   isTokenFixableGitHubError,
   loadGitHubDiff,
+  loadGitHubPullStack,
   parseGitHubDiffUrl,
   readStoredGitHubToken,
   writeStoredGitHubToken,
@@ -36,7 +38,7 @@ export function GitHubDiffPage({ url }: { url: string }) {
 
   return (
     <GitHubDiffAttempt
-      key={attempt}
+      key={`${url}:${attempt}`}
       url={url}
       onRetry={() => setAttempt((current) => current + 1)}
     />
@@ -57,6 +59,10 @@ function GitHubDiffAttempt({
     status: 'idle',
   })
   const [commentsAttempt, setCommentsAttempt] = useState(0)
+  const [stackAttempt, setStackAttempt] = useState(0)
+  const [stackState, setStackState] = useState<GitHubPullStackLoadState>({
+    status: 'loading',
+  })
 
   useEffect(() => {
     if (!parseGitHubDiffUrl(url)) {
@@ -96,6 +102,53 @@ function GitHubDiffAttempt({
 
     return () => controller.abort()
   }, [url])
+
+  /* Stack navigation is progressive enhancement. The PR response gives us
+     enough membership data to reserve the row immediately; the full ordered
+     stack loads separately so an unavailable preview endpoint never blocks
+     the diff or reviews. */
+  useEffect(() => {
+    if (
+      state.status !== 'loaded' ||
+      state.loaded.source.kind !== 'pull' ||
+      state.loaded.stackSummary === null
+    ) {
+      setStackState({ status: 'unavailable' })
+      return
+    }
+
+    const controller = new AbortController()
+    const { source, stackSummary } = state.loaded
+    setStackState({ status: 'loading' })
+
+    void loadGitHubPullStack(source, stackSummary.number, {
+      signal: controller.signal,
+      token: readStoredGitHubToken(),
+    }).then(
+      (stack) => {
+        if (!controller.signal.aborted) {
+          setStackState(
+            stack?.pullRequests.some((pull) => pull.number === source.number)
+              ? { status: 'loaded', stack }
+              : { status: 'unavailable' },
+          )
+        }
+      },
+      (error: unknown) => {
+        if (!controller.signal.aborted) {
+          setStackState({
+            status: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : `GitHub could not load stack #${stackSummary.number}.`,
+          })
+        }
+      },
+    )
+
+    return () => controller.abort()
+  }, [stackAttempt, state])
 
   /* Published review comments load client-side after the diff, and reload
      after a review is published so drafts reconcile into GitHub-backed
@@ -153,9 +206,12 @@ function GitHubDiffAttempt({
         githubUrl={url}
         diff={state.loaded.diff}
         reviewTarget={state.loaded.reviewTarget}
+        stackSummary={state.loaded.stackSummary}
+        stackState={stackState}
         reviewComments={commentsState}
         onReloadComments={() => setCommentsAttempt((current) => current + 1)}
         onReloadDiff={onRetry}
+        onReloadStack={() => setStackAttempt((current) => current + 1)}
       />
     </Suspense>
   )

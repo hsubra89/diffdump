@@ -13,7 +13,7 @@ const description =
   'Open any GitHub pull request, commit, or comparison in a fast, focused diff viewer with file navigation, split and unified layouts, and inline reviews.'
 const path = '/github-diff-viewer' as const
 const datePublished = '2026-07-29'
-const dateModified = '2026-07-29'
+const dateModified = '2026-07-30'
 
 export const Route = createFileRoute('/github-diff-viewer')({
   head: () => ({
@@ -84,6 +84,10 @@ https://github.com/org/repo/compare/main...feature`}</GuideCode>
           <li>Unified and side-by-side layouts with optional line wrapping.</li>
           <li>
             A searchable file tree with source, test, docs, and other groups.
+          </li>
+          <li>
+            A stack navigator for moving between the focused layers of a stacked
+            pull request.
           </li>
           <li>Viewed-file progress saved locally in the browser.</li>
           <li>

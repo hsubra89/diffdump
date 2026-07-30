@@ -60,10 +60,34 @@ export type GitHubPullReviewTarget = {
   headSha: string
 }
 
+export type GitHubPullStackSummary = {
+  number: number
+  position: number
+  size: number
+  baseRef: string
+}
+
+export type GitHubPullStackItem = {
+  number: string
+  title: string
+  state: 'open' | 'closed'
+  draft: boolean
+  mergedAt: string | null
+  headRef: string
+  headSha: string
+}
+
+export type GitHubPullStack = {
+  number: number
+  baseRef: string
+  pullRequests: GitHubPullStackItem[]
+}
+
 export type LoadedGitHubDiff = {
   diff: string
   source: GitHubDiffSource
   reviewTarget: GitHubPullReviewTarget | null
+  stackSummary: GitHubPullStackSummary | null
 }
 
 export type GitHubFetch = (
@@ -182,26 +206,71 @@ export async function loadGitHubDiff(
       diff: await loadDiffText(apiUrl, options),
       source,
       reviewTarget: null,
+      stackSummary: null,
     }
   }
 
-  /* The head SHA is read before the diff so a push racing the load can only
-     record a head older than the diff revision — a divergence the submit-time
-     head check turns into a head-changed block. Read after the diff, a fresh
-     push could key drafts to the new head while every anchor was computed
-     against the old revision, and the submit-time check would pass. */
-  let reviewTarget = await loadPullReviewTarget(apiUrl, source, options)
-  let diff = await loadDiffText(apiUrl, options)
+  /* Read the head before the diff so a racing push can only leave an older
+     review target, which the submit-time head check safely rejects. Reading
+     metadata after the diff could pair newer target metadata with stale
+     anchors and allow that check to pass incorrectly. */
+  const metadata = await loadPullMetadata(apiUrl, source, options)
+  const diff = await loadDiffText(apiUrl, options)
 
-  /* One re-check converts the common race from a submit-time head-changed
-     block into a load of the newer revision. */
-  const recheckedTarget = await loadPullReviewTarget(apiUrl, source, options)
-  if (recheckedTarget.headSha !== reviewTarget.headSha) {
-    reviewTarget = recheckedTarget
-    diff = await loadDiffText(apiUrl, options)
+  return {
+    diff,
+    source,
+    reviewTarget: metadata.reviewTarget,
+    stackSummary: metadata.stackSummary,
+  }
+}
+
+export async function loadGitHubPullStack(
+  source: Extract<GitHubDiffSource, { kind: 'pull' }>,
+  stackNumber: number,
+  options: LoadGitHubDiffOptions = {},
+): Promise<GitHubPullStack | null> {
+  const repoPath = `/repos/${encodeURIComponent(source.owner)}/${encodeURIComponent(source.repo)}`
+  const response = await fetchGitHubApi(
+    `${GITHUB_API_ROOT}${repoPath}/stacks/${encodeURIComponent(stackNumber)}`,
+    options,
+  )
+
+  /* A pull request can be unstacked while its diff is loading, and the public
+     preview is rolling out repository by repository. Either case should fall
+     back to the normal standalone PR experience. */
+  if (response.status === 404) {
+    return null
   }
 
-  return { diff, source, reviewTarget }
+  if (!response.ok) {
+    throw new GitHubDiffLoadError(
+      await githubStackErrorMessage(
+        response,
+        stackNumber,
+        Boolean(options.token?.trim()),
+      ),
+      response.status,
+    )
+  }
+
+  let data: unknown
+  try {
+    data = await response.json()
+  } catch {
+    throw new Error(
+      `GitHub returned an invalid response for stack #${stackNumber}.`,
+    )
+  }
+
+  const stack = parsePullStack(data)
+  if (!stack || stack.number !== stackNumber) {
+    throw new Error(
+      `GitHub returned invalid metadata for stack #${stackNumber}.`,
+    )
+  }
+
+  return stack
 }
 
 export async function fetchGitHubApi(
@@ -256,11 +325,14 @@ async function loadDiffText(
   return diff
 }
 
-async function loadPullReviewTarget(
+async function loadPullMetadata(
   apiUrl: string,
   source: Extract<GitHubDiffSource, { kind: 'pull' }>,
   options: LoadGitHubDiffOptions,
-): Promise<GitHubPullReviewTarget> {
+): Promise<{
+  reviewTarget: GitHubPullReviewTarget
+  stackSummary: GitHubPullStackSummary | null
+}> {
   const response = await fetchGitHubApi(apiUrl, options)
 
   if (!response.ok) {
@@ -270,16 +342,26 @@ async function loadPullReviewTarget(
     )
   }
 
-  const headSha = await readPullHeadSha(response)
+  let data: unknown
+  try {
+    data = await response.json()
+  } catch {
+    data = null
+  }
+
+  const headSha = readPullHeadShaFromData(data)
   if (!headSha) {
     throw new Error('GitHub did not return pull request metadata for this URL.')
   }
 
   return {
-    owner: source.owner,
-    repo: source.repo,
-    pullNumber: source.number,
-    headSha,
+    reviewTarget: {
+      owner: source.owner,
+      repo: source.repo,
+      pullNumber: source.number,
+      headSha,
+    },
+    stackSummary: parsePullStackSummary(data),
   }
 }
 
@@ -292,6 +374,10 @@ export async function readPullHeadSha(response: Response): Promise<string> {
     return ''
   }
 
+  return readPullHeadShaFromData(data)
+}
+
+function readPullHeadShaFromData(data: unknown): string {
   if (
     typeof data === 'object' &&
     data !== null &&
@@ -305,6 +391,182 @@ export async function readPullHeadSha(response: Response): Promise<string> {
   }
 
   return ''
+}
+
+function parsePullStackSummary(data: unknown): GitHubPullStackSummary | null {
+  const stack = readObjectProperty(data, 'stack')
+  if (!stack) {
+    return null
+  }
+
+  const number = readIntegerProperty(stack, 'number')
+  const position = readIntegerProperty(stack, 'position')
+  const size = readIntegerProperty(stack, 'size')
+  const baseRef = readNestedStringProperty(stack, 'base', 'ref')
+
+  if (
+    number === null ||
+    number < 1 ||
+    position === null ||
+    position < 1 ||
+    size === null ||
+    size < 2 ||
+    position > size ||
+    baseRef === null ||
+    baseRef === ''
+  ) {
+    return null
+  }
+
+  return { number, position, size, baseRef }
+}
+
+function parsePullStack(data: unknown): GitHubPullStack | null {
+  const number = readIntegerProperty(data, 'number')
+  const baseRef = readNestedStringProperty(data, 'base', 'ref')
+  const rawPullRequests = readArrayProperty(data, 'pull_requests')
+
+  if (
+    number === null ||
+    number < 1 ||
+    baseRef === null ||
+    baseRef === '' ||
+    rawPullRequests === null ||
+    rawPullRequests.length < 2
+  ) {
+    return null
+  }
+
+  const pullRequests: GitHubPullStackItem[] = []
+  for (const rawPull of rawPullRequests) {
+    const pullNumber = readIntegerProperty(rawPull, 'number')
+    const title = readStringProperty(rawPull, 'title')
+    const state = readStringProperty(rawPull, 'state')
+    const draft = readBooleanProperty(rawPull, 'draft')
+    const mergedAt = readNullableStringProperty(rawPull, 'merged_at')
+    const headRef = readNestedStringProperty(rawPull, 'head', 'ref')
+    const headSha = readNestedStringProperty(rawPull, 'head', 'sha')
+
+    if (
+      pullNumber === null ||
+      pullNumber < 1 ||
+      (state !== 'open' && state !== 'closed') ||
+      draft === null ||
+      mergedAt === undefined ||
+      headRef === null ||
+      headRef === '' ||
+      headSha === null ||
+      headSha === ''
+    ) {
+      return null
+    }
+
+    pullRequests.push({
+      number: String(pullNumber),
+      title: title?.trim() || `Pull request #${pullNumber}`,
+      state,
+      draft,
+      mergedAt,
+      headRef,
+      headSha,
+    })
+  }
+
+  return { number, baseRef, pullRequests }
+}
+
+function readObjectProperty(
+  data: unknown,
+  property: string,
+): Record<string, unknown> | null {
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !(property in data) ||
+    typeof data[property as keyof typeof data] !== 'object' ||
+    data[property as keyof typeof data] === null ||
+    Array.isArray(data[property as keyof typeof data])
+  ) {
+    return null
+  }
+
+  return data[property as keyof typeof data] as Record<string, unknown>
+}
+
+function readArrayProperty(data: unknown, property: string): unknown[] | null {
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !(property in data) ||
+    !Array.isArray(data[property as keyof typeof data])
+  ) {
+    return null
+  }
+
+  return data[property as keyof typeof data] as unknown[]
+}
+
+function readStringProperty(data: unknown, property: string): string | null {
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !(property in data) ||
+    typeof data[property as keyof typeof data] !== 'string'
+  ) {
+    return null
+  }
+
+  return data[property as keyof typeof data] as string
+}
+
+function readBooleanProperty(data: unknown, property: string): boolean | null {
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !(property in data) ||
+    typeof data[property as keyof typeof data] !== 'boolean'
+  ) {
+    return null
+  }
+
+  return data[property as keyof typeof data] as boolean
+}
+
+function readIntegerProperty(data: unknown, property: string): number | null {
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !(property in data) ||
+    typeof data[property as keyof typeof data] !== 'number'
+  ) {
+    return null
+  }
+
+  const value = data[property as keyof typeof data] as number
+  return Number.isSafeInteger(value) ? value : null
+}
+
+function readNullableStringProperty(
+  data: unknown,
+  property: string,
+): string | null | undefined {
+  if (typeof data !== 'object' || data === null || !(property in data)) {
+    return undefined
+  }
+
+  const value = data[property as keyof typeof data]
+  return value === null || typeof value === 'string' ? value : undefined
+}
+
+function readNestedStringProperty(
+  data: unknown,
+  objectProperty: string,
+  stringProperty: string,
+): string | null {
+  return readStringProperty(
+    readObjectProperty(data, objectProperty),
+    stringProperty,
+  )
 }
 
 export function readStoredGitHubToken(): string {
@@ -361,6 +623,26 @@ async function githubErrorMessage(
   return detail
     ? `GitHub could not load this diff (${response.status}): ${detail}`
     : `GitHub could not load this diff (${response.status}).`
+}
+
+async function githubStackErrorMessage(
+  response: Response,
+  stackNumber: number,
+  hasToken: boolean,
+): Promise<string> {
+  switch (response.status) {
+    case 401:
+      return `GitHub rejected the saved token while loading stack #${stackNumber}.`
+    case 403:
+      return hasToken
+        ? `GitHub denied access to stack #${stackNumber}. Check the token’s permissions, organization SSO authorization, and rate limit.`
+        : `GitHub denied access to stack #${stackNumber}, or the public API rate limit was exceeded.`
+  }
+
+  const detail = await readGitHubErrorDetail(response)
+  return detail
+    ? `GitHub could not load stack #${stackNumber} (${response.status}): ${detail}`
+    : `GitHub could not load stack #${stackNumber} (${response.status}).`
 }
 
 async function readGitHubErrorDetail(response: Response): Promise<string> {

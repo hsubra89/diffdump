@@ -5,6 +5,7 @@ import {
   createGitHubDiffPath,
   createGitHubUrlFromPath,
   loadGitHubDiff,
+  loadGitHubPullStack,
   parseGitHubDiffUrl,
   readStoredGitHubToken,
   writeStoredGitHubToken,
@@ -180,6 +181,7 @@ describe('GitHub diff loading', () => {
         pullNumber: '42',
         headSha: HEAD_SHA,
       },
+      stackSummary: null,
     })
 
     expect(fetcher).toHaveBeenCalledWith(
@@ -205,57 +207,12 @@ describe('GitHub diff loading', () => {
       }),
     )
     /* The head is read before the diff so a racing push can only record a
-       head older than the diff, which the submit-time head check blocks. The
-       trailing re-check catches heads that moved while the diff downloaded. */
+       head older than the diff, which the submit-time head check blocks. */
     expect(
       fetcher.mock.calls.map(([, init]) =>
         new Headers(init?.headers).get('Accept'),
       ),
-    ).toEqual([
-      'application/vnd.github+json',
-      'application/vnd.github.diff',
-      'application/vnd.github+json',
-    ])
-  })
-
-  it('reloads once when the head advances while the diff downloads', async () => {
-    const NEW_SHA = 'fedcba9876543210fedcba9876543210fedcba98'
-    const NEW_DIFF = VALID_DIFF.replace('hello world', 'hello universe')
-    let metadataCalls = 0
-    let diffCalls = 0
-    const fetcher = createPullFetcher({
-      metadataResponse: () => {
-        metadataCalls += 1
-        return new Response(
-          JSON.stringify({
-            head: { sha: metadataCalls === 1 ? HEAD_SHA : NEW_SHA },
-          }),
-          { headers: { 'Content-Type': 'application/json' } },
-        )
-      },
-      diffResponse: () => {
-        diffCalls += 1
-        return new Response(diffCalls === 1 ? VALID_DIFF : NEW_DIFF, {
-          headers: { 'Content-Type': 'application/vnd.github.v3.diff' },
-        })
-      },
-    })
-
-    await expect(
-      loadGitHubDiff('https://github.com/acme/widgets/pull/42', {
-        fetch: fetcher,
-      }),
-    ).resolves.toEqual({
-      diff: NEW_DIFF,
-      source: { kind: 'pull', owner: 'acme', repo: 'widgets', number: '42' },
-      reviewTarget: {
-        owner: 'acme',
-        repo: 'widgets',
-        pullNumber: '42',
-        headSha: NEW_SHA,
-      },
-    })
-    expect(fetcher).toHaveBeenCalledTimes(4)
+    ).toEqual(['application/vnd.github+json', 'application/vnd.github.diff'])
   })
 
   it('loads commit diffs in one request without a review target', async () => {
@@ -274,6 +231,7 @@ describe('GitHub diff loading', () => {
         sha: 'a1b2c3d',
       },
       reviewTarget: null,
+      stackSummary: null,
     })
 
     expect(fetcher).toHaveBeenCalledTimes(1)
@@ -341,5 +299,192 @@ describe('GitHub diff loading', () => {
         fetch: fetcher,
       }),
     ).rejects.toThrow('could not load this diff (500)')
+  })
+})
+
+describe('GitHub pull request stacks', () => {
+  const SOURCE = {
+    kind: 'pull' as const,
+    owner: 'freckle-io',
+    repo: 'next',
+    number: '792',
+  }
+  const STACK_RESPONSE = {
+    number: 811,
+    base: { ref: 'dev' },
+    pull_requests: [
+      {
+        number: 790,
+        title: 'feat: model Apify integration connections',
+        state: 'closed',
+        draft: false,
+        merged_at: '2026-07-30T22:02:34Z',
+        head: {
+          ref: 'codex/apify-01-connections',
+          sha: '1b3bb77582ce5e023b16eebaa6e14c342165178b',
+        },
+      },
+      {
+        number: 791,
+        title: 'feat: run Apify with workspace connections',
+        state: 'open',
+        draft: false,
+        merged_at: null,
+        head: {
+          ref: 'codex/apify-02-runtime',
+          sha: '2e204ee99a6c64ad15d699eabdcc37aa3459cc5f',
+        },
+      },
+      {
+        number: 792,
+        title: 'feat: manage Apify workspace connections',
+        state: 'open',
+        draft: false,
+        merged_at: null,
+        head: {
+          ref: 'codex/apify-03-authoring',
+          sha: '621c02e697bbcec876baa923567c3272693970f6',
+        },
+      },
+    ],
+  }
+
+  it('reads stack membership from pull request metadata', async () => {
+    const fetcher = vi.fn<GitHubFetch>(async (_input, init) => {
+      const accept = new Headers(init?.headers).get('Accept')
+      return accept === 'application/vnd.github.diff'
+        ? new Response(VALID_DIFF)
+        : new Response(
+            JSON.stringify({
+              head: { sha: STACK_RESPONSE.pull_requests[2].head.sha },
+              stack: {
+                id: 68314,
+                number: 811,
+                position: 3,
+                size: 3,
+                base: {
+                  ref: 'dev',
+                  sha: 'ec4d41bba5844fc521dd5386d303ceaca0520263',
+                },
+              },
+            }),
+          )
+    })
+
+    await expect(
+      loadGitHubDiff('https://github.com/freckle-io/next/pull/792', {
+        fetch: fetcher,
+      }),
+    ).resolves.toMatchObject({
+      stackSummary: {
+        number: 811,
+        position: 3,
+        size: 3,
+        baseRef: 'dev',
+      },
+    })
+  })
+
+  it('loads the ordered pull requests in a stack', async () => {
+    const fetcher = vi.fn<GitHubFetch>(
+      async () =>
+        new Response(JSON.stringify(STACK_RESPONSE), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    )
+
+    await expect(
+      loadGitHubPullStack(SOURCE, 811, {
+        fetch: fetcher,
+        token: 'ghp_secret',
+      }),
+    ).resolves.toEqual({
+      number: 811,
+      baseRef: 'dev',
+      pullRequests: [
+        {
+          number: '790',
+          title: 'feat: model Apify integration connections',
+          state: 'closed',
+          draft: false,
+          mergedAt: '2026-07-30T22:02:34Z',
+          headRef: 'codex/apify-01-connections',
+          headSha: '1b3bb77582ce5e023b16eebaa6e14c342165178b',
+        },
+        {
+          number: '791',
+          title: 'feat: run Apify with workspace connections',
+          state: 'open',
+          draft: false,
+          mergedAt: null,
+          headRef: 'codex/apify-02-runtime',
+          headSha: '2e204ee99a6c64ad15d699eabdcc37aa3459cc5f',
+        },
+        {
+          number: '792',
+          title: 'feat: manage Apify workspace connections',
+          state: 'open',
+          draft: false,
+          mergedAt: null,
+          headRef: 'codex/apify-03-authoring',
+          headSha: '621c02e697bbcec876baa923567c3272693970f6',
+        },
+      ],
+    })
+
+    expect(fetcher).toHaveBeenCalledWith(
+      'https://api.github.com/repos/freckle-io/next/stacks/811',
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: 'Bearer ghp_secret',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      }),
+    )
+  })
+
+  it('falls back to a standalone PR when a stack disappears', async () => {
+    const fetcher = vi.fn<GitHubFetch>(
+      async () => new Response('Not Found', { status: 404 }),
+    )
+
+    await expect(
+      loadGitHubPullStack(SOURCE, 811, { fetch: fetcher }),
+    ).resolves.toBeNull()
+  })
+
+  it('explains anonymous stack access and rate-limit failures', async () => {
+    const fetcher = vi.fn<GitHubFetch>(
+      async () => new Response('Forbidden', { status: 403 }),
+    )
+
+    await expect(
+      loadGitHubPullStack(SOURCE, 811, { fetch: fetcher }),
+    ).rejects.toThrow(
+      'GitHub denied access to stack #811, or the public API rate limit was exceeded.',
+    )
+  })
+
+  it('rejects malformed stack metadata without accepting a partial order', async () => {
+    const fetcher = vi.fn<GitHubFetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            ...STACK_RESPONSE,
+            pull_requests: [
+              STACK_RESPONSE.pull_requests[0],
+              {
+                ...STACK_RESPONSE.pull_requests[1],
+                head: { ref: '', sha: '' },
+              },
+            ],
+          }),
+        ),
+    )
+
+    await expect(
+      loadGitHubPullStack(SOURCE, 811, { fetch: fetcher }),
+    ).rejects.toThrow('invalid metadata')
   })
 })
