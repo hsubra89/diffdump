@@ -5,15 +5,20 @@ const themeNames = {
   light: 'diffdump-neutral-graphite-light',
 } as const
 
-interface DiffSyntaxPalette {
+interface GitHubSyntaxPalette {
   accent: string
+  constant: string
+  foreground: string
+  type: string
+}
+
+interface DiffPalette {
   addition: string
   additionLine: string
   additionText: string
   background: string
   border: string
   canvas: string
-  constant: string
   deletion: string
   deletionLine: string
   deletionText: string
@@ -22,7 +27,7 @@ interface DiffSyntaxPalette {
   lineHighlight: string
   muted: string
   selection: string
-  type: string
+  syntax: GitHubSyntaxPalette
 }
 
 /* The TSX grammar re-suffixes every TypeScript scope with `.tsx`, and
@@ -32,75 +37,13 @@ function tsAndTsx(...scopes: string[]): string[] {
   return scopes.flatMap((scope) => [scope, scope.replace(/\.ts\b/g, '.tsx')])
 }
 
-function restrainedTokenColors({
+function githubWebTokenColors({
   accent,
-  addition,
   constant,
-  deletion,
   foreground,
-  muted,
   type,
-}: DiffSyntaxPalette): NonNullable<ThemeRegistration['tokenColors']> {
+}: GitHubSyntaxPalette): NonNullable<ThemeRegistration['tokenColors']> {
   return [
-    {
-      settings: { foreground },
-    },
-    {
-      scope: ['comment', 'punctuation.definition.comment', 'string.comment'],
-      settings: { fontStyle: 'italic', foreground: muted },
-    },
-    {
-      scope: [
-        'string',
-        'string.quoted',
-        'string.template',
-        'string.regexp',
-        'markup.inline.raw',
-      ],
-      settings: { foreground: constant },
-    },
-    {
-      scope: [
-        'constant',
-        'constant.numeric',
-        'constant.language',
-        'variable.language',
-        'support.constant',
-      ],
-      settings: { foreground: constant },
-    },
-    {
-      scope: [
-        'keyword',
-        'storage',
-        'storage.type',
-        'storage.modifier',
-        'punctuation.definition.template-expression',
-      ],
-      settings: { foreground: accent },
-    },
-    {
-      scope: [
-        'entity.name.function',
-        'entity.name.type',
-        'entity.name.class',
-        'support.function',
-        'support.type',
-      ],
-      settings: { foreground: type },
-    },
-    {
-      scope: ['invalid', 'message.error', 'markup.deleted'],
-      settings: { foreground: deletion },
-    },
-    {
-      scope: ['markup.inserted'],
-      settings: { foreground: addition },
-    },
-    {
-      scope: ['meta.link.inline.markdown', 'markup.underline.link'],
-      settings: { fontStyle: 'underline', foreground: accent },
-    },
     {
       scope: tsAndTsx('entity.name.label.ts', 'meta.object-literal.key.ts'),
       settings: { foreground: accent },
@@ -147,7 +90,7 @@ function restrainedTokenColors({
 function extendTheme(
   baseTheme: ThemeRegistration,
   name: string,
-  palette: DiffSyntaxPalette,
+  palette: DiffPalette,
 ): ThemeRegistration {
   return {
     ...baseTheme,
@@ -173,7 +116,10 @@ function extendTheme(
       focusBorder: palette.focus,
       foreground: palette.foreground,
     },
-    tokenColors: [...restrainedTokenColors(palette)],
+    tokenColors: [
+      ...(baseTheme.tokenColors ?? []),
+      ...githubWebTokenColors(palette.syntax),
+    ],
   }
 }
 
@@ -182,14 +128,12 @@ registerCustomTheme(themeNames.light, async () => {
     await import('@shikijs/themes/github-light-default')
 
   return extendTheme(baseTheme, themeNames.light, {
-    accent: '#3f3f46',
     addition: '#15803d',
     additionLine: '#15803d0d',
     additionText: '#15803d24',
     background: '#ffffff',
     border: '#e4e4e7',
     canvas: '#f7f7f8',
-    constant: '#52525b',
     deletion: '#b91c1c',
     deletionLine: '#b91c1c0d',
     deletionText: '#b91c1c24',
@@ -198,7 +142,12 @@ registerCustomTheme(themeNames.light, async () => {
     lineHighlight: '#f4f4f580',
     muted: '#a1a1aa',
     selection: '#18181b14',
-    type: '#52525b',
+    syntax: {
+      accent: '#0969da',
+      constant: '#0550ae',
+      foreground: '#1f2328',
+      type: '#953800',
+    },
   })
 })
 
@@ -207,14 +156,12 @@ registerCustomTheme(themeNames.dark, async () => {
     await import('@shikijs/themes/github-dark-default')
 
   return extendTheme(baseTheme, themeNames.dark, {
-    accent: '#d4d4d8',
     addition: '#4ade80',
     additionLine: '#4ade8014',
     additionText: '#4ade8030',
     background: '#18181b',
     border: '#27272a',
     canvas: '#09090b',
-    constant: '#a1a1aa',
     deletion: '#f87171',
     deletionLine: '#f8717114',
     deletionText: '#f8717130',
@@ -223,7 +170,12 @@ registerCustomTheme(themeNames.dark, async () => {
     lineHighlight: '#27272a80',
     muted: '#71717a',
     selection: '#fafafa1a',
-    type: '#d4d4d8',
+    syntax: {
+      accent: '#2f81f7',
+      constant: '#79c0ff',
+      foreground: '#e6edf3',
+      type: '#ffa657',
+    },
   })
 })
 
