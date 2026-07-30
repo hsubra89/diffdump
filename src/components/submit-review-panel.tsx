@@ -61,7 +61,7 @@ export default function SubmitReviewPanel({
 
   return (
     <form
-      className="flex w-72 flex-col gap-3 rounded-control border border-line bg-canvas p-3 text-xs shadow-[0_18px_45px_light-dark(rgb(0_0_0/14%),rgb(0_0_0/42%))]"
+      className="flex w-72 flex-col gap-3 rounded-control border border-line bg-canvas p-3 text-xs shadow-float"
       aria-label="Submit review"
       data-testid="submit-review-panel"
       onSubmit={(formEvent) => {
@@ -72,7 +72,7 @@ export default function SubmitReviewPanel({
       }}
     >
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-bright">
+        <span className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-bright">
           Submit review
         </span>
         <span className="text-muted tabular-nums">
@@ -111,7 +111,7 @@ export default function SubmitReviewPanel({
               onChange={() => setEvent(option.event)}
             />
             <span className="flex flex-col gap-0.5">
-              <span className="font-semibold">{option.label}</span>
+              <span className="font-medium">{option.label}</span>
               <span className="leading-snug text-muted">
                 {option.description}
               </span>
@@ -145,7 +145,7 @@ export default function SubmitReviewPanel({
 
       {succeeded ? (
         <div className="flex items-center justify-between gap-2">
-          <span className="text-accent-text">Review published ✓</span>
+          <span className="text-addition">Review published ✓</span>
           {reviewUrl !== null && (
             <a
               className="text-accent-text underline underline-offset-2 hover:no-underline"

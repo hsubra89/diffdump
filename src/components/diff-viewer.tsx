@@ -1129,7 +1129,7 @@ export default function DiffViewer(props: DiffViewerProps) {
           )}
           <aside
             className={cn(
-              'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-canvas shadow-[18px_0_45px_light-dark(rgb(0_0_0/14%),rgb(0_0_0/42%))] transition-[transform,visibility] duration-150 [grid-area:tree]',
+              'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-canvas shadow-float transition-[transform,visibility] duration-150 [grid-area:tree]',
               'md:visible md:static md:z-auto md:w-auto md:translate-x-0 md:shadow-none',
               filePickerOpen && 'visible translate-x-0',
             )}
@@ -1255,7 +1255,7 @@ function SidebarTab({
   return (
     <button
       className={cn(
-        'inline-flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted transition-colors hover:text-foreground',
+        'inline-flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted transition-colors hover:text-foreground',
         active && 'border-line bg-surface-raised text-foreground',
       )}
       type="button"
@@ -1272,7 +1272,7 @@ function FileExpansionStatus({ state }: { state: FileExpansionState }) {
   if (state.phase === 'error') {
     return (
       <output
-        className="cursor-help font-mono text-[10px] font-medium text-deletion"
+        className="cursor-help font-mono text-[11px] font-medium text-deletion"
         title={state.message}
       >
         Expand failed
@@ -1281,7 +1281,7 @@ function FileExpansionStatus({ state }: { state: FileExpansionState }) {
   }
 
   return (
-    <output className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium text-muted">
+    <output className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-muted">
       <span
         className="size-1.5 animate-pulse rounded-full bg-accent-text"
         aria-hidden="true"
@@ -1339,7 +1339,7 @@ function CategoryFilters({
           <button
             key={filter}
             className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border border-transparent px-2.5 font-mono text-[10px] text-muted transition-colors',
+              'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border border-transparent px-2.5 font-mono text-[11px] text-muted transition-colors',
               'hover:border-line hover:bg-surface hover:text-muted-bright',
               'disabled:pointer-events-none disabled:opacity-55',
               active &&
@@ -1351,7 +1351,7 @@ function CategoryFilters({
             data-testid={`category-filter-${filter}`}
             onClick={() => onChange(filter)}
           >
-            <span className="font-semibold">{details.label}</span>
+            <span className="font-medium">{details.label}</span>
             <CategorySummary summary={filterSummary} />
           </button>
         )
@@ -1407,7 +1407,7 @@ function FileOrderControl({
 function DiffCategoryBadge({ category }: { category: DiffCategory }) {
   return (
     <span
-      className="inline-flex items-center rounded border border-line bg-surface-raised px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-bright"
+      className="inline-flex items-center rounded border border-line bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-bright"
       data-diff-category={category}
     >
       {DIFF_CATEGORY_DETAILS[category].label}

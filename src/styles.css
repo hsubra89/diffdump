@@ -1,6 +1,6 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/geist';
-@import '@fontsource-variable/geist-mono';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
 @theme inline {
   --color-canvas: var(--canvas);
@@ -16,6 +16,9 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-ink: var(--accent-ink);
   --color-accent-text: var(--accent-text);
+  --color-secondary: var(--secondary);
+  --color-secondary-strong: var(--secondary-strong);
+  --color-secondary-ink: var(--secondary-ink);
   --color-danger: var(--danger);
   --color-addition: var(--addition);
   --color-deletion: var(--deletion);
@@ -23,45 +26,61 @@
   --font-mono: var(--font-code);
   --radius-control: var(--radius-control);
   --radius-panel: var(--radius-panel);
+  --shadow-sm: var(--shadow-subtle);
+  --shadow-soft: var(--shadow-surface);
+  --shadow-float: var(--shadow-floating);
 }
 
 :root {
   color-scheme: light dark;
   --font-ui:
-    'Geist Variable', ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    'Inter Variable', Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
     'Segoe UI', sans-serif;
   --font-code:
-    'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, monospace;
+    'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
   font-family: var(--font-ui);
   font-synthesis: none;
   color: var(--text);
   background: var(--canvas);
-  /* GitHub Default workbench colors, matching the Shiki themes used by the
-     diff renderer. These follow the same editor/sidebar token mapping as
-     Pierre's Diffshub chrome layer. */
-  --canvas: light-dark(#f6f8fa, #010409);
-  --panel: light-dark(#ffffff, #0d1117);
-  --surface: light-dark(#ffffff, #161b22);
-  --surface-raised: light-dark(#f3f4f6, #282e33);
-  --line: light-dark(#d0d7de, #30363d);
-  --line-bright: light-dark(#afb8c1, #484f58);
-  --text: light-dark(#1f2328, #e6edf3);
-  --muted: light-dark(#656d76, #7d8590);
-  --muted-bright: light-dark(#424a53, #c9d1d9);
-  --accent: light-dark(#1f883d, #238636);
-  --accent-strong: light-dark(#1a7f37, #2ea043);
-  --accent-ink: #ffffff;
-  /* Logo tile fields: accent green split against a neutral slate by the
-     slash. Mirrored in public/favicon.svg. */
-  --logo-accent: light-dark(#1f883d, #238636);
-  --logo-neutral: light-dark(#57606a, #444c56);
-  --accent-text: light-dark(#0969da, #2f81f7);
-  --danger: light-dark(#cf222e, #f85149);
-  --addition: light-dark(#1a7f37, #3fb950);
-  --deletion: light-dark(#cf222e, #f85149);
-  --radius-control: 7px;
+  /* Neutral Graphite keeps the application chrome achromatic so color is
+     reserved for the meaning-bearing addition and deletion states. */
+  --canvas: light-dark(#f7f7f8, #09090b);
+  --panel: light-dark(#ffffff, #18181b);
+  --surface: light-dark(#ffffff, #18181b);
+  --surface-raised: light-dark(#f4f4f5, #27272a);
+  --line: light-dark(#e4e4e7, #27272a);
+  --line-bright: light-dark(#d4d4d8, #3f3f46);
+  --text: light-dark(#18181b, #fafafa);
+  --muted: light-dark(#71717a, #a1a1aa);
+  --muted-bright: light-dark(#3f3f46, #d4d4d8);
+  --accent: light-dark(#27272a, #fafafa);
+  --accent-strong: light-dark(#18181b, #e4e4e7);
+  --accent-ink: light-dark(#fafafa, #18181b);
+  --accent-text: light-dark(#3f3f46, #d4d4d8);
+  --secondary: light-dark(#f4f4f5, #27272a);
+  --secondary-strong: light-dark(#e4e4e7, #3f3f46);
+  --secondary-ink: light-dark(#27272a, #fafafa);
+  --danger: light-dark(#b91c1c, #f87171);
+  --addition: light-dark(#15803d, #4ade80);
+  --deletion: light-dark(#b91c1c, #f87171);
+  --logo-accent: light-dark(#18181b, #fafafa);
+  --logo-neutral: light-dark(#52525b, #d4d4d8);
+  --logo-mark: light-dark(#ffffff, #18181b);
+  --radius-control: 8px;
   --radius-panel: 12px;
+  --shadow-subtle: light-dark(
+    0 1px 2px rgb(24 24 27 / 5%),
+    0 1px 2px rgb(0 0 0 / 28%)
+  );
+  --shadow-surface: light-dark(
+    0 2px 8px rgb(24 24 27 / 4%),
+    0 4px 12px rgb(0 0 0 / 24%)
+  );
+  --shadow-floating: light-dark(
+    0 12px 28px rgb(24 24 27 / 12%),
+    0 16px 36px rgb(0 0 0 / 48%)
+  );
 }
 
 :root.light {
@@ -87,6 +106,7 @@ body {
   min-height: 100vh;
   color: var(--text);
   background: var(--canvas);
+  letter-spacing: -0.01em;
 }
 
 @layer base {
@@ -115,31 +135,37 @@ body {
   }
 }
 
+@layer utilities {
+  .font-mono {
+    letter-spacing: 0;
+  }
+}
+
 .diff-file-tree {
   /* The tree's :host sets `color-scheme: light dark`, which resolves its
      light-dark() colors against the OS preference instead of the app's
      .light/.dark root class. Inheriting re-couples it to the app theme. */
   color-scheme: inherit;
   --trees-bg-override: var(--canvas);
-  --trees-bg-muted-override: light-dark(#eaeef280, #6e76811a);
+  --trees-bg-muted-override: light-dark(#f4f4f580, #27272a99);
   --trees-fg-override: var(--muted-bright);
   --trees-fg-muted-override: var(--muted);
   --trees-border-color-override: var(--line);
   --trees-input-bg-override: var(--panel);
-  --trees-selected-bg-override: light-dark(#afb8c133, #6e768166);
+  --trees-selected-bg-override: var(--surface-raised);
   --trees-selected-fg-override: var(--text);
-  --trees-selected-focused-border-color-override: light-dark(#0969da, #1f6feb);
-  --trees-focus-ring-color-override: light-dark(#0969da, #1f6feb);
+  --trees-selected-focused-border-color-override: var(--accent-text);
+  --trees-focus-ring-color-override: var(--accent-text);
   --trees-status-added-override: var(--addition);
-  --trees-status-ignored-override: light-dark(#6e7781, #6e7681);
-  --trees-status-modified-override: light-dark(#9a6700, #d29922);
+  --trees-status-ignored-override: var(--muted);
+  --trees-status-modified-override: var(--muted-bright);
   --trees-status-renamed-override: var(--muted);
   --trees-status-untracked-override: var(--addition);
   --trees-status-deleted-override: var(--deletion);
   --trees-scrollbar-thumb-override: var(--line-bright);
   --trees-font-family-override: var(--font-code);
-  --trees-font-size-override: 11px;
-  --trees-border-radius-override: 5px;
+  --trees-font-size-override: 12px;
+  --trees-border-radius-override: 6px;
   --trees-item-margin-x-override: 5px;
   /* Put the search field on the same 5px rail as the tree rows' highlight
      boxes; its inner text then starts at ~12px, aligned with the FILES
@@ -185,9 +211,9 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-  box-shadow: 0 12px 30px light-dark(rgb(0 0 0 / 5%), rgb(0 0 0 / 16%));
+  box-shadow: var(--shadow-surface);
   font-family: var(--font-code);
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 20px;
 }
 
@@ -198,8 +224,8 @@ body {
   }
 
   .diff-scroll diffs-container {
-    border-radius: 7px;
-    font-size: 11px;
+    border-radius: 8px;
+    font-size: 12px;
     line-height: 18px;
   }
 }

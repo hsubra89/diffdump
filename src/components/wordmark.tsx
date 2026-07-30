@@ -10,7 +10,7 @@ export function Wordmark({ className }: WordmarkProps) {
   return (
     <Link
       className={cn(
-        'inline-flex items-center gap-2 font-mono text-[15px] font-bold tracking-[-0.04em]',
+        'inline-flex items-center gap-2 font-sans text-[15px] font-semibold tracking-[-0.025em]',
         className,
       )}
       to="/"
@@ -26,7 +26,7 @@ export function Wordmark({ className }: WordmarkProps) {
           y1="25"
           x2="19"
           y2="7"
-          stroke="var(--accent-ink)"
+          stroke="var(--logo-mark)"
           strokeWidth="4"
           strokeLinecap="round"
         />

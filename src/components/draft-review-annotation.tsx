@@ -182,7 +182,7 @@ export function DraftReviewComposer({
 export function DraftInvalidBadge({ error }: { error: string }) {
   return (
     <span
-      className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-deletion"
+      className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-deletion"
       title={error}
     >
       Can’t submit
@@ -204,7 +204,7 @@ export function DraftReviewAnnotation({
   return (
     <div className={cardClassName} data-testid="draft-review-annotation">
       <div className="flex items-center gap-2">
-        <span className="inline-flex items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-accent-text">
+        <span className="inline-flex items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-accent-text">
           Pending
         </span>
         {rangeError !== null && <DraftInvalidBadge error={rangeError} />}

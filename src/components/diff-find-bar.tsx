@@ -201,7 +201,7 @@ export default function DiffFindBar({
     <search
       id="diff-find-bar"
       aria-label="Find in diff"
-      className="absolute left-3 right-3 top-3 z-30 flex items-center gap-1 rounded-control border border-line-bright bg-panel p-1 shadow-[0_2px_8px_light-dark(rgb(0_0_0/12%),rgb(0_0_0/45%)),0_12px_36px_light-dark(rgb(0_0_0/22%),rgb(0_0_0/65%))] focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-solid focus-within:outline-accent-text sm:left-auto md:right-4"
+      className="absolute left-3 right-3 top-3 z-30 flex items-center gap-1 rounded-control border border-line-bright bg-panel p-1 shadow-float focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-solid focus-within:outline-accent-text sm:left-auto md:right-4"
     >
       <input
         ref={inputRef}
@@ -217,7 +217,7 @@ export default function DiffFindBar({
         onKeyDown={handleInputKeyDown}
       />
       <span
-        className="min-w-14 px-1 text-right font-mono text-[10px] text-muted tabular-nums"
+        className="min-w-14 px-1 text-right font-mono text-[11px] text-muted tabular-nums"
         aria-live="polite"
       >
         {search ? formatMatchCounter(search) : ''}

@@ -177,7 +177,7 @@ function Home() {
       </nav>
 
       <section className="pt-16 pb-10 md:pt-24 md:pb-12">
-        <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-semibold leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
+        <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-[560] leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
           Any pull request.
           <br />
           <span className="text-muted">One clean review.</span>
@@ -206,16 +206,16 @@ function Home() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-panel border border-line bg-panel shadow-[0_16px_40px_light-dark(rgb(0_0_0/5%),rgb(0_0_0/35%))]">
+        <div className="overflow-hidden rounded-panel border border-line bg-panel shadow-soft">
           <div className="flex min-h-12 items-stretch justify-between border-b border-line bg-canvas pr-3 font-mono text-xs text-muted">
             <div className="flex min-w-0 items-stretch">
               <span
-                className="flex items-center gap-1.5 px-4"
+                className="hidden items-center gap-1.5 px-4 sm:flex"
                 aria-hidden="true"
               >
-                <i className="size-[7px] rounded-full bg-[#f17873]" />
-                <i className="size-[7px] rounded-full bg-[#e5b95f]" />
-                <i className="size-[7px] rounded-full bg-[#70c285]" />
+                <i className="size-[7px] rounded-full bg-line-bright" />
+                <i className="size-[7px] rounded-full bg-muted" />
+                <i className="size-[7px] rounded-full bg-muted-bright" />
               </span>
               <div
                 role="tablist"
@@ -257,7 +257,8 @@ function Home() {
                 }
               }}
             >
-              Load example
+              <span className="sm:hidden">Example</span>
+              <span className="hidden sm:inline">Load example</span>
             </Button>
           </div>
 

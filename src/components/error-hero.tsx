@@ -33,7 +33,7 @@ export function ErrorHero({
       <p className={cn(eyebrowClassName, 'mb-5 text-muted-bright')}>
         {eyebrow}
       </p>
-      <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] font-semibold leading-[0.98] tracking-[-0.04em]">
+      <h1 className="mb-3.5 text-[clamp(38px,7vw,62px)] font-[560] leading-[0.98] tracking-[-0.04em]">
         {title}
       </h1>
       <p className="mb-7 leading-relaxed text-muted-bright">{description}</p>

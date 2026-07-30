@@ -180,7 +180,7 @@ export default function ReviewCommentsPanel({
               {threadsByFile.map(([path, fileThreads]) => (
                 <div key={path}>
                   <p
-                    className="truncate px-2 pb-1 font-mono text-[10px] text-muted"
+                    className="truncate px-2 pb-1 font-mono text-[11px] text-muted"
                     title={path}
                   >
                     {path}
@@ -220,7 +220,7 @@ function ThreadRow({
       <span className="flex w-full items-center gap-1.5">
         <span className="truncate font-medium">{root.author.login}</span>
         {root.outdated && (
-          <span className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1 py-px font-mono text-[9px] uppercase tracking-[0.08em] text-muted">
+          <span className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-muted">
             Outdated
           </span>
         )}
@@ -304,7 +304,7 @@ function CommentLocation({
   const marker = kind === 'addition' ? '+' : kind === 'deletion' ? '−' : ''
 
   return (
-    <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">
+    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted">
       {path !== null && <span title={path}>{path}</span>}
       {line !== null && (
         <span
@@ -325,7 +325,7 @@ function CommentLocation({
 
 function PanelSectionTitle({ children }: { children: ReactNode }) {
   return (
-    <p className="flex items-center gap-2 px-2 pb-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-bright">
+    <p className="flex items-center gap-2 px-2 pb-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-bright">
       {children}
     </p>
   )
