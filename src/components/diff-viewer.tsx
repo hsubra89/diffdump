@@ -108,6 +108,12 @@ import {
 
 type DiffStyle = 'unified' | 'split'
 
+/** Hydration progress for one file, keyed by item id: present while the
+ * full contents download after an expander click, kept as an error note
+ * when the download fails, and removed once the context renders. */
+type FileExpansionState =
+  { phase: 'loading' } | { phase: 'error'; message: string }
+
 type DiffViewerProps =
   | {
       mode?: 'shared'
@@ -223,6 +229,9 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [submitState, setSubmitState] = useState<SubmitReviewState>({
     phase: 'idle',
   })
+  const [expansionStates, setExpansionStates] = useState<
+    ReadonlyMap<string, FileExpansionState>
+  >(EMPTY_EXPANSION_STATES)
 
   const parsed = useMemo(() => {
     try {
@@ -429,15 +438,19 @@ export default function DiffViewer(props: DiffViewerProps) {
         return null
       }
 
+      const expansion = expansionStates.get(item.id)
       const viewed = viewedFileIds.has(file.storageId)
       return (
-        <ViewedFileControl
-          viewed={viewed}
-          onChange={(nextViewed) => setFileViewed(file.storageId, nextViewed)}
-        />
+        <span className="inline-flex items-center gap-3">
+          {expansion && <FileExpansionStatus state={expansion} />}
+          <ViewedFileControl
+            viewed={viewed}
+            onChange={(nextViewed) => setFileViewed(file.storageId, nextViewed)}
+          />
+        </span>
       )
     },
-    [filesById, setFileViewed, viewedFileIds],
+    [expansionStates, filesById, setFileViewed, viewedFileIds],
   )
   const updateDrafts = useCallback(
     (
@@ -719,12 +732,57 @@ export default function DiffViewer(props: DiffViewerProps) {
         })
       : undefined
   }, [isGitHubDiff, reviewTarget, viewerId])
+  /* Wraps the loader so each file's sticky header can report hydration
+     progress: an entry is set when the expander click starts the download,
+     turns into an error note if it fails, and disappears once the expanded
+     context renders. */
+  const trackedLoadDiffFiles = useMemo(() => {
+    if (!loadDiffFiles) {
+      return undefined
+    }
+
+    return async (fileDiff: FileDiffMetadata) => {
+      const itemId = itemIdByPath.get(resolveCommentPath(fileDiff))
+      if (itemId === undefined) {
+        return loadDiffFiles(fileDiff)
+      }
+
+      setExpansionStates((current) =>
+        new Map(current).set(itemId, { phase: 'loading' }),
+      )
+      try {
+        const files = await loadDiffFiles(fileDiff)
+        setExpansionStates((current) => {
+          const next = new Map(current)
+          next.delete(itemId)
+          return next
+        })
+        return files
+      } catch (error) {
+        setExpansionStates((current) =>
+          new Map(current).set(itemId, {
+            phase: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'The file contents could not be loaded.',
+          }),
+        )
+        throw error
+      }
+    }
+  }, [itemIdByPath, loadDiffFiles])
+
+  useEffect(() => {
+    setExpansionStates(EMPTY_EXPANSION_STATES)
+  }, [trackedLoadDiffFiles])
+
   const options = useMemo<CodeViewOptions<ReviewCommentMetadata>>(
     () => ({
       diffStyle,
       diffIndicators: 'bars' as const,
       hunkSeparators: 'line-info' as const,
-      loadDiffFiles,
+      loadDiffFiles: trackedLoadDiffFiles,
       expansionLineCount: 20,
       itemMetrics: {
         lineHeight: 20,
@@ -750,10 +808,10 @@ export default function DiffViewer(props: DiffViewerProps) {
     }),
     [
       diffStyle,
-      loadDiffFiles,
       openComposer,
       resolvedTheme,
       reviewEnabled,
+      trackedLoadDiffFiles,
       wrapLines,
     ],
   )
@@ -1168,6 +1226,8 @@ export default function DiffViewer(props: DiffViewerProps) {
   )
 }
 
+const EMPTY_EXPANSION_STATES: ReadonlyMap<string, FileExpansionState> =
+  new Map()
 const EMPTY_FILE_ID_SET: ReadonlySet<string> = new Set()
 const EMPTY_DRAFTS: DraftReviewComment[] = []
 const EMPTY_THREADS: ReviewCommentThread[] = []
@@ -1205,6 +1265,29 @@ function SidebarTab({
     >
       {children}
     </button>
+  )
+}
+
+function FileExpansionStatus({ state }: { state: FileExpansionState }) {
+  if (state.phase === 'error') {
+    return (
+      <output
+        className="cursor-help font-mono text-[10px] font-medium text-deletion"
+        title={state.message}
+      >
+        Expand failed
+      </output>
+    )
+  }
+
+  return (
+    <output className="inline-flex items-center gap-1.5 font-mono text-[10px] font-medium text-muted">
+      <span
+        className="size-1.5 animate-pulse rounded-full bg-accent-text"
+        aria-hidden="true"
+      />
+      Expanding…
+    </output>
   )
 }
 
