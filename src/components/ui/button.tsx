@@ -18,7 +18,7 @@ export const buttonVariants = cva(
         secondary:
           'border-secondary bg-secondary text-secondary-ink hover:border-secondary-strong hover:bg-secondary-strong active:translate-y-px',
         outline:
-          'border-line bg-transparent text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground active:translate-y-px',
+          'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground active:translate-y-px',
         ghost:
           'border-transparent bg-transparent text-muted hover:bg-surface-raised hover:text-foreground',
       },

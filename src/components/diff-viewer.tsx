@@ -46,8 +46,7 @@ import ReviewCommentsPanel from './review-comments-panel'
 import SubmitReviewPanel from './submit-review-panel'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
-import { SegmentedControl, SegmentedControlItem } from './ui/segmented-control'
-import { PanelHeader, Toolbar } from './ui/surfaces'
+import { eyebrowClassName, PanelHeader, Toolbar } from './ui/surfaces'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Toggle } from './ui/toggle'
 import { cn } from '../lib/cn'
@@ -950,6 +949,11 @@ export default function DiffViewer(props: DiffViewerProps) {
         <Wordmark />
 
         <div className="flex items-center gap-2">
+          {expiresAt && (
+            <span className="hidden font-mono text-[11px] sm:block">
+              <ExpiryCountdown expiresAt={expiresAt} />
+            </span>
+          )}
           <GitHubRepoLink />
           <ThemeToggle />
           <Link
@@ -972,21 +976,53 @@ export default function DiffViewer(props: DiffViewerProps) {
               <span aria-hidden="true">↗</span>
             </a>
           ) : (
-            <Button
-              className="min-w-24"
-              variant="primary"
-              size="sm"
-              onClick={copyShareLink}
-            >
-              <span aria-hidden="true">{copied ? '✓' : '⧉'}</span>
-              {copied ? 'Copied' : 'Copy link'}
+            <Button variant="primary" size="sm" onClick={copyShareLink}>
+              <svg
+                className="size-3.5"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                {copied ? (
+                  <path d="m3.5 8.5 3 3 6-6.5" />
+                ) : (
+                  <>
+                    <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+                    <path d="M10.5 3.5h-5a2 2 0 0 0-2 2v5" />
+                  </>
+                )}
+              </svg>
+              {/* Both labels occupy the same grid cell so the button keeps
+                  the wider label's width when the text swaps on copy. */}
+              <span className="grid justify-items-center">
+                <span
+                  className={cn(
+                    'col-start-1 row-start-1',
+                    copied && 'invisible',
+                  )}
+                >
+                  Copy link
+                </span>
+                <span
+                  className={cn(
+                    'col-start-1 row-start-1',
+                    !copied && 'invisible',
+                  )}
+                >
+                  Copied
+                </span>
+              </span>
             </Button>
           )}
         </div>
       </header>
 
       <Toolbar
-        className="min-w-0 max-w-full flex-col items-stretch gap-0 overflow-hidden p-0 [grid-area:toolbar]"
+        className="min-w-0 max-w-full flex-col items-stretch gap-0 p-0 [grid-area:toolbar]"
         aria-label="Diff controls"
       >
         {isGitHubDiff && props.stackSummary && reviewTarget && (
@@ -1000,29 +1036,14 @@ export default function DiffViewer(props: DiffViewerProps) {
           />
         )}
 
-        <CategoryFilters
-          activeFilter={categoryFilter}
-          summary={summary}
-          onChange={setCategoryFilter}
-        />
+        <div className="flex min-w-0 flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <CategoryFilters
+            activeFilter={categoryFilter}
+            summary={summary}
+            onChange={setCategoryFilter}
+          />
 
-        <div className="flex min-w-0 flex-col gap-2 border-t border-line px-3 py-2 sm:flex-row sm:items-center sm:justify-between md:px-4">
-          <div className="flex shrink-0 items-center gap-3 font-mono text-[11px]">
-            <span className="text-muted">
-              {categoryFilter === 'all'
-                ? `${summary.files} ${summary.files === 1 ? 'file' : 'files'}`
-                : `Showing ${visibleFiles.length} of ${summary.files}`}
-            </span>
-            <span
-              className="border-l border-line pl-3 text-muted"
-              aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
-            >
-              {viewedFileCount} viewed
-            </span>
-            {expiresAt && <ExpiryCountdown expiresAt={expiresAt} />}
-          </div>
-
-          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end md:flex-nowrap md:gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 sm:justify-end sm:pl-0 md:flex-nowrap md:gap-3 md:pr-4">
             <Button
               className="md:hidden"
               variant="secondary"
@@ -1059,6 +1080,14 @@ export default function DiffViewer(props: DiffViewerProps) {
                 <path d="m10.4 10.4 3.4 3.4" />
               </svg>
             </IconButton>
+            <ViewOptionsControl
+              order={fileOrder}
+              onOrderChange={setFileOrder}
+              diffStyle={diffStyle}
+              onDiffStyleChange={setDiffStyle}
+              wrapLines={wrapLines}
+              onWrapLinesChange={setWrapLines}
+            />
             {reviewEnabled && (
               <Button
                 variant="primary"
@@ -1078,27 +1107,6 @@ export default function DiffViewer(props: DiffViewerProps) {
                 )}
               </Button>
             )}
-            <FileOrderControl order={fileOrder} onChange={setFileOrder} />
-            <SegmentedControl aria-label="Diff layout">
-              <SegmentedControlItem
-                active={diffStyle === 'unified'}
-                onClick={() => setDiffStyle('unified')}
-              >
-                Unified
-              </SegmentedControlItem>
-              <SegmentedControlItem
-                active={diffStyle === 'split'}
-                onClick={() => setDiffStyle('split')}
-              >
-                Split
-              </SegmentedControlItem>
-            </SegmentedControl>
-            <Toggle
-              pressed={wrapLines}
-              onClick={() => setWrapLines((current) => !current)}
-            >
-              Wrap lines
-            </Toggle>
           </div>
         </div>
       </Toolbar>
@@ -1162,7 +1170,7 @@ export default function DiffViewer(props: DiffViewerProps) {
             <PanelHeader>
               {reviewEnabled ? (
                 <div
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-4"
                   role="tablist"
                   aria-label="Sidebar sections"
                 >
@@ -1185,8 +1193,15 @@ export default function DiffViewer(props: DiffViewerProps) {
               ) : (
                 <span>Files</span>
               )}
+              <output
+                className="ml-auto whitespace-nowrap text-muted"
+                title={`${viewedFileCount} of ${summary.files} files viewed`}
+                aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
+              >
+                {viewedFileCount}/{summary.files}
+              </output>
               <IconButton
-                className="ml-auto md:hidden"
+                className="md:hidden"
                 label="Close file picker"
                 variant="ghost"
                 size="xs"
@@ -1278,8 +1293,9 @@ function SidebarTab({
   return (
     <button
       className={cn(
-        'inline-flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted transition-colors hover:text-foreground',
-        active && 'border-line bg-surface-raised text-foreground',
+        'relative inline-flex h-8 shrink-0 items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted transition-colors hover:text-muted-bright',
+        active &&
+          'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-foreground',
       )}
       type="button"
       role="tab"
@@ -1348,7 +1364,7 @@ function CategoryFilters({
 
   return (
     <fieldset
-      className="category-filter-scroll flex w-full min-w-0 max-w-full items-center gap-1 overflow-x-auto px-3 py-2 md:px-4"
+      className="category-filter-scroll flex min-w-0 items-center gap-4 overflow-x-auto px-3 md:px-4"
       aria-label="Filter files by category"
     >
       {filters.map((filter) => {
@@ -1362,15 +1378,20 @@ function CategoryFilters({
           <button
             key={filter}
             className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-2 rounded-control border border-transparent px-2.5 font-mono text-[11px] text-muted transition-colors',
-              'hover:border-line hover:bg-surface hover:text-muted-bright',
+              'relative inline-flex h-8 shrink-0 items-center gap-2 font-mono text-[11px] text-muted transition-colors',
+              'hover:text-muted-bright',
               'disabled:pointer-events-none disabled:opacity-55',
               active &&
-                'border-line-bright bg-surface-raised text-foreground shadow-sm',
+                'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-foreground',
             )}
             type="button"
             aria-pressed={active}
             disabled={filterSummary.files === 0}
+            title={
+              filterSummary.files > 0
+                ? `+${filterSummary.additions} −${filterSummary.deletions}`
+                : undefined
+            }
             data-testid={`category-filter-${filter}`}
             onClick={() => onChange(filter)}
           >
@@ -1386,51 +1407,178 @@ function CategoryFilters({
 function CategorySummary({ summary }: { summary: DiffLineSummary }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 tabular-nums"
+      className="tabular-nums text-muted"
       aria-label={`${summary.files} ${summary.files === 1 ? 'file' : 'files'}, ${summary.additions} additions, ${summary.deletions} deletions`}
     >
-      <span>{summary.files}</span>
-      {summary.files > 0 && (
-        <>
-          <span className="text-addition">+{summary.additions}</span>
-          <span className="text-deletion">−{summary.deletions}</span>
-        </>
-      )}
+      {summary.files}
     </span>
   )
 }
 
-function FileOrderControl({
+function ViewOptionsControl({
   order,
-  onChange,
+  onOrderChange,
+  diffStyle,
+  onDiffStyleChange,
+  wrapLines,
+  onWrapLinesChange,
 }: {
   order: DiffFileOrder
-  onChange: (order: DiffFileOrder) => void
+  onOrderChange: (order: DiffFileOrder) => void
+  diffStyle: DiffStyle
+  onDiffStyleChange: (style: DiffStyle) => void
+  wrapLines: boolean
+  onWrapLinesChange: (wrap: boolean) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    function closeOnOutsidePress(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !containerRef.current?.contains(event.target)
+      ) {
+        setOpen(false)
+      }
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-expanded={open}
+        aria-controls="view-options-panel"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <svg
+          className="size-3.5"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M2.5 5h4.75M11.75 5h1.75M2.5 11h1.75M8.5 11h5" />
+          <circle cx="9.5" cy="5" r="1.75" />
+          <circle cx="6.25" cy="11" r="1.75" />
+        </svg>
+        View
+      </Button>
+      {open && (
+        <div
+          className="absolute right-0 top-[calc(100%+6px)] z-30 flex w-44 flex-col gap-3 rounded-control border border-line bg-canvas p-3 shadow-float"
+          id="view-options-panel"
+        >
+          <ViewOptionGroup
+            label="File order"
+            value={order}
+            options={[
+              {
+                value: 'patch',
+                label: 'Patch',
+                title: 'Order files as they appear in the patch',
+              },
+              {
+                value: 'category',
+                label: 'Category',
+                title: 'Group files by category: source, tests, docs, other',
+              },
+            ]}
+            onChange={onOrderChange}
+          />
+          <ViewOptionGroup
+            label="Layout"
+            value={diffStyle}
+            options={[
+              { value: 'unified', label: 'Unified' },
+              { value: 'split', label: 'Split' },
+            ]}
+            onChange={onDiffStyleChange}
+          />
+          <Toggle
+            className="h-auto justify-between px-2 py-1.5 font-mono text-[11px]"
+            pressed={wrapLines}
+            onClick={() => onWrapLinesChange(!wrapLines)}
+          >
+            Wrap lines
+          </Toggle>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ViewOptionGroup<Value extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: Value
+  options: readonly { value: Value; label: string; title?: string }[]
+  onChange: (value: Value) => void
 }) {
   return (
-    <SegmentedControl aria-label="File order" title="File order">
-      <SegmentedControlItem
-        active={order === 'patch'}
-        title="Order files as they appear in the patch"
-        onClick={() => onChange('patch')}
-      >
-        Patch
-      </SegmentedControlItem>
-      <SegmentedControlItem
-        active={order === 'category'}
-        title="Group files by category: source, tests, docs, other"
-        onClick={() => onChange('category')}
-      >
-        Category
-      </SegmentedControlItem>
-    </SegmentedControl>
+    <fieldset aria-label={label} className="flex flex-col">
+      <span className={cn(eyebrowClassName, 'mb-1 px-2 text-muted-bright')}>
+        {label}
+      </span>
+      {options.map((option) => {
+        const active = option.value === value
+
+        return (
+          <button
+            key={option.value}
+            className={cn(
+              'flex items-center gap-2 rounded-control px-2 py-1.5 text-left font-mono text-[11px] transition-colors',
+              'hover:bg-surface-raised hover:text-foreground',
+              active ? 'text-foreground' : 'text-muted',
+            )}
+            type="button"
+            aria-pressed={active}
+            title={option.title}
+            onClick={() => onChange(option.value)}
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                'size-1.5 rounded-full',
+                active ? 'bg-foreground' : 'bg-line-bright',
+              )}
+            />
+            {option.label}
+          </button>
+        )
+      })}
+    </fieldset>
   )
 }
 
 function DiffCategoryBadge({ category }: { category: DiffCategory }) {
   return (
     <span
-      className="inline-flex items-center rounded border border-line bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted-bright"
+      className="flex items-center rounded border border-line bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none uppercase tracking-[0.08em] text-muted-bright"
       data-diff-category={category}
     >
       {DIFF_CATEGORY_DETAILS[category].label}
@@ -1474,7 +1622,7 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
 
   return (
     <time
-      className="cursor-help border-l border-line pl-3 text-muted underline decoration-line-bright decoration-dotted underline-offset-[3px]"
+      className="cursor-help text-muted underline decoration-line-bright decoration-dotted underline-offset-[3px]"
       dateTime={expiresAt}
       title={absoluteExpiry}
       aria-label={
