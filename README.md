@@ -56,6 +56,11 @@ It is hosted at [diffdump.com](https://diffdump.com).
 - Links are unlisted by design: 96-bit, base64url-encoded random slugs served
   with `noindex, nofollow`. There is no public listing.
 - Shares accept diffs up to 2 MiB and expire after 24 hours.
+- Terminal uploads can attach a GitHub repository and full base commit SHA.
+  Those shares expand collapsed context on demand by fetching the base file
+  directly from GitHub in the viewer and applying the uploaded patch locally.
+  Public repositories work anonymously; private repositories use the optional
+  token already stored in that viewer's browser.
 
 ### Review view
 
@@ -87,6 +92,9 @@ It is hosted at [diffdump.com](https://diffdump.com).
   live only in browser `localStorage`, scoped to the pull request and its
   head commit.
 - Shared unified diffs are stored as private objects in Cloudflare R2.
+- A GitHub-backed shared diff stores its repository and base SHA as object
+  metadata. Full base-file contents are fetched by the browser from GitHub and
+  are not stored by Diffdump.
 - Share links expire after 24 hours.
 - Share URLs use 96-bit, base64url-encoded random slugs.
 
@@ -102,13 +110,17 @@ published to GitHub.
 Shared diffs take the server path:
 
 1. A user pastes a unified git diff on `/` or uploads one with `curl -T-`; both
-   clients send the raw patch with `PUT /d`.
+   clients send the raw patch with `PUT /d`. Terminal clients may also send
+   `X-Diffdump-GitHub-Repo` and `X-Diffdump-Base-Sha` headers.
 2. The Worker rate-limits anonymous creation and validates the patch and its
    2 MiB size limit.
 3. The Worker generates a 16-character cryptographic slug and conditionally
    writes `diffs/<slug>` to R2 so an existing share is never overwritten.
 4. The app navigates to `/view/<slug>`, loads the private object through the
    Worker, and renders it in the browser until its 24-hour expiry.
+5. When GitHub base metadata is present, a context-expansion click fetches the
+   requested base file from `api.github.com` and reconstructs the local side
+   from the stored patch in the browser.
 
 ## Anonymous creation rate limit
 

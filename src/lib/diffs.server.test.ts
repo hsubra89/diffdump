@@ -38,7 +38,7 @@ describe('R2 diff storage', () => {
         customMetadata: {
           createdAt: '2026-07-27T12:00:00.000Z',
           expiresAt: '2026-07-28T12:00:00.000Z',
-          schemaVersion: '2',
+          schemaVersion: '3',
         },
       }),
     )
@@ -64,7 +64,54 @@ describe('R2 diff storage', () => {
       diff: 'diff contents',
       createdAt: '2026-07-27T12:00:00.000Z',
       expiresAt: '2026-07-28T12:00:00.000Z',
+      source: null,
     })
+  })
+
+  it('round-trips GitHub base metadata through R2 custom metadata', async () => {
+    const put = vi.fn<MockR2Put>().mockResolvedValue({ key: 'diffs/source' })
+    const source = {
+      kind: 'github-base' as const,
+      owner: 'acme',
+      repo: 'widgets',
+      baseSha: 'abcdef0123456789abcdef0123456789abcdef01',
+    }
+
+    await saveDiff({ put } as unknown as DiffBucket, 'a diff', {
+      source,
+      now: () => new Date('2026-07-27T12:00:00.000Z'),
+      slugFactory: () => 'source-share-slug',
+    })
+
+    expect(put).toHaveBeenCalledWith(
+      'diffs/source-share-slug',
+      'a diff',
+      expect.objectContaining({
+        customMetadata: expect.objectContaining({
+          githubBaseSha: source.baseSha,
+          githubRepo: 'acme/widgets',
+        }),
+      }),
+    )
+
+    const bucket = {
+      get: vi.fn<MockR2Get>().mockResolvedValue({
+        customMetadata: {
+          createdAt: '2026-07-27T12:00:00.000Z',
+          expiresAt: '2026-07-28T12:00:00.000Z',
+          githubBaseSha: source.baseSha,
+          githubRepo: 'acme/widgets',
+        },
+        uploaded: new Date('2026-07-27T12:00:01.000Z'),
+        text: () => Promise.resolve('diff contents'),
+      }),
+    } as unknown as DiffBucket
+
+    await expect(
+      loadDiff(bucket, 'AAECAwQFBgcICQoL', {
+        now: () => new Date('2026-07-28T11:59:59.999Z'),
+      }),
+    ).resolves.toMatchObject({ source })
   })
 
   it('returns null for a missing object', async () => {

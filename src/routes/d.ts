@@ -10,7 +10,8 @@ export const Route = createFileRoute('/d')({
       PUT: ({ request }) =>
         handleDiffUpload(request, {
           rateLimiter: env.DIFF_CREATION_RATE_LIMITER,
-          saveUploadedDiff: (diff) => saveDiff(env.DIFFS, diff),
+          saveUploadedDiff: ({ diff, source }) =>
+            saveDiff(env.DIFFS, diff, { source }),
         }),
     },
   },

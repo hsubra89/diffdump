@@ -13,7 +13,7 @@ const description =
   'Paste or pipe a unified Git diff to create a clean, unlisted review link that expires automatically after 24 hours.'
 const path = '/share-git-diff' as const
 const datePublished = '2026-07-29'
-const dateModified = '2026-07-29'
+const dateModified = '2026-07-30'
 
 export const Route = createFileRoute('/share-git-diff')({
   head: () => ({
@@ -84,6 +84,25 @@ function ShareGitDiffGuide() {
           URL can open the diff. Remove credentials, private keys, and other
           secrets before sharing.
         </p>
+      </GuideSection>
+
+      <GuideSection title="Expand unchanged lines from GitHub">
+        <p>
+          Terminal uploads can include a GitHub repository and full base commit
+          SHA. When a reviewer expands collapsed context, their browser fetches
+          the base file directly from GitHub and applies the shared patch
+          locally. Public repositories work anonymously; private repositories
+          use the reviewer’s locally saved GitHub token.{' '}
+          <code className="font-mono text-foreground">core.quotepath=off</code>{' '}
+          keeps non-ASCII file paths literal in the patch so their context stays
+          expandable.
+        </p>
+        <GuideCode>{`BASE_SHA=$(git rev-parse HEAD)
+git -c core.quotepath=off diff --full-index --binary "$BASE_SHA" |
+  curl -T- \\
+    -H "X-Diffdump-GitHub-Repo: org/repository" \\
+    -H "X-Diffdump-Base-Sha: $BASE_SHA" \\
+    https://diffdump.com/d`}</GuideCode>
       </GuideSection>
 
       <GuideSection title="What can be shared?">

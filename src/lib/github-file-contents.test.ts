@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { FileDiffMetadata } from '@pierre/diffs'
+import { parsePatchFiles, type FileDiffMetadata } from '@pierre/diffs'
 
-import { createGitHubFileContentsLoader } from './github-file-contents'
+import {
+  createGitHubBaseFileContentsLoader,
+  createGitHubFileContentsLoader,
+} from './github-file-contents'
 import type { GitHubDiffSource, GitHubFetch } from './github-diffs'
+import type { GitHubBaseDiffSource } from './diffs'
 
 const BASE_SHA = 'b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1'
 const HEAD_SHA = '0123456789abcdef0123456789abcdef01234567'
@@ -18,6 +22,24 @@ const PULL_SOURCE: GitHubDiffSource = {
 }
 
 const RAW_MEDIA_TYPE = 'application/vnd.github.raw+json'
+
+const LOCAL_SOURCE: GitHubBaseDiffSource = {
+  kind: 'github-base',
+  owner: 'acme',
+  repo: 'widgets',
+  baseSha: BASE_SHA,
+}
+
+const LOCAL_DIFF = `diff --git a/src/app.ts b/src/app.ts
+index 1111111111111111111111111111111111111111..2222222222222222222222222222222222222222 100644
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -2,3 +2,3 @@
+ one
+-old
++new
+ three
+`
 
 type RouteHandler = (init?: RequestInit) => Response
 
@@ -67,6 +89,206 @@ function createPullRoutes({
       () => json({ merge_base_commit: { sha: MERGE_BASE_SHA } }),
   }
 }
+
+function createLocalFileDiff(): FileDiffMetadata {
+  const file = parsePatchFiles(LOCAL_DIFF, 'local-share', true)[0]?.files[0]
+  if (!file) {
+    throw new Error('Local diff fixture did not parse.')
+  }
+  return file
+}
+
+describe('shared local diff file contents', () => {
+  const contentsUrl = `https://api.github.com/repos/acme/widgets/contents/src/app.ts?ref=${BASE_SHA}`
+
+  it('fetches a public base anonymously and reconstructs the local side', async () => {
+    const fetcher = createFetcher({
+      [contentsUrl]: () => new Response('zero\none\nold\nthree\nfour\n'),
+    })
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      LOCAL_DIFF,
+      {
+        fetch: fetcher,
+        getToken: () => '',
+      },
+    )
+
+    await expect(loader(createLocalFileDiff())).resolves.toEqual({
+      oldFile: {
+        name: 'src/app.ts',
+        contents: 'zero\none\nold\nthree\nfour\n',
+        cacheKey: `github:acme/widgets:${BASE_SHA}:src/app.ts`,
+      },
+      newFile: {
+        name: 'src/app.ts',
+        contents: 'zero\none\nnew\nthree\nfour\n',
+        cacheKey: expect.stringContaining(':patched:'),
+      },
+    })
+    expect(fetcher).toHaveBeenCalledWith(
+      contentsUrl,
+      expect.objectContaining({
+        headers: {
+          Accept: RAW_MEDIA_TYPE,
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      }),
+    )
+  })
+
+  it('uses a stored token when one is available', async () => {
+    const fetcher = createFetcher({
+      [contentsUrl]: () => new Response('zero\none\nold\nthree\nfour\n'),
+    })
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      LOCAL_DIFF,
+      {
+        fetch: fetcher,
+        getToken: () => 'ghp_secret',
+      },
+    )
+
+    await loader(createLocalFileDiff())
+
+    expect(fetcher).toHaveBeenCalledWith(
+      contentsUrl,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer ghp_secret',
+        }),
+      }),
+    )
+  })
+
+  it('reports an inaccessible repository, commit, or path on demand', async () => {
+    const fetcher = createFetcher({
+      [contentsUrl]: () =>
+        new Response(JSON.stringify({ message: 'Not Found' }), { status: 404 }),
+    })
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      LOCAL_DIFF,
+      {
+        fetch: fetcher,
+        getToken: () => '',
+      },
+    )
+
+    await expect(loader(createLocalFileDiff())).rejects.toThrow(
+      /could not access.*Save a token.*commit and path are available/,
+    )
+  })
+
+  it('fails closed when the patch does not match the supplied base', async () => {
+    let requests = 0
+    const fetcher = createFetcher({
+      [contentsUrl]: () => {
+        requests += 1
+        return new Response(
+          requests === 1
+            ? 'zero\none\ndifferent\nthree\nfour\n'
+            : 'zero\none\nold\nthree\nfour\n',
+        )
+      },
+    })
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      LOCAL_DIFF,
+      {
+        fetch: fetcher,
+        getToken: () => '',
+      },
+    )
+    const file = createLocalFileDiff()
+
+    await expect(loader(file)).rejects.toThrow(
+      /does not apply.*base commit is correct/,
+    )
+    await expect(loader(file)).resolves.toMatchObject({
+      newFile: { contents: 'zero\none\nnew\nthree\nfour\n' },
+    })
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  it('hydrates a pure rename from its base path', async () => {
+    const renameDiff = `diff --git a/src/old.ts b/src/new.ts
+similarity index 100%
+rename from src/old.ts
+rename to src/new.ts
+`
+    const fetcher = createFetcher({
+      [`https://api.github.com/repos/acme/widgets/contents/src/old.ts?ref=${BASE_SHA}`]:
+        () => new Response('moved contents\n'),
+    })
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      renameDiff,
+      {
+        fetch: fetcher,
+        getToken: () => '',
+      },
+    )
+
+    await expect(
+      loader(
+        createFileDiff({
+          name: 'src/new.ts',
+          prevName: 'src/old.ts',
+          type: 'rename-pure',
+        }),
+      ),
+    ).resolves.toEqual({
+      oldFile: null,
+      newFile: {
+        name: 'src/new.ts',
+        contents: 'moved contents\n',
+        cacheKey: expect.stringContaining(':patched:'),
+      },
+    })
+  })
+
+  it('does not fetch complete new and deleted files', async () => {
+    const fetcher = createFetcher({})
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      LOCAL_DIFF,
+      {
+        fetch: fetcher,
+        getToken: () => '',
+      },
+    )
+
+    await expect(
+      loader(createFileDiff({ name: 'src/new.ts', type: 'new' })),
+    ).rejects.toThrow('already shows all of its lines')
+    await expect(
+      loader(createFileDiff({ name: 'src/old.ts', type: 'deleted' })),
+    ).rejects.toThrow('already shows all of its lines')
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
+  it('rejects patch paths with dot segments before fetching', async () => {
+    const fetcher = createFetcher({})
+    const loader = createGitHubBaseFileContentsLoader(
+      LOCAL_SOURCE,
+      LOCAL_DIFF,
+      {
+        fetch: fetcher,
+        getToken: () => 'ghp_secret',
+      },
+    )
+
+    await expect(
+      loader(createFileDiff({ name: '../../../user', type: 'change' })),
+    ).rejects.toThrow('not a valid repository file path')
+    await expect(
+      loader(createFileDiff({ name: 'src/./app.ts', type: 'change' })),
+    ).rejects.toThrow('not a valid repository file path')
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+})
 
 describe('pull request file contents', () => {
   it('reads the old side at the merge base and the new side at the pinned head', async () => {
