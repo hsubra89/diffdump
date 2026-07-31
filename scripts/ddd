@@ -1,0 +1,330 @@
+#!/bin/zsh
+
+# Requirements:
+# - zsh, git, and curl
+# - A GitHub remote for uploaded diffs
+# - GitHub CLI (`gh`) for PRs and, when origin/HEAD is unset, default-branch lookup
+# - Optional: macOS `open`; URLs are printed when it is unavailable
+
+setopt pipe_fail
+
+readonly DIFFDUMP_UPLOAD_URL='https://diffdump.com/d'
+
+usage() {
+  cat <<'EOF'
+Usage: ddd [--remote <name>] [command]
+
+Open a Git diff in Diffdump, or print its URL when `open` is unavailable.
+
+Commands:
+  uncommitted  Staged, unstaged, and untracked changes (default)
+  commit       The latest commit only
+  pr           The current GitHub pull request
+  branch       The current branch against the repository default branch
+  from <ref>   Working-tree changes since an arbitrary Git ref
+  help         Show this help
+
+Options:
+  -r, --remote <name>  Git remote to use (default: origin)
+EOF
+}
+
+fail() {
+  print -u2 -- "ddd: $*"
+  return 1
+}
+
+resolve_commit() {
+  git rev-parse --verify --end-of-options "${1}^{commit}"
+}
+
+github_repository() {
+  local remote_name=$1
+  local remote_url github_repo
+
+  remote_url=$(git remote get-url "$remote_name") || return
+
+  case "$remote_url" in
+    git@github.com:*)
+      github_repo=${remote_url#git@github.com:}
+      ;;
+    ssh://git@github.com/*)
+      github_repo=${remote_url#ssh://git@github.com/}
+      ;;
+    https://github.com/*)
+      github_repo=${remote_url#https://github.com/}
+      ;;
+    *)
+      fail "Remote '$remote_name' is not a github.com repository."
+      return
+      ;;
+  esac
+
+  github_repo=${github_repo%/}
+  github_repo=${github_repo%.git}
+  if [[ "$github_repo" != */* || "$github_repo" == */*/* ]]; then
+    fail "Could not determine a GitHub owner/repository from '$remote_url'."
+    return
+  fi
+
+  print -r -- "$github_repo"
+}
+
+has_untracked_files() {
+  local file
+  IFS= read -r -d '' file < <(
+    git ls-files --others --exclude-standard -z
+  )
+}
+
+append_untracked_diffs() {
+  git ls-files --others --exclude-standard -z |
+    while IFS= read -r -d '' file; do
+      git -c core.quotePath=false diff --full-index --binary \
+        --no-index -- /dev/null "$file" || true
+    done
+}
+
+open_url() {
+  local url=$1
+
+  if (( $+commands[open] )); then
+    open "$url"
+  else
+    print -r -- "$url"
+  fi
+}
+
+open_share() {
+  local github_repo=$1
+  local base_sha=$2
+  local share_url
+  local -a curl_args
+
+  curl_args=(--fail --silent --show-error)
+  if [[ -n "$base_sha" ]]; then
+    curl_args+=(
+      --header "X-Diffdump-GitHub-Repo: $github_repo"
+      --header "X-Diffdump-Base-Sha: $base_sha"
+    )
+  fi
+
+  share_url=$(curl "${curl_args[@]}" \
+    --upload-file - "$DIFFDUMP_UPLOAD_URL") || return
+  share_url=${share_url//$'\r'/}
+  share_url=${share_url//$'\n'/}
+  [[ -n "$share_url" ]] || {
+    fail 'Diffdump returned an empty share URL.'
+    return
+  }
+
+  open_url "$share_url"
+}
+
+upload_range() {
+  local github_repo=$1
+  local base_sha=$2
+  local head_ref=$3
+  local include_untracked=$4
+  local diff_status
+  local -a refs
+
+  refs=("$base_sha")
+  [[ -n "$head_ref" ]] && refs+=("$head_ref")
+
+  git diff --quiet "${refs[@]}" --
+  diff_status=$?
+  if (( diff_status > 1 )); then
+    return "$diff_status"
+  fi
+  if (( diff_status == 0 )); then
+    if [[ "$include_untracked" != true ]] || ! has_untracked_files; then
+      print 'No diff'
+      return
+    fi
+  fi
+
+  {
+    git -c core.quotePath=false diff --full-index --binary \
+      "${refs[@]}" --
+    if [[ "$include_untracked" == true ]]; then
+      append_untracked_diffs
+    fi
+  } | open_share "$github_repo" "$base_sha"
+}
+
+upload_root_commit() {
+  local github_repo=$1
+  local head_sha=$2
+  local diff_status
+
+  git diff-tree --root --quiet "$head_sha" -- >/dev/null
+  diff_status=$?
+  if (( diff_status > 1 )); then
+    return "$diff_status"
+  fi
+  if (( diff_status == 0 )); then
+    print 'No diff'
+    return
+  fi
+
+  # A root commit has no GitHub base commit, so omit expansion metadata.
+  git -c core.quotePath=false diff-tree --root --no-commit-id -p \
+    --full-index --binary "$head_sha" -- |
+    open_share "$github_repo" ''
+}
+
+default_branch_ref() {
+  local remote_name=$1
+  local github_repo=$2
+  local remote_head branch_name candidate github_default_branch
+
+  remote_head=$(
+    git symbolic-ref --quiet --short "refs/remotes/${remote_name}/HEAD"
+  ) && {
+    print -r -- "$remote_head"
+    return
+  }
+
+  if (( $+commands[gh] )); then
+    if branch_name=$(gh repo view "$github_repo" \
+      --json defaultBranchRef --jq '.defaultBranchRef.name'); then
+      github_default_branch=$branch_name
+      candidate="${remote_name}/${branch_name}"
+      if git rev-parse --verify --quiet --end-of-options \
+        "${candidate}^{commit}" >/dev/null; then
+        print -r -- "$candidate"
+        return
+      fi
+    fi
+  fi
+
+  for branch_name in main master; do
+    candidate="${remote_name}/${branch_name}"
+    if git rev-parse --verify --quiet --end-of-options \
+      "${candidate}^{commit}" >/dev/null; then
+      print -r -- "$candidate"
+      return
+    fi
+  done
+
+  if [[ -n "$github_default_branch" ]]; then
+    fail "Default branch '${remote_name}/${github_default_branch}' is not available locally; fetch '$remote_name' first."
+  else
+    fail "Could not determine the default branch for '$remote_name'. Install gh or set ${remote_name}/HEAD."
+  fi
+}
+
+open_pull_request() {
+  local pr_url diffdump_url
+
+  (( $+commands[gh] )) || {
+    fail "The 'pr' command requires the GitHub CLI (gh)."
+    return
+  }
+
+  pr_url=$(gh pr view --json url --jq '.url') || return
+  case "$pr_url" in
+    https://github.com/*)
+      diffdump_url="https://diffdump.com/${pr_url#https://github.com/}"
+      ;;
+    *)
+      fail "GitHub CLI returned an unexpected pull request URL: '$pr_url'."
+      return
+      ;;
+  esac
+
+  open_url "$diffdump_url"
+}
+
+remote_name=origin
+while (( $# > 0 )); do
+  case "$1" in
+    -r|--remote)
+      (( $# >= 2 )) || {
+        fail "Option '$1' requires a remote name."
+        exit 1
+      }
+      remote_name=$2
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+command_name=${1:-uncommitted}
+(( $# == 0 )) || shift
+
+case "$command_name" in
+  help)
+    (( $# == 0 )) || {
+      fail "The 'help' command takes no arguments."
+      exit 1
+    }
+    usage
+    exit
+    ;;
+  uncommitted|u|commit|c|pr|p|branch|b)
+    (( $# == 0 )) || {
+      fail "The '$command_name' command takes no arguments."
+      exit 1
+    }
+    ;;
+  from)
+    (( $# <= 1 )) || {
+      fail "The 'from' command accepts at most one ref."
+      exit 1
+    }
+    ;;
+  *)
+    fail "Unknown command '$command_name'. Run 'ddd help' for usage."
+    exit 1
+    ;;
+esac
+
+root=$(git rev-parse --show-toplevel) || exit
+cd "$root" || exit
+
+case "$command_name" in
+  pr|p)
+    open_pull_request
+    exit
+    ;;
+esac
+
+github_repo=$(github_repository "$remote_name") || exit
+
+case "$command_name" in
+  uncommitted|u)
+    base_sha=$(resolve_commit HEAD) || exit
+    upload_range "$github_repo" "$base_sha" '' true
+    ;;
+  commit|c)
+    head_sha=$(resolve_commit HEAD) || exit
+    if base_sha=$(resolve_commit HEAD^1 2>/dev/null); then
+      upload_range "$github_repo" "$base_sha" "$head_sha" false
+    else
+      upload_root_commit "$github_repo" "$head_sha"
+    fi
+    ;;
+  branch|b)
+    root_ref=$(default_branch_ref "$remote_name" "$github_repo") || exit
+    base_sha=$(git merge-base "$root_ref" HEAD) || exit
+    head_sha=$(resolve_commit HEAD) || exit
+    upload_range "$github_repo" "$base_sha" "$head_sha" false
+    ;;
+  from)
+    base_sha=$(resolve_commit "${1:-HEAD}") || exit
+    upload_range "$github_repo" "$base_sha" '' true
+    ;;
+esac
