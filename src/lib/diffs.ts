@@ -10,10 +10,18 @@ export type CreateDiffInput = {
   diff: string
 }
 
+export type GitHubBaseDiffSource = {
+  kind: 'github-base'
+  owner: string
+  repo: string
+  baseSha: string
+}
+
 export type StoredDiff = {
   diff: string
   createdAt: string
   expiresAt: string
+  source: GitHubBaseDiffSource | null
 }
 
 export function validateCreateDiffInput(input: unknown): CreateDiffInput {
@@ -46,6 +54,49 @@ export function validateCreateDiffInput(input: unknown): CreateDiffInput {
   return { diff }
 }
 
+export function parseGitHubBaseDiffSource(
+  repoInput: unknown,
+  baseShaInput: unknown,
+): GitHubBaseDiffSource | null {
+  const repoValue = typeof repoInput === 'string' ? repoInput.trim() : ''
+  const baseShaValue =
+    typeof baseShaInput === 'string' ? baseShaInput.trim() : ''
+  const hasRepo = repoValue !== ''
+  const hasBaseSha = baseShaValue !== ''
+
+  if (!hasRepo && !hasBaseSha) {
+    return null
+  }
+
+  if (!hasRepo || !hasBaseSha) {
+    throw new Error(
+      'GitHub-backed shares require both a repository and a base commit SHA.',
+    )
+  }
+
+  const repoParts = repoValue.split('/')
+  if (repoParts.length !== 2) {
+    throw new Error('The GitHub repository must use the owner/repository form.')
+  }
+
+  const [owner, repo] = repoParts
+  if (!isGitHubOwner(owner) || !isGitHubRepo(repo)) {
+    throw new Error('The GitHub repository is not valid.')
+  }
+
+  const baseSha = baseShaValue.toLowerCase()
+  if (!/^[0-9a-f]{40}$/.test(baseSha)) {
+    throw new Error('The GitHub base commit must be a full 40-character SHA.')
+  }
+
+  return {
+    kind: 'github-base',
+    owner,
+    repo,
+    baseSha,
+  }
+}
+
 export function validateShareSlug(input: unknown): string {
   if (
     typeof input !== 'string' ||
@@ -72,6 +123,24 @@ export function looksLikeUnifiedDiff(diff: string): boolean {
   const hasHunk = /^@@\s+-\d+(?:,\d+)?\s+\+\d+(?:,\d+)?\s+@@/m.test(diff)
 
   return hasOldFile && hasNewFile && hasHunk
+}
+
+function isGitHubOwner(value: string | undefined): value is string {
+  return (
+    value !== undefined &&
+    value.length <= 39 &&
+    /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(value)
+  )
+}
+
+function isGitHubRepo(value: string | undefined): value is string {
+  return (
+    value !== undefined &&
+    value.length <= 100 &&
+    value !== '.' &&
+    value !== '..' &&
+    /^[A-Za-z0-9._-]+$/.test(value)
+  )
 }
 
 function encodeBase64Url(bytes: Uint8Array): string {

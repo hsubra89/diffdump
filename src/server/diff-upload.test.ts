@@ -42,10 +42,63 @@ describe('PUT /d', () => {
     await expect(response.text()).resolves.toBe(
       'https://diffdump.example/view/AAECAwQFBgcICQoL\n',
     )
-    expect(saveUploadedDiff).toHaveBeenCalledWith(VALID_DIFF)
+    expect(saveUploadedDiff).toHaveBeenCalledWith({
+      diff: VALID_DIFF,
+      source: null,
+    })
     expect(rateLimiter.limit).toHaveBeenCalledWith({
       key: 'anonymous-diff:203.0.113.10',
     })
+  })
+
+  it('passes validated GitHub base metadata to storage', async () => {
+    const saveUploadedDiff = vi
+      .fn<SaveUploadedDiff>()
+      .mockResolvedValue({ slug: 'AAECAwQFBgcICQoL' })
+    const request = new Request('https://diffdump.example/d', {
+      method: 'PUT',
+      headers: {
+        'X-Diffdump-Base-Sha': 'ABCDEF0123456789ABCDEF0123456789ABCDEF01',
+        'X-Diffdump-GitHub-Repo': 'acme/widgets',
+      },
+      body: VALID_DIFF,
+    })
+
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff,
+    })
+
+    expect(response.status).toBe(201)
+    expect(saveUploadedDiff).toHaveBeenCalledWith({
+      diff: VALID_DIFF,
+      source: {
+        kind: 'github-base',
+        owner: 'acme',
+        repo: 'widgets',
+        baseSha: 'abcdef0123456789abcdef0123456789abcdef01',
+      },
+    })
+  })
+
+  it('rejects incomplete GitHub base metadata', async () => {
+    const saveUploadedDiff = vi.fn<SaveUploadedDiff>()
+    const request = new Request('https://diffdump.example/d', {
+      method: 'PUT',
+      headers: {
+        'X-Diffdump-GitHub-Repo': 'acme/widgets',
+      },
+      body: VALID_DIFF,
+    })
+
+    const response = await handleDiffUpload(request, {
+      rateLimiter: allowingRateLimiter(),
+      saveUploadedDiff,
+    })
+
+    expect(response.status).toBe(400)
+    await expect(response.text()).resolves.toContain('require both')
+    expect(saveUploadedDiff).not.toHaveBeenCalled()
   })
 
   it('returns 429 with retry guidance before reading or saving the diff', async () => {
@@ -221,7 +274,10 @@ describe('PUT /d', () => {
     })
 
     expect(response.status).toBe(201)
-    expect(saveUploadedDiff).toHaveBeenCalledWith(diff)
+    expect(saveUploadedDiff).toHaveBeenCalledWith({
+      diff,
+      source: null,
+    })
   })
 
   it('does not expose storage errors', async () => {

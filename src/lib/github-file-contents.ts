@@ -4,6 +4,7 @@ import type {
   FileDiffLoadedFiles,
   FileDiffMetadata,
 } from '@pierre/diffs'
+import { applyPatch, parsePatch, type StructuredPatch } from 'diff'
 
 import {
   GITHUB_API_ROOT,
@@ -12,6 +13,7 @@ import {
   type GitHubDiffSource,
   type GitHubFetch,
 } from './github-diffs'
+import type { GitHubBaseDiffSource } from './diffs'
 
 const GITHUB_RAW_MEDIA_TYPE = 'application/vnd.github.raw+json'
 
@@ -44,6 +46,11 @@ export type GitHubFileContentsLoaderOptions = {
   pinnedHeadSha?: string | null
 }
 
+export type GitHubBaseFileContentsLoaderOptions = Omit<
+  GitHubFileContentsLoaderOptions,
+  'pinnedHeadSha'
+>
+
 /**
  * Creates the `loadDiffFiles` loader that backs hunk expansion for
  * GitHub-loaded diffs. The first click on a collapsed-context expander makes
@@ -71,34 +78,13 @@ export function createGitHubFileContentsLoader(
   let refsPromise: Promise<GitHubDiffRefs> | null = null
 
   async function fetchJson(url: string): Promise<unknown> {
+    const token = getToken()
     const response = await fetchGitHubApi(url, {
       fetch: options.fetch,
-      token: getToken(),
+      token,
     })
-    await assertGitHubResponseOk(response, url)
+    await assertGitHubResponseOk(response, url, token.trim() !== '')
     return response.json()
-  }
-
-  async function loadFileContents(
-    repoRef: GitHubRepoRef,
-    path: string,
-  ): Promise<FileContents> {
-    const url = `${GITHUB_API_ROOT}${repoApiPath(repoRef)}/contents/${encodeGitHubPath(path)}?ref=${encodeURIComponent(repoRef.ref)}`
-    const response = await fetchGitHubApi(url, {
-      accept: GITHUB_RAW_MEDIA_TYPE,
-      fetch: options.fetch,
-      token: getToken(),
-    })
-    await assertGitHubResponseOk(
-      response,
-      `${repoRef.owner}/${repoRef.repo}/${path}@${repoRef.ref}`,
-    )
-
-    return {
-      name: path,
-      contents: await response.text(),
-      cacheKey: `github:${repoRef.owner}/${repoRef.repo}:${repoRef.ref}:${path}`,
-    }
   }
 
   function resolveRefs(): Promise<GitHubDiffRefs> {
@@ -119,7 +105,12 @@ export function createGitHubFileContentsLoader(
     if (file.type === 'rename-pure') {
       return {
         oldFile: null,
-        newFile: await loadFileContents(refs.newRef, file.name),
+        newFile: await loadGitHubFileContents(
+          refs.newRef,
+          file.name,
+          options.fetch,
+          getToken,
+        ),
       }
     }
 
@@ -130,8 +121,13 @@ export function createGitHubFileContentsLoader(
     }
 
     const [oldFile, newFile] = await Promise.all([
-      loadFileContents(refs.oldRef, file.prevName ?? file.name),
-      loadFileContents(refs.newRef, file.name),
+      loadGitHubFileContents(
+        refs.oldRef,
+        file.prevName ?? file.name,
+        options.fetch,
+        getToken,
+      ),
+      loadGitHubFileContents(refs.newRef, file.name, options.fetch, getToken),
     ])
     return { oldFile, newFile }
   }
@@ -167,6 +163,164 @@ export function createGitHubFileContentsLoader(
     fileCache.set(cacheKey, promise)
     return promise
   }
+}
+
+/**
+ * Hydrates a locally produced patch from one GitHub base commit. GitHub owns
+ * only the old side; the new side is reconstructed in the browser by applying
+ * the uploaded per-file patch to the fetched base contents.
+ */
+export function createGitHubBaseFileContentsLoader(
+  source: GitHubBaseDiffSource,
+  diff: string,
+  options: GitHubBaseFileContentsLoaderOptions = {},
+): FileDiffContentsLoader {
+  const getToken = options.getToken ?? readStoredGitHubToken
+  const repoRef: GitHubRepoRef = {
+    owner: source.owner,
+    repo: source.repo,
+    ref: source.baseSha,
+  }
+  const fileCache = new Map<string, Promise<FileDiffLoadedFiles>>()
+  let patches: StructuredPatch[] | null = null
+
+  function loadPatches(): StructuredPatch[] {
+    patches ??= parsePatch(diff)
+    return patches
+  }
+
+  async function loadFiles(
+    file: FileDiffMetadata,
+  ): Promise<FileDiffLoadedFiles> {
+    const oldPath = file.prevName ?? file.name
+    const oldFile = await loadGitHubFileContents(
+      repoRef,
+      oldPath,
+      options.fetch,
+      getToken,
+    )
+
+    if (file.type === 'rename-pure') {
+      return {
+        oldFile: null,
+        newFile: {
+          name: file.name,
+          contents: oldFile.contents,
+          cacheKey: localFileCacheKey(oldFile, file),
+        },
+      }
+    }
+
+    const patch = findFilePatch(loadPatches(), file)
+    if (!patch) {
+      throw new Error(
+        `The uploaded patch for ${file.name} could not be matched to the shared diff.`,
+      )
+    }
+
+    const contents = applyPatch(oldFile.contents, patch, { fuzzFactor: 0 })
+    if (contents === false) {
+      throw new Error(
+        `The uploaded patch for ${file.name} does not apply to ${source.owner}/${source.repo}@${source.baseSha}. Check that the shared base commit is correct.`,
+      )
+    }
+
+    return {
+      oldFile,
+      newFile: {
+        name: file.name,
+        contents,
+        cacheKey: localFileCacheKey(oldFile, file),
+      },
+    }
+  }
+
+  return (file) => {
+    if (file.type === 'new' || file.type === 'deleted') {
+      return Promise.reject(
+        new Error(`A ${file.type} file already shows all of its lines.`),
+      )
+    }
+
+    const cacheKey = [
+      file.type,
+      file.prevName ?? '',
+      file.name,
+      file.prevObjectId ?? '',
+      file.newObjectId ?? '',
+    ].join('\0')
+    const cached = fileCache.get(cacheKey)
+    if (cached !== undefined) {
+      return cached
+    }
+
+    const promise = loadFiles(file).catch((error: unknown) => {
+      if (fileCache.get(cacheKey) === promise) {
+        fileCache.delete(cacheKey)
+      }
+      throw error
+    })
+    fileCache.set(cacheKey, promise)
+    return promise
+  }
+}
+
+async function loadGitHubFileContents(
+  repoRef: GitHubRepoRef,
+  path: string,
+  fetcher: GitHubFetch | undefined,
+  getToken: () => string,
+): Promise<FileContents> {
+  const url = `${GITHUB_API_ROOT}${repoApiPath(repoRef)}/contents/${encodeGitHubPath(path)}?ref=${encodeURIComponent(repoRef.ref)}`
+  const token = getToken()
+  const response = await fetchGitHubApi(url, {
+    accept: GITHUB_RAW_MEDIA_TYPE,
+    fetch: fetcher,
+    token,
+  })
+  await assertGitHubResponseOk(
+    response,
+    `${repoRef.owner}/${repoRef.repo}/${path}@${repoRef.ref}`,
+    token.trim() !== '',
+  )
+
+  return {
+    name: path,
+    contents: await response.text(),
+    cacheKey: `github:${repoRef.owner}/${repoRef.repo}:${repoRef.ref}:${path}`,
+  }
+}
+
+function findFilePatch(
+  patches: readonly StructuredPatch[],
+  file: FileDiffMetadata,
+): StructuredPatch | null {
+  const oldPath = file.prevName ?? file.name
+
+  return (
+    patches.find(
+      (patch) =>
+        normalizePatchPath(patch.oldFileName) === oldPath &&
+        normalizePatchPath(patch.newFileName) === file.name &&
+        patch.hunks.length > 0,
+    ) ?? null
+  )
+}
+
+function normalizePatchPath(path: string | undefined): string | null {
+  if (!path || path === '/dev/null') {
+    return null
+  }
+
+  return path.replace(/^[ab]\//, '')
+}
+
+function localFileCacheKey(
+  oldFile: FileContents,
+  file: FileDiffMetadata,
+): string {
+  const version = file.newObjectId ?? file.cacheKey ?? file.name
+  return `${oldFile.cacheKey ?? 'github-local'}:patched:${version}:${file.name}`
 }
 
 function resolveDiffRefs(
@@ -308,6 +462,7 @@ async function resolveCompareHeadSha(
 async function assertGitHubResponseOk(
   response: Response,
   label: string,
+  hasToken: boolean,
 ): Promise<void> {
   if (response.ok) {
     return
@@ -321,6 +476,28 @@ async function assertGitHubResponseOk(
   ) {
     throw new Error(
       'GitHub rate limit exceeded while expanding context. Save a token to raise the limit.',
+    )
+  }
+
+  if (response.status === 401) {
+    throw new Error(
+      'GitHub rejected the saved token while expanding context. Check that it is valid and has not expired.',
+    )
+  }
+
+  if (response.status === 403) {
+    throw new Error(
+      hasToken
+        ? 'GitHub denied access while expanding context. Check the token’s repository permissions and organization SSO authorization.'
+        : 'GitHub denied anonymous access while expanding context. Save a token and try again.',
+    )
+  }
+
+  if (response.status === 404) {
+    throw new Error(
+      hasToken
+        ? `GitHub could not access ${label}. The saved token may lack repository access, or the commit or path may be unavailable.`
+        : `GitHub could not access ${label}. Save a token if the repository is private, or check that the commit and path are available.`,
     )
   }
 
@@ -348,9 +525,19 @@ function repoApiPath({ owner, repo }: GitHubRepoName): string {
 }
 
 /** Encodes a repository file path segment by segment, keeping the slashes
- * that route the contents API. */
+ * that route the contents API. Dot segments are rejected because URL
+ * normalization would resolve them before the request is sent, letting an
+ * uploaded patch retarget the fetch outside `/repos/<owner>/<repo>/contents`. */
 function encodeGitHubPath(path: string): string {
-  return path.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/')
+  const segments = path.replace(/^\/+/, '').split('/')
+  if (
+    segments.some(
+      (segment) => segment === '' || segment === '.' || segment === '..',
+    )
+  ) {
+    throw new Error(`The path ${path} is not a valid repository file path.`)
+  }
+  return segments.map(encodeURIComponent).join('/')
 }
 
 function isSameRepo(a: GitHubRepoName, b: GitHubRepoName): boolean {

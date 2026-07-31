@@ -13,7 +13,7 @@ const description =
   'Pipe working-tree, staged, or committed Git changes to Diffdump and receive an unlisted 24-hour review URL as plain text.'
 const path = '/docs/cli' as const
 const datePublished = '2026-07-29'
-const dateModified = '2026-07-29'
+const dateModified = '2026-07-30'
 
 export const Route = createFileRoute('/docs/cli')({
   head: () => ({
@@ -77,6 +77,29 @@ function CliGuide() {
         <GuideCode>{`git diff | curl -T- https://diffdump.com/d | xargs open`}</GuideCode>
       </GuideSection>
 
+      <GuideSection title="Expand context from GitHub">
+        <p>
+          Include the canonical GitHub repository and the full base commit SHA
+          to enable on-demand expansion of unchanged lines. Diffdump keeps the
+          patch as the request body.
+        </p>
+        <GuideCode>{`BASE_SHA=$(git rev-parse HEAD)
+git -c core.quotepath=off diff --full-index --binary "$BASE_SHA" |
+  curl -T- \\
+    -H "X-Diffdump-GitHub-Repo: org/repository" \\
+    -H "X-Diffdump-Base-Sha: $BASE_SHA" \\
+    https://diffdump.com/d`}</GuideCode>
+        <p>
+          The viewer fetches a requested base file directly from GitHub only
+          after an expansion click, then applies the patch in the browser.
+          Public repositories work anonymously. Private repositories use a
+          GitHub token saved in that viewer’s browser.{' '}
+          <code className="font-mono text-foreground">core.quotepath=off</code>{' '}
+          keeps non-ASCII file paths literal in the patch so their context stays
+          expandable.
+        </p>
+      </GuideSection>
+
       <GuideSection title="HTTP responses">
         <div className="overflow-x-auto rounded-panel border border-line">
           <table className="w-full min-w-[560px] border-collapse text-left text-sm">
@@ -97,7 +120,7 @@ function CliGuide() {
               />
               <ResponseRow
                 status="400"
-                meaning="The body was empty or not a unified diff."
+                meaning="The body or optional GitHub base metadata was invalid."
               />
               <ResponseRow
                 status="413"

@@ -58,7 +58,10 @@ import {
   type GitHubPullReviewTarget,
   type GitHubPullStackSummary,
 } from '../lib/github-diffs'
-import { createGitHubFileContentsLoader } from '../lib/github-file-contents'
+import {
+  createGitHubBaseFileContentsLoader,
+  createGitHubFileContentsLoader,
+} from '../lib/github-file-contents'
 import { publishReview } from '../lib/github-reviews'
 import {
   classifyDiffLine,
@@ -187,6 +190,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const reviewId = `${isGitHubDiff ? 'github' : 'shared'}:${viewerId}`
   const diff = isGitHubDiff ? props.diff : props.storedDiff.diff
   const expiresAt = isGitHubDiff ? null : props.storedDiff.expiresAt
+  const sharedSource = isGitHubDiff ? null : props.storedDiff.source
   const reviewTarget = isGitHubDiff ? props.reviewTarget : null
   const reviewComments = isGitHubDiff
     ? props.reviewComments
@@ -723,23 +727,23 @@ export default function DiffViewer(props: DiffViewerProps) {
       threadByRootId,
     ],
   )
-  /* GitHub-backed diffs hydrate collapsed context on demand, which puts
-     GitHub-style expand arrows on the hunk separators. Shared raw diffs have
-     no repository to read full files from, so they get no loader and their
-     separators stay plain. Keyed on the review target so a reloaded pull
-     starts from fresh ref and file caches. */
+  /* GitHub-native diffs load both revisions from GitHub. A shared local diff
+     with source metadata loads its base revision and reconstructs the local
+     side from the patch. Raw shares without a source keep plain separators. */
   const loadDiffFiles = useMemo(() => {
-    if (!isGitHubDiff) {
-      return undefined
+    if (isGitHubDiff) {
+      const source = parseGitHubDiffUrl(viewerId)
+      return source
+        ? createGitHubFileContentsLoader(source, {
+            pinnedHeadSha: reviewTarget?.headSha ?? null,
+          })
+        : undefined
     }
 
-    const source = parseGitHubDiffUrl(viewerId)
-    return source
-      ? createGitHubFileContentsLoader(source, {
-          pinnedHeadSha: reviewTarget?.headSha ?? null,
-        })
+    return sharedSource
+      ? createGitHubBaseFileContentsLoader(sharedSource, diff)
       : undefined
-  }, [isGitHubDiff, reviewTarget, viewerId])
+  }, [diff, isGitHubDiff, reviewTarget, sharedSource, viewerId])
   /* Wraps the loader so each file's sticky header can report hydration
      progress: an entry is set when the expander click starts the download,
      turns into an error note if it fails, and disappears once the expanded

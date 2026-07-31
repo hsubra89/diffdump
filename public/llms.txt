@@ -25,6 +25,8 @@ Example:
 git diff | curl -T- https://diffdump.com/d
 ```
 
+Terminal clients may add `X-Diffdump-GitHub-Repo: owner/repository` and `X-Diffdump-Base-Sha: <full 40-character SHA>` headers. Shares with both headers can expand collapsed context on demand. Generate the patch with `git -c core.quotepath=off diff --full-index --binary <base-sha>` so non-ASCII file paths stay literal and remain expandable. The viewer fetches the base file directly from GitHub and applies the uploaded patch locally; public repositories work anonymously, while private repositories use an optional GitHub token stored only in the viewer's browser.
+
 Shared diffs use random 96-bit URL slugs, are stored in a private Cloudflare R2 bucket, expire after 24 hours, and are marked `noindex, nofollow`. Share URLs are unlisted rather than access-controlled; anyone possessing a URL can open it. There is no public listing.
 
 ## Primary resources

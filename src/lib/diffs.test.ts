@@ -4,6 +4,7 @@ import {
   MAX_DIFF_BYTES,
   generateShareSlug,
   looksLikeUnifiedDiff,
+  parseGitHubBaseDiffSource,
   validateCreateDiffInput,
   validateShareSlug,
 } from './diffs'
@@ -52,6 +53,41 @@ describe('share slugs', () => {
     expect(() => validateShareSlug('too-short')).toThrow('Invalid share link')
     expect(() => validateShareSlug('AAAAAAAAAAAAAAA!')).toThrow(
       'Invalid share link',
+    )
+  })
+})
+
+describe('GitHub base diff sources', () => {
+  it('accepts a canonical repository and full commit SHA', () => {
+    expect(
+      parseGitHubBaseDiffSource(
+        'acme/widgets.js',
+        'ABCDEF0123456789ABCDEF0123456789ABCDEF01',
+      ),
+    ).toEqual({
+      kind: 'github-base',
+      owner: 'acme',
+      repo: 'widgets.js',
+      baseSha: 'abcdef0123456789abcdef0123456789abcdef01',
+    })
+  })
+
+  it('treats absent source headers as a regular raw share', () => {
+    expect(parseGitHubBaseDiffSource(null, null)).toBeNull()
+  })
+
+  it('rejects incomplete and malformed source metadata', () => {
+    expect(() => parseGitHubBaseDiffSource('acme/widgets', null)).toThrow(
+      'require both',
+    )
+    expect(() =>
+      parseGitHubBaseDiffSource(
+        'https://github.com/acme/widgets',
+        'abcdef0123456789abcdef0123456789abcdef01',
+      ),
+    ).toThrow('owner/repository')
+    expect(() => parseGitHubBaseDiffSource('acme/widgets', 'abc123')).toThrow(
+      'full 40-character SHA',
     )
   })
 })

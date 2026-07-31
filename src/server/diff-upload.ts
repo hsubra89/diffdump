@@ -1,6 +1,16 @@
-import { MAX_DIFF_BYTES, validateCreateDiffInput } from '../lib/diffs'
+import {
+  MAX_DIFF_BYTES,
+  parseGitHubBaseDiffSource,
+  validateCreateDiffInput,
+  type GitHubBaseDiffSource,
+} from '../lib/diffs'
 
-type SaveUploadedDiff = (diff: string) => Promise<{ slug: string }>
+type UploadedDiff = {
+  diff: string
+  source: GitHubBaseDiffSource | null
+}
+
+type SaveUploadedDiff = (uploaded: UploadedDiff) => Promise<{ slug: string }>
 type DiffCreationRateLimiter = Pick<RateLimit, 'limit'>
 type DiffUploadLogger = Pick<Console, 'error' | 'warn'>
 
@@ -11,6 +21,8 @@ type DiffUploadDependencies = {
 }
 
 export const DIFF_CREATION_RATE_LIMIT_PERIOD_SECONDS = 60
+export const GITHUB_BASE_SHA_HEADER = 'X-Diffdump-Base-Sha'
+export const GITHUB_REPO_HEADER = 'X-Diffdump-GitHub-Repo'
 
 const RATE_LIMITED_MESSAGE = 'Too many diff shares. Try again in 60 seconds.'
 const RATE_LIMIT_UNAVAILABLE_MESSAGE =
@@ -71,12 +83,18 @@ export async function handleDiffUpload(
     return textResponse(DIFF_TOO_LARGE_MESSAGE, 413)
   }
 
-  let diff: string
+  let uploaded: UploadedDiff
 
   try {
-    diff = validateCreateDiffInput({
-      diff: new TextDecoder().decode(body),
-    }).diff
+    uploaded = {
+      diff: validateCreateDiffInput({
+        diff: new TextDecoder().decode(body),
+      }).diff,
+      source: parseGitHubBaseDiffSource(
+        request.headers.get(GITHUB_REPO_HEADER),
+        request.headers.get(GITHUB_BASE_SHA_HEADER),
+      ),
+    }
   } catch (error) {
     return textResponse(
       error instanceof Error ? error.message : 'The diff could not be read.',
@@ -85,7 +103,7 @@ export async function handleDiffUpload(
   }
 
   try {
-    const { slug } = await saveUploadedDiff(diff)
+    const { slug } = await saveUploadedDiff(uploaded)
     const shareUrl = new URL(`/view/${slug}`, request.url)
 
     return textResponse(shareUrl.toString(), 201)
