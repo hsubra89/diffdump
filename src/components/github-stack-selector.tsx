@@ -59,12 +59,12 @@ export function GitHubStackSelector({
 
   return (
     <section
-      className="border-b border-line bg-panel"
+      className="flex min-w-0 items-center"
       aria-label={`Pull request stack #${summary.number}`}
       aria-busy={state.status === 'loading'}
       data-testid="github-stack-selector"
     >
-      <div className="flex h-11 items-center gap-2 px-3 sm:hidden">
+      <div className="flex min-w-0 flex-1 items-center gap-2 px-3 sm:hidden">
         <StackStepLink
           direction="previous"
           owner={owner}
@@ -123,12 +123,12 @@ export function GitHubStackSelector({
         />
       </div>
 
-      <div className="hidden h-11 min-w-0 items-center gap-2 px-4 sm:flex">
+      <div className="hidden min-w-0 items-center gap-2 sm:flex">
         <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
           Stack #{summary.number}
         </span>
         <span
-          className="max-w-40 shrink-0 truncate rounded border border-line bg-canvas px-2 py-1 font-mono text-[11px] text-muted-bright"
+          className="inline-block h-7 max-w-40 shrink-0 truncate rounded-control border border-line bg-surface px-2 font-mono text-[11px] leading-[26px] text-muted-bright"
           title={`Stack base: ${baseRef}`}
         >
           {baseRef}
@@ -161,7 +161,7 @@ export function GitHubStackSelector({
                       'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border px-2.5 font-mono text-[11px] font-medium transition-colors',
                       current
                         ? 'border-accent bg-accent text-accent-ink'
-                        : 'border-line bg-canvas text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground',
+                        : 'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground',
                     )}
                     to="/$"
                     params={{
