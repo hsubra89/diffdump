@@ -25,7 +25,7 @@ export function PanelHeader({
     <div
       className={cn(
         eyebrowClassName,
-        'flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-muted-bright',
+        'flex h-10 shrink-0 items-center gap-2 border-b border-line px-3 text-muted-bright md:px-4',
         className,
       )}
       {...props}

@@ -167,9 +167,9 @@ body {
   --trees-font-size-override: 12px;
   --trees-border-radius-override: 6px;
   --trees-item-margin-x-override: 5px;
-  /* Put the search field on the same 5px rail as the tree rows' highlight
-     boxes; its inner text then starts at ~12px, aligned with the FILES
-     header text above. */
+  /* Put the search field on the same rail as the tree rows' highlight
+     boxes; its inner text then aligns with the FILES header text above
+     (12px gutter on mobile, 16px from the md breakpoint up). */
   --trees-padding-inline-override: 5px;
   --trees-icon-nudge-override: 0;
   /* Breathing room between the panel header's border and the search field,
@@ -177,16 +177,15 @@ body {
   padding-top: 8px;
 }
 
+@media (width >= 48rem) {
+  .diff-file-tree {
+    --trees-padding-inline-override: 9px;
+  }
+}
+
 .diff-scroll {
   scrollbar-color: var(--line-bright) var(--canvas);
   scrollbar-gutter: stable;
-}
-
-.diff-scroll [data-diff-category] {
-  /* The category badge is slotted into the card header, whose padding is
-     16px, while the hunk separator pill below sits at the 8px
-     --diffs-gap-inline inset. Pull the badge back so their left edges align. */
-  margin-left: -8px;
 }
 
 .category-filter-scroll {
