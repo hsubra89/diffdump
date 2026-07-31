@@ -1025,88 +1025,90 @@ export default function DiffViewer(props: DiffViewerProps) {
         className="min-w-0 max-w-full flex-col items-stretch gap-0 p-0 [grid-area:toolbar]"
         aria-label="Diff controls"
       >
-        {isGitHubDiff && props.stackSummary && reviewTarget && (
-          <GitHubStackSelector
-            owner={reviewTarget.owner}
-            repo={reviewTarget.repo}
-            pullNumber={reviewTarget.pullNumber}
-            summary={props.stackSummary}
-            state={props.stackState}
-            onRetry={props.onReloadStack}
-          />
-        )}
-
-        <div className="flex min-w-0 flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 py-2 sm:flex-row sm:items-center">
           <CategoryFilters
             activeFilter={categoryFilter}
             summary={summary}
             onChange={setCategoryFilter}
           />
 
-          <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 sm:justify-end sm:pl-0 md:flex-nowrap md:gap-3 md:pr-4">
-            <Button
-              className="md:hidden"
-              variant="secondary"
-              size="sm"
-              aria-label={
-                filePickerOpen ? 'Close file picker' : 'Open file picker'
-              }
-              aria-controls="diff-file-picker"
-              aria-expanded={filePickerOpen}
-              onClick={() => setFilePickerOpen((current) => !current)}
-            >
-              <span aria-hidden="true">☷</span>
-              <span className="max-[390px]:sr-only">Files</span>
-            </Button>
-            <IconButton
-              label="Find in diff"
-              title={`Find in diff (${FIND_SHORTCUT_HINT})`}
-              variant="secondary"
-              aria-controls="diff-find-bar"
-              aria-expanded={findBarOpen}
-              disabled={parsed.error !== null}
-              onClick={() => setFindBarOpen((current) => !current)}
-            >
-              <svg
-                className="size-4"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                aria-hidden="true"
-              >
-                <circle cx="7" cy="7" r="4.5" />
-                <path d="m10.4 10.4 3.4 3.4" />
-              </svg>
-            </IconButton>
-            <ViewOptionsControl
-              order={fileOrder}
-              onOrderChange={setFileOrder}
-              diffStyle={diffStyle}
-              onDiffStyleChange={setDiffStyle}
-              wrapLines={wrapLines}
-              onWrapLinesChange={setWrapLines}
-            />
-            {reviewEnabled && (
-              <Button
-                variant="primary"
-                size="sm"
-                aria-expanded={submitPanelOpen}
-                aria-controls="submit-review-panel"
-                onClick={() => {
-                  if (submitPanelOpen && submitState.phase === 'success') {
-                    setSubmitState({ phase: 'idle' })
-                  }
-                  setSubmitPanelOpen(!submitPanelOpen)
-                }}
-              >
-                Review
-                {drafts.length > 0 && (
-                  <span className="tabular-nums">({drafts.length})</span>
-                )}
-              </Button>
+          <div className="flex min-w-0 flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center sm:gap-3">
+            {isGitHubDiff && props.stackSummary && reviewTarget && (
+              <GitHubStackSelector
+                owner={reviewTarget.owner}
+                repo={reviewTarget.repo}
+                pullNumber={reviewTarget.pullNumber}
+                summary={props.stackSummary}
+                state={props.stackState}
+                onRetry={props.onReloadStack}
+              />
             )}
+
+            <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 sm:shrink-0 sm:justify-end sm:px-0 md:flex-nowrap md:gap-3 md:pr-4">
+              <Button
+                className="md:hidden"
+                variant="secondary"
+                size="sm"
+                aria-label={
+                  filePickerOpen ? 'Close file picker' : 'Open file picker'
+                }
+                aria-controls="diff-file-picker"
+                aria-expanded={filePickerOpen}
+                onClick={() => setFilePickerOpen((current) => !current)}
+              >
+                <span aria-hidden="true">☷</span>
+                <span className="max-[390px]:sr-only">Files</span>
+              </Button>
+              <IconButton
+                label="Find in diff"
+                title={`Find in diff (${FIND_SHORTCUT_HINT})`}
+                variant="secondary"
+                aria-controls="diff-find-bar"
+                aria-expanded={findBarOpen}
+                disabled={parsed.error !== null}
+                onClick={() => setFindBarOpen((current) => !current)}
+              >
+                <svg
+                  className="size-4"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="7" cy="7" r="4.5" />
+                  <path d="m10.4 10.4 3.4 3.4" />
+                </svg>
+              </IconButton>
+              <ViewOptionsControl
+                order={fileOrder}
+                onOrderChange={setFileOrder}
+                diffStyle={diffStyle}
+                onDiffStyleChange={setDiffStyle}
+                wrapLines={wrapLines}
+                onWrapLinesChange={setWrapLines}
+              />
+              {reviewEnabled && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  aria-expanded={submitPanelOpen}
+                  aria-controls="submit-review-panel"
+                  onClick={() => {
+                    if (submitPanelOpen && submitState.phase === 'success') {
+                      setSubmitState({ phase: 'idle' })
+                    }
+                    setSubmitPanelOpen(!submitPanelOpen)
+                  }}
+                >
+                  Review
+                  {drafts.length > 0 && (
+                    <span className="tabular-nums">({drafts.length})</span>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Toolbar>
@@ -1387,11 +1389,6 @@ function CategoryFilters({
             type="button"
             aria-pressed={active}
             disabled={filterSummary.files === 0}
-            title={
-              filterSummary.files > 0
-                ? `+${filterSummary.additions} −${filterSummary.deletions}`
-                : undefined
-            }
             data-testid={`category-filter-${filter}`}
             onClick={() => onChange(filter)}
           >
@@ -1407,10 +1404,16 @@ function CategoryFilters({
 function CategorySummary({ summary }: { summary: DiffLineSummary }) {
   return (
     <span
-      className="tabular-nums text-muted"
+      className="inline-flex items-center gap-1.5 tabular-nums text-muted"
       aria-label={`${summary.files} ${summary.files === 1 ? 'file' : 'files'}, ${summary.additions} additions, ${summary.deletions} deletions`}
     >
-      {summary.files}
+      <span>{summary.files}</span>
+      {summary.files > 0 && (
+        <>
+          <span className="text-addition">+{summary.additions}</span>
+          <span className="text-deletion">−{summary.deletions}</span>
+        </>
+      )}
     </span>
   )
 }
