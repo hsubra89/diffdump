@@ -1,0 +1,246 @@
+#!/bin/zsh
+
+# Installs or updates ddd and its ddc/ddu/ddp/ddb shortcuts.
+# Requirements: zsh, curl, and either shasum or sha256sum.
+
+setopt pipe_fail
+
+readonly DDD_VERSION='0.1.0'
+readonly DDD_SHA256='309ca895f86972d5f6fc26203f48a907b4ce504accdd41403f2f57c83d5d006b'
+readonly DEFAULT_DDD_URL='https://diffdump.com/cli/ddd'
+readonly PROFILE_START='# >>> diffdump CLI >>>'
+readonly PROFILE_END='# <<< diffdump CLI <<<'
+
+usage() {
+  cat <<'EOF'
+Usage: install [options]
+
+Install or update ddd and the ddc, ddu, ddp, and ddb shortcuts.
+
+Options:
+  --bin-dir <directory>  Installation directory (default: ~/.local/bin)
+  --profile <file>       Zsh profile to update (default: ~/.zshrc)
+  --source-url <url>     Override the ddd download URL
+  --no-profile           Do not add the installation directory to PATH
+  -h, --help             Show this help
+EOF
+}
+
+fail() {
+  print -u2 -- "diffdump installer: $*"
+  return 1
+}
+
+require_command() {
+  (( $+commands[$1] )) || {
+    fail "Required command '$1' is not installed."
+    return
+  }
+}
+
+sha256_file() {
+  local file=$1
+  local output
+
+  if (( $+commands[shasum] )); then
+    output=$(shasum -a 256 -- "$file") || return
+    print -r -- "${output%%[[:space:]]*}"
+    return
+  fi
+
+  if (( $+commands[sha256sum] )); then
+    output=$(sha256sum -- "$file") || return
+    print -r -- "${output%%[[:space:]]*}"
+    return
+  fi
+
+  fail "Checksum verification requires 'shasum' or 'sha256sum'."
+}
+
+profile_has_managed_block() {
+  local profile=$1
+  local line
+
+  [[ -f "$profile" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" == "$PROFILE_START" ]] && return 0
+  done <"$profile"
+  return 1
+}
+
+profile_managed_path_matches() {
+  local profile=$1
+  local expected_line=$2
+  local line
+  local inside_block=false
+
+  [[ -f "$profile" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == "$PROFILE_START" ]]; then
+      inside_block=true
+    elif [[ "$line" == "$PROFILE_END" ]]; then
+      return 1
+    elif [[ "$inside_block" == true && "$line" == "$expected_line" ]]; then
+      return 0
+    fi
+  done <"$profile"
+  return 1
+}
+
+[[ -n "${HOME:-}" ]] || {
+  fail 'HOME is not set; use --bin-dir and --profile from a normal user shell.'
+  exit 1
+}
+
+bin_dir=${HOME}/.local/bin
+profile_path=${ZDOTDIR:-$HOME}/.zshrc
+source_url=$DEFAULT_DDD_URL
+configure_profile=true
+
+while (( $# > 0 )); do
+  case "$1" in
+    --bin-dir)
+      (( $# >= 2 )) || {
+        fail "Option '$1' requires a directory."
+        exit 1
+      }
+      bin_dir=$2
+      shift 2
+      ;;
+    --profile)
+      (( $# >= 2 )) || {
+        fail "Option '$1' requires a file."
+        exit 1
+      }
+      profile_path=$2
+      shift 2
+      ;;
+    --source-url)
+      (( $# >= 2 )) || {
+        fail "Option '$1' requires a URL."
+        exit 1
+      }
+      source_url=$2
+      shift 2
+      ;;
+    --no-profile)
+      configure_profile=false
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit
+      ;;
+    *)
+      fail "Unknown option '$1'. Run with --help for usage."
+      exit 1
+      ;;
+  esac
+done
+
+for required_command in curl chmod mkdir mktemp mv ln readlink rm; do
+  require_command "$required_command" || exit
+done
+
+mkdir -p -- "$bin_dir" || exit
+bin_dir=${bin_dir:A}
+profile_path=${profile_path:A}
+target_path="${bin_dir}/ddd"
+path_export_line="export PATH=${(qqq)bin_dir}:\$PATH"
+
+if [[ -d "$target_path" && ! -L "$target_path" ]]; then
+  fail "Refusing to replace directory '$target_path'."
+  exit 1
+fi
+
+for shortcut_name in ddc ddu ddp ddb; do
+  shortcut_path="${bin_dir}/${shortcut_name}"
+  if [[ -L "$shortcut_path" ]]; then
+    shortcut_target=$(readlink "$shortcut_path") || exit
+    if [[ "$shortcut_target" != ddd && "$shortcut_target" != "$target_path" ]]; then
+      fail "Refusing to replace '$shortcut_path'; it points to '$shortcut_target'."
+      exit 1
+    fi
+  elif [[ -e "$shortcut_path" ]]; then
+    fail "Refusing to replace existing path '$shortcut_path'."
+    exit 1
+  fi
+done
+
+path_is_configured=false
+for path_entry in "${path[@]}"; do
+  if [[ "$path_entry" == "$bin_dir" ]]; then
+    path_is_configured=true
+    break
+  fi
+done
+
+if [[ "$configure_profile" == true && "$path_is_configured" == false ]] &&
+  profile_has_managed_block "$profile_path" &&
+  ! profile_managed_path_matches "$profile_path" "$path_export_line"; then
+  fail "The managed PATH block in '$profile_path' points to another directory."
+  fail 'Update or remove that block before choosing a different --bin-dir.'
+  exit 1
+fi
+
+download_path=$(mktemp "${bin_dir}/.ddd.XXXXXXXX") || exit
+cleanup() {
+  if [[ -n "$download_path" && -e "$download_path" ]]; then
+    rm -f -- "$download_path"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' HUP TERM
+
+curl --fail --location --silent --show-error \
+  --output "$download_path" "$source_url" || exit
+
+actual_sha256=$(sha256_file "$download_path") || exit
+if [[ "$actual_sha256" != "$DDD_SHA256" ]]; then
+  fail "Checksum mismatch for ddd $DDD_VERSION."
+  fail "Expected $DDD_SHA256 but downloaded $actual_sha256."
+  exit 1
+fi
+
+action=Installed
+[[ -e "$target_path" ]] && action=Updated
+chmod 0755 "$download_path" || exit
+mv -f -- "$download_path" "$target_path" || exit
+download_path=''
+
+for shortcut_name in ddc ddu ddp ddb; do
+  shortcut_path="${bin_dir}/${shortcut_name}"
+  [[ -L "$shortcut_path" ]] || ln -s ddd "$shortcut_path" || exit
+done
+
+profile_changed=false
+if [[ "$configure_profile" == true && "$path_is_configured" == false ]]; then
+  if ! profile_has_managed_block "$profile_path"; then
+    mkdir -p -- "${profile_path:h}" || exit
+    if [[ -s "$profile_path" ]]; then
+      print >>"$profile_path" || exit
+    fi
+    {
+      print -r -- "$PROFILE_START"
+      print -r -- "$path_export_line"
+      print -r -- "$PROFILE_END"
+    } >>"$profile_path" || exit
+    profile_changed=true
+  fi
+fi
+
+installed_version=$("$target_path" version) || exit
+print -r -- "$action $installed_version to $target_path"
+print -r -- 'Installed shortcuts: ddc, ddu, ddp, ddb'
+
+if [[ "$profile_changed" == true ]]; then
+  print -r -- "Added $bin_dir to PATH in $profile_path"
+  print -r -- "Start a new shell or run: source ${(qqq)profile_path}"
+elif [[ "$path_is_configured" == false ]]; then
+  if [[ "$configure_profile" == true ]]; then
+    print -r -- "Start a new shell or run: source ${(qqq)profile_path}"
+  else
+    print -u2 -- "Add $bin_dir to PATH to use ddd from your shell."
+  fi
+fi
