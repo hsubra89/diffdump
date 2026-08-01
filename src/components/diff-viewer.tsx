@@ -115,6 +115,11 @@ import {
 
 type DiffStyle = 'unified' | 'split'
 
+/* Split review needs enough room for two useful code columns after gutters.
+   Measure the review canvas instead of the viewport because the file sidebar
+   starts consuming 240px at the md breakpoint. */
+const MIN_SPLIT_VIEW_WIDTH = 720
+
 /** Hydration progress for one file, keyed by item id: present while the
  * full contents download after an expander click, kept as an error note
  * when the download fails, and removed once the context renders. */
@@ -196,7 +201,10 @@ export default function DiffViewer(props: DiffViewerProps) {
     : IDLE_REVIEW_COMMENTS
   const onReloadComments = isGitHubDiff ? props.onReloadComments : undefined
   const onReloadDiff = isGitHubDiff ? props.onReloadDiff : undefined
-  const [diffStyle, setDiffStyle] = useState<DiffStyle>('unified')
+  const [preferredDiffStyle, setPreferredDiffStyle] =
+    useState<DiffStyle>('unified')
+  const [splitViewAvailable, setSplitViewAvailable] = useState(false)
+  const diffStyle = splitViewAvailable ? preferredDiffStyle : 'unified'
   const [wrapLines, setWrapLines] = useState(false)
   const [categoryFilter, setCategoryFilter] =
     useState<DiffCategoryFilter>('all')
@@ -872,14 +880,14 @@ export default function DiffViewer(props: DiffViewerProps) {
 
   useEffect(() => {
     if (parsed.error) {
+      setSplitViewAvailable(false)
       return
     }
 
     /* Publish the scroll area's scrollbar width so the card rail can absorb
-       it: the cards' right margin shrinks by the measured width (see
-       .diff-scroll > div in styles.css), keeping the card edge on the same
-       fixed inset as the header and toolbar above. Overlay scrollbars
-       measure 0 and change nothing. */
+       it, and use that same measured review canvas to decide whether split
+       view has room for two useful code columns. Measuring the canvas avoids
+       the viewport-width discontinuity where the file sidebar appears. */
     const main = mainRef.current
     const scroller = main?.querySelector('.diff-scroll')
 
@@ -887,15 +895,16 @@ export default function DiffViewer(props: DiffViewerProps) {
       return
     }
 
-    const updateScrollbarWidth = () => {
+    const updateLayoutMetrics = () => {
       main.style.setProperty(
         '--diff-scrollbar-width',
         `${scroller.offsetWidth - scroller.clientWidth}px`,
       )
+      setSplitViewAvailable(scroller.clientWidth >= MIN_SPLIT_VIEW_WIDTH)
     }
 
-    updateScrollbarWidth()
-    const observer = new ResizeObserver(updateScrollbarWidth)
+    updateLayoutMetrics()
+    const observer = new ResizeObserver(updateLayoutMetrics)
     observer.observe(scroller)
     return () => observer.disconnect()
   }, [parsed.error])
@@ -1085,7 +1094,8 @@ export default function DiffViewer(props: DiffViewerProps) {
                 order={fileOrder}
                 onOrderChange={setFileOrder}
                 diffStyle={diffStyle}
-                onDiffStyleChange={setDiffStyle}
+                onDiffStyleChange={setPreferredDiffStyle}
+                splitViewAvailable={splitViewAvailable}
                 wrapLines={wrapLines}
                 onWrapLinesChange={setWrapLines}
               />
@@ -1423,6 +1433,7 @@ function ViewOptionsControl({
   onOrderChange,
   diffStyle,
   onDiffStyleChange,
+  splitViewAvailable,
   wrapLines,
   onWrapLinesChange,
 }: {
@@ -1430,6 +1441,7 @@ function ViewOptionsControl({
   onOrderChange: (order: DiffFileOrder) => void
   diffStyle: DiffStyle
   onDiffStyleChange: (style: DiffStyle) => void
+  splitViewAvailable: boolean
   wrapLines: boolean
   onWrapLinesChange: (wrap: boolean) => void
 }) {
@@ -1509,15 +1521,17 @@ function ViewOptionsControl({
             ]}
             onChange={onOrderChange}
           />
-          <ViewOptionGroup
-            label="Layout"
-            value={diffStyle}
-            options={[
-              { value: 'unified', label: 'Unified' },
-              { value: 'split', label: 'Split' },
-            ]}
-            onChange={onDiffStyleChange}
-          />
+          {splitViewAvailable && (
+            <ViewOptionGroup
+              label="Layout"
+              value={diffStyle}
+              options={[
+                { value: 'unified', label: 'Unified' },
+                { value: 'split', label: 'Split' },
+              ]}
+              onChange={onDiffStyleChange}
+            />
+          )}
           <Toggle
             className="h-auto justify-between px-2 py-1.5 font-mono text-[11px]"
             pressed={wrapLines}
