@@ -14,13 +14,13 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'border-accent bg-accent text-accent-ink hover:border-accent-strong hover:bg-accent-strong active:translate-y-px',
+          'border-primary bg-primary text-primary-foreground hover:border-primary-strong hover:bg-primary-strong active:translate-y-px',
         secondary:
-          'border-secondary bg-secondary text-secondary-ink hover:border-secondary-strong hover:bg-secondary-strong active:translate-y-px',
+          'border-secondary bg-secondary text-secondary-foreground hover:border-secondary-strong hover:bg-secondary-strong active:translate-y-px',
         outline:
           'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground active:translate-y-px',
         ghost:
-          'border-transparent bg-transparent text-muted hover:bg-surface-raised hover:text-foreground',
+          'border-transparent bg-transparent text-muted-foreground hover:bg-surface-raised hover:text-foreground',
       },
       size: {
         xs: 'h-7 px-2.5',

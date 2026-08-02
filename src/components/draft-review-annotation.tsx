@@ -121,7 +121,7 @@ export function DraftReviewComposer({
     >
       <textarea
         ref={textareaRef}
-        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted/70"
+        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
         value={body}
         placeholder="Leave a review comment"
         aria-label="Review comment"
@@ -208,7 +208,9 @@ export function DraftReviewAnnotation({
           Pending
         </span>
         {rangeError !== null && <DraftInvalidBadge error={rangeError} />}
-        <span className="text-muted">Part of your unsubmitted review</span>
+        <span className="text-muted-foreground">
+          Part of your unsubmitted review
+        </span>
         <span className="ml-auto flex items-center gap-1.5">
           <Button
             variant="ghost"

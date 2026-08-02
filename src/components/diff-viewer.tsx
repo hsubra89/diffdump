@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   CodeView,
   WorkerPoolContextProvider,
@@ -25,6 +18,15 @@ import {
   type SelectedLineRange,
 } from '@pierre/diffs'
 import DiffWorkerUrl from '@pierre/diffs/worker/worker.js?worker&url'
+import {
+  IconArrowUpRight,
+  IconCheck,
+  IconCopy,
+  IconSearch,
+  IconSidebar,
+  IconSwitches,
+  IconX,
+} from '@pierre/icons'
 import { Link } from '@tanstack/react-router'
 
 import DiffFilePicker from './diff-file-picker'
@@ -46,9 +48,12 @@ import ReviewCommentsPanel from './review-comments-panel'
 import SubmitReviewPanel from './submit-review-panel'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { eyebrowClassName, PanelHeader, Toolbar } from './ui/surfaces'
+import { Switch } from './ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { ThemeToggle } from './ui/theme-toggle'
-import { Toggle } from './ui/toggle'
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import { cn } from '../lib/cn'
 import { diffThemes } from '../lib/diff-themes'
 import {
@@ -982,29 +987,15 @@ export default function DiffViewer(props: DiffViewerProps) {
               rel="noreferrer noopener"
             >
               {reviewTarget ? 'Open PR' : 'Open on GitHub'}
-              <span aria-hidden="true">↗</span>
+              <IconArrowUpRight aria-hidden="true" />
             </a>
           ) : (
             <Button variant="primary" size="sm" onClick={copyShareLink}>
-              <svg
-                className="size-3.5"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {copied ? (
-                  <path d="m3.5 8.5 3 3 6-6.5" />
-                ) : (
-                  <>
-                    <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-                    <path d="M10.5 3.5h-5a2 2 0 0 0-2 2v5" />
-                  </>
-                )}
-              </svg>
+              {copied ? (
+                <IconCheck aria-hidden="true" />
+              ) : (
+                <IconCopy aria-hidden="true" />
+              )}
               {/* Both labels occupy the same grid cell so the button keeps
                   the wider label's width when the text swaps on copy. */}
               <span className="grid justify-items-center">
@@ -1065,7 +1056,7 @@ export default function DiffViewer(props: DiffViewerProps) {
                 aria-expanded={filePickerOpen}
                 onClick={() => setFilePickerOpen((current) => !current)}
               >
-                <span aria-hidden="true">☷</span>
+                <IconSidebar aria-hidden="true" />
                 <span className="max-[390px]:sr-only">Files</span>
               </Button>
               <IconButton
@@ -1077,18 +1068,7 @@ export default function DiffViewer(props: DiffViewerProps) {
                 disabled={parsed.error !== null}
                 onClick={() => setFindBarOpen((current) => !current)}
               >
-                <svg
-                  className="size-4"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <circle cx="7" cy="7" r="4.5" />
-                  <path d="m10.4 10.4 3.4 3.4" />
-                </svg>
+                <IconSearch aria-hidden="true" />
               </IconButton>
               <ViewOptionsControl
                 order={fileOrder}
@@ -1100,23 +1080,52 @@ export default function DiffViewer(props: DiffViewerProps) {
                 onWrapLinesChange={setWrapLines}
               />
               {reviewEnabled && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  aria-expanded={submitPanelOpen}
-                  aria-controls="submit-review-panel"
-                  onClick={() => {
-                    if (submitPanelOpen && submitState.phase === 'success') {
+                <Popover
+                  open={submitPanelOpen}
+                  onOpenChange={(open) => {
+                    if (!open && submitState.phase === 'success') {
                       setSubmitState({ phase: 'idle' })
                     }
-                    setSubmitPanelOpen(!submitPanelOpen)
+                    setSubmitPanelOpen(open)
                   }}
                 >
-                  Review
-                  {drafts.length > 0 && (
-                    <span className="tabular-nums">({drafts.length})</span>
-                  )}
-                </Button>
+                  <PopoverTrigger
+                    render={<Button variant="primary" size="sm" />}
+                  >
+                    Review
+                    {drafts.length > 0 && (
+                      <span className="tabular-nums">({drafts.length})</span>
+                    )}
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto border-0 bg-transparent p-0 shadow-none"
+                    align="end"
+                    aria-label="Submit review"
+                  >
+                    <SubmitReviewPanel
+                      draftCount={drafts.length}
+                      submitState={submitState}
+                      reviewUrl={
+                        submitState.phase === 'success' && reviewTarget
+                          ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}#pullrequestreview-${submitState.reviewId}`
+                          : null
+                      }
+                      pullRequestUrl={
+                        reviewTarget
+                          ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}`
+                          : null
+                      }
+                      onSubmit={submitReview}
+                      onReloadDiff={onReloadDiff ?? NOOP}
+                      onClose={() => {
+                        setSubmitPanelOpen(false)
+                        if (submitState.phase === 'success') {
+                          setSubmitState({ phase: 'idle' })
+                        }
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
@@ -1141,72 +1150,49 @@ export default function DiffViewer(props: DiffViewerProps) {
               onClick={() => setFilePickerOpen(false)}
             />
           ) : null}
-          {reviewEnabled && submitPanelOpen && (
-            <div
-              className="absolute right-3 top-2 z-30 md:right-4"
-              id="submit-review-panel"
-            >
-              <SubmitReviewPanel
-                draftCount={drafts.length}
-                submitState={submitState}
-                reviewUrl={
-                  submitState.phase === 'success' && reviewTarget
-                    ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}#pullrequestreview-${submitState.reviewId}`
-                    : null
-                }
-                pullRequestUrl={
-                  reviewTarget
-                    ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}`
-                    : null
-                }
-                onSubmit={submitReview}
-                onReloadDiff={onReloadDiff ?? NOOP}
-                onClose={() => {
-                  setSubmitPanelOpen(false)
-                  if (submitState.phase === 'success') {
-                    setSubmitState({ phase: 'idle' })
-                  }
-                }}
-              />
-            </div>
-          )}
-          <aside
+          <Tabs
             className={cn(
               'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-canvas shadow-float transition-[transform,visibility] duration-150 [grid-area:tree]',
               'md:visible md:static md:z-auto md:w-auto md:translate-x-0 md:shadow-none',
               filePickerOpen && 'visible translate-x-0',
             )}
+            value={sidebarTab}
+            onValueChange={(value) => {
+              if (value === 'files' || value === 'comments')
+                setSidebarTab(value)
+            }}
+            render={<aside />}
             id="diff-file-picker"
             aria-label="Changed files"
           >
             <PanelHeader>
               {reviewEnabled ? (
-                <div
+                <TabsList
                   className="flex items-center gap-4"
-                  role="tablist"
                   aria-label="Sidebar sections"
+                  activateOnFocus
                 >
-                  <SidebarTab
-                    active={sidebarTab === 'files'}
-                    onClick={() => setSidebarTab('files')}
+                  <TabsTrigger
+                    className="h-8 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-muted-bright data-active:text-foreground data-active:after:absolute data-active:after:inset-x-0 data-active:after:bottom-0 data-active:after:h-0.5 data-active:after:rounded-full data-active:after:bg-foreground"
+                    value="files"
                   >
                     Files
-                  </SidebarTab>
-                  <SidebarTab
-                    active={sidebarTab === 'comments'}
-                    onClick={() => setSidebarTab('comments')}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    className="h-8 gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-muted-bright data-active:text-foreground data-active:after:absolute data-active:after:inset-x-0 data-active:after:bottom-0 data-active:after:h-0.5 data-active:after:rounded-full data-active:after:bg-foreground"
+                    value="comments"
                   >
                     Comments
-                    <span className="text-muted tabular-nums">
+                    <span className="text-muted-foreground tabular-nums">
                       {reviewThreads.length + drafts.length}
                     </span>
-                  </SidebarTab>
-                </div>
+                  </TabsTrigger>
+                </TabsList>
               ) : (
                 <span>Files</span>
               )}
               <output
-                className="ml-auto whitespace-nowrap text-muted"
+                className="ml-auto whitespace-nowrap text-muted-foreground"
                 title={`${viewedFileCount} of ${summary.files} files viewed`}
                 aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
               >
@@ -1219,31 +1205,36 @@ export default function DiffViewer(props: DiffViewerProps) {
                 size="xs"
                 onClick={() => setFilePickerOpen(false)}
               >
-                <span className="text-lg leading-none" aria-hidden="true">
-                  ×
-                </span>
+                <IconX aria-hidden="true" />
               </IconButton>
             </PanelHeader>
-            {reviewEnabled && sidebarTab === 'comments' ? (
-              <ReviewCommentsPanel
-                drafts={drafts}
-                threads={reviewThreads}
-                commentsState={reviewComments}
-                classifyAnchor={classifyAnchor}
-                onSelectDraft={selectDraftInPanel}
-                onEditDraft={editDraftFromPanel}
-                onDeleteDraft={deleteDraft}
-                onSelectThread={selectThreadInPanel}
-                onReloadComments={onReloadComments ?? NOOP}
-              />
-            ) : (
-              <DiffFilePicker
-                key={`${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`}
-                entries={filePickerEntries}
-                onSelect={scrollToFile}
-              />
+            <TabsContent value="files" className="min-h-0 flex-1">
+              {sidebarTab === 'files' && (
+                <DiffFilePicker
+                  key={`${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`}
+                  entries={filePickerEntries}
+                  onSelect={scrollToFile}
+                />
+              )}
+            </TabsContent>
+            {reviewEnabled && (
+              <TabsContent value="comments" className="min-h-0 flex-1">
+                {sidebarTab === 'comments' && (
+                  <ReviewCommentsPanel
+                    drafts={drafts}
+                    threads={reviewThreads}
+                    commentsState={reviewComments}
+                    classifyAnchor={classifyAnchor}
+                    onSelectDraft={selectDraftInPanel}
+                    onEditDraft={editDraftFromPanel}
+                    onDeleteDraft={deleteDraft}
+                    onSelectThread={selectThreadInPanel}
+                    onReloadComments={onReloadComments ?? NOOP}
+                  />
+                )}
+              </TabsContent>
             )}
-          </aside>
+          </Tabs>
           <WorkerPoolContextProvider
             poolOptions={workerPoolOptions}
             highlighterOptions={highlighterOptions}
@@ -1293,32 +1284,6 @@ const FIND_SHORTCUT_HINT = /Mac|iP/.test(globalThis.navigator?.platform ?? '')
   ? '⌘F'
   : 'Ctrl+F'
 
-function SidebarTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <button
-      className={cn(
-        'relative inline-flex h-8 shrink-0 items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted transition-colors hover:text-muted-bright',
-        active &&
-          'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-foreground',
-      )}
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  )
-}
-
 function FileExpansionStatus({ state }: { state: FileExpansionState }) {
   if (state.phase === 'error') {
     return (
@@ -1332,7 +1297,7 @@ function FileExpansionStatus({ state }: { state: FileExpansionState }) {
   }
 
   return (
-    <output className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-muted">
+    <output className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium text-muted-foreground">
       <span
         className="size-1.5 animate-pulse rounded-full bg-accent-text"
         aria-hidden="true"
@@ -1350,7 +1315,7 @@ function ViewedFileControl({
   onChange: (viewed: boolean) => void
 }) {
   return (
-    <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-medium text-muted hover:text-foreground">
+    <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground">
       <input
         className="size-3.5 cursor-pointer rounded-sm"
         type="checkbox"
@@ -1375,46 +1340,48 @@ function CategoryFilters({
   const filters: readonly DiffCategoryFilter[] = ['all', ...DIFF_CATEGORIES]
 
   return (
-    <fieldset
+    <ToggleGroup
       className="category-filter-scroll flex min-w-0 items-center gap-4 overflow-x-auto px-3 md:px-4"
       aria-label="Filter files by category"
+      value={[activeFilter]}
+      onValueChange={(values) => {
+        const nextFilter = values[0] as DiffCategoryFilter | undefined
+        if (nextFilter) onChange(nextFilter)
+      }}
+      render={<fieldset />}
     >
       {filters.map((filter) => {
         const details =
           filter === 'all' ? { label: 'All' } : DIFF_CATEGORY_DETAILS[filter]
         const filterSummary =
           filter === 'all' ? summary : summary.categories[filter]
-        const active = activeFilter === filter
 
         return (
-          <button
+          <ToggleGroupItem
             key={filter}
+            value={filter}
             className={cn(
-              'relative inline-flex h-8 shrink-0 items-center gap-2 font-mono text-[11px] text-muted transition-colors',
+              'relative inline-flex h-8 shrink-0 items-center gap-2 font-mono text-[11px] text-muted-foreground transition-colors',
               'hover:text-muted-bright',
               'disabled:pointer-events-none disabled:opacity-55',
-              active &&
-                'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-foreground',
+              'data-pressed:text-foreground data-pressed:after:absolute data-pressed:after:inset-x-0 data-pressed:after:bottom-0 data-pressed:after:h-0.5 data-pressed:after:rounded-full data-pressed:after:bg-foreground',
             )}
-            type="button"
-            aria-pressed={active}
             disabled={filterSummary.files === 0}
             data-testid={`category-filter-${filter}`}
-            onClick={() => onChange(filter)}
           >
             <span className="font-medium">{details.label}</span>
             <CategorySummary summary={filterSummary} />
-          </button>
+          </ToggleGroupItem>
         )
       })}
-    </fieldset>
+    </ToggleGroup>
   )
 }
 
 function CategorySummary({ summary }: { summary: DiffLineSummary }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 tabular-nums text-muted"
+      className="inline-flex items-center gap-1.5 tabular-nums text-muted-foreground"
       aria-label={`${summary.files} ${summary.files === 1 ? 'file' : 'files'}, ${summary.additions} additions, ${summary.deletions} deletions`}
     >
       <span>{summary.files}</span>
@@ -1445,103 +1412,59 @@ function ViewOptionsControl({
   wrapLines: boolean
   onWrapLinesChange: (wrap: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    function closeOnOutsidePress(event: PointerEvent) {
-      if (
-        event.target instanceof Node &&
-        !containerRef.current?.contains(event.target)
-      ) {
-        setOpen(false)
-      }
-    }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setOpen(false)
-      }
-    }
-
-    document.addEventListener('pointerdown', closeOnOutsidePress)
-    window.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePress)
-      window.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [open])
+  const wrapLinesId = useId()
 
   return (
-    <div ref={containerRef} className="relative">
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-expanded={open}
-        aria-controls="view-options-panel"
-        onClick={() => setOpen((current) => !current)}
-      >
-        <svg
-          className="size-3.5"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          aria-hidden="true"
-        >
-          <path d="M2.5 5h4.75M11.75 5h1.75M2.5 11h1.75M8.5 11h5" />
-          <circle cx="9.5" cy="5" r="1.75" />
-          <circle cx="6.25" cy="11" r="1.75" />
-        </svg>
+    <Popover>
+      <PopoverTrigger render={<Button variant="secondary" size="sm" />}>
+        <IconSwitches aria-hidden="true" />
         View
-      </Button>
-      {open && (
-        <div
-          className="absolute right-0 top-[calc(100%+6px)] z-30 flex w-44 flex-col gap-3 rounded-control border border-line bg-canvas p-3 shadow-float"
-          id="view-options-panel"
-        >
+      </PopoverTrigger>
+      <PopoverContent
+        className="flex w-44 flex-col gap-3 bg-canvas p-3"
+        aria-label="View options"
+      >
+        <ViewOptionGroup
+          label="File order"
+          value={order}
+          options={[
+            {
+              value: 'patch',
+              label: 'Patch',
+              title: 'Order files as they appear in the patch',
+            },
+            {
+              value: 'category',
+              label: 'Category',
+              title: 'Group files by category: source, tests, docs, other',
+            },
+          ]}
+          onChange={onOrderChange}
+        />
+        {splitViewAvailable && (
           <ViewOptionGroup
-            label="File order"
-            value={order}
+            label="Layout"
+            value={diffStyle}
             options={[
-              {
-                value: 'patch',
-                label: 'Patch',
-                title: 'Order files as they appear in the patch',
-              },
-              {
-                value: 'category',
-                label: 'Category',
-                title: 'Group files by category: source, tests, docs, other',
-              },
+              { value: 'unified', label: 'Unified' },
+              { value: 'split', label: 'Split' },
             ]}
-            onChange={onOrderChange}
+            onChange={onDiffStyleChange}
           />
-          {splitViewAvailable && (
-            <ViewOptionGroup
-              label="Layout"
-              value={diffStyle}
-              options={[
-                { value: 'unified', label: 'Unified' },
-                { value: 'split', label: 'Split' },
-              ]}
-              onChange={onDiffStyleChange}
-            />
-          )}
-          <Toggle
-            className="h-auto justify-between px-2 py-1.5 font-mono text-[11px]"
-            pressed={wrapLines}
-            onClick={() => onWrapLinesChange(!wrapLines)}
-          >
-            Wrap lines
-          </Toggle>
-        </div>
-      )}
-    </div>
+        )}
+        <label
+          className="flex cursor-pointer items-center justify-between rounded-control px-2 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground"
+          htmlFor={wrapLinesId}
+        >
+          Wrap lines
+          <Switch
+            id={wrapLinesId}
+            checked={wrapLines}
+            onCheckedChange={onWrapLinesChange}
+          />
+        </label>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -1561,33 +1484,34 @@ function ViewOptionGroup<Value extends string>({
       <span className={cn(eyebrowClassName, 'mb-1 px-2 text-muted-bright')}>
         {label}
       </span>
-      {options.map((option) => {
-        const active = option.value === value
-
-        return (
-          <button
+      <ToggleGroup
+        value={[value]}
+        orientation="vertical"
+        className="flex-col items-stretch"
+        onValueChange={(nextValues) => {
+          const nextValue = nextValues[0]
+          if (nextValue) onChange(nextValue as Value)
+        }}
+      >
+        {options.map((option) => (
+          <ToggleGroupItem
             key={option.value}
+            value={option.value}
             className={cn(
-              'flex items-center gap-2 rounded-control px-2 py-1.5 text-left font-mono text-[11px] transition-colors',
+              'group flex items-center gap-2 rounded-control px-2 py-1.5 text-left font-mono text-[11px] transition-colors',
               'hover:bg-surface-raised hover:text-foreground',
-              active ? 'text-foreground' : 'text-muted',
+              'text-muted-foreground data-pressed:text-foreground',
             )}
-            type="button"
-            aria-pressed={active}
             title={option.title}
-            onClick={() => onChange(option.value)}
           >
             <span
               aria-hidden="true"
-              className={cn(
-                'size-1.5 rounded-full',
-                active ? 'bg-foreground' : 'bg-line-bright',
-              )}
+              className="size-1.5 rounded-full bg-line-bright group-data-pressed:bg-foreground"
             />
             {option.label}
-          </button>
-        )
-      })}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
     </fieldset>
   )
 }
@@ -1639,7 +1563,7 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
 
   return (
     <time
-      className="cursor-help text-muted underline decoration-line-bright decoration-dotted underline-offset-[3px]"
+      className="cursor-help text-muted-foreground underline decoration-line-bright decoration-dotted underline-offset-[3px]"
       dateTime={expiresAt}
       title={absoluteExpiry}
       aria-label={

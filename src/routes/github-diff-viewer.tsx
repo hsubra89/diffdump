@@ -46,7 +46,7 @@ function GitHubDiffViewerGuide() {
       dateModified={dateModified}
     >
       <GuideSection title="How to open a GitHub diff">
-        <ol className="list-decimal space-y-3 pl-5 marker:text-muted">
+        <ol className="list-decimal space-y-3 pl-5 marker:text-muted-foreground">
           <li>
             Copy the URL for a GitHub pull request, commit, or comparison.
           </li>
@@ -79,7 +79,7 @@ https://github.com/org/repo/compare/main...feature`}</GuideCode>
       </GuideSection>
 
       <GuideSection title="What the viewer includes">
-        <ul className="list-disc space-y-2 pl-5 marker:text-muted">
+        <ul className="list-disc space-y-2 pl-5 marker:text-muted-foreground">
           <li>Syntax-highlighted, multi-file patch rendering.</li>
           <li>Unified and side-by-side layouts with optional line wrapping.</li>
           <li>

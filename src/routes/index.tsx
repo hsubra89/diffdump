@@ -4,15 +4,15 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
-  type ReactNode,
-  type RefObject,
 } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { IconArrowUpRight, IconCheck, IconCopy } from '@pierre/icons'
 
 import { GitHubOpenPanel } from '../components/github-open-panel'
 import { SiteFooter, SiteHeader } from '../components/site-chrome'
 import { Button } from '../components/ui/button'
 import { eyebrowClassName } from '../components/ui/surfaces'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { cn } from '../lib/cn'
 import { createSharedDiff } from '../lib/create-shared-diff'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
@@ -55,8 +55,6 @@ function Home() {
   const [siteOrigin, setSiteOrigin] = useState('')
   const [commandCopyState, setCommandCopyState] =
     useState<CommandCopyState>('idle')
-  const pasteTabRef = useRef<HTMLButtonElement>(null)
-  const githubTabRef = useRef<HTMLButtonElement>(null)
   const commandCopyTimer = useRef<number | null>(null)
   const copyWindowEndsAt = useRef(0)
   const copyInFlight = useRef(false)
@@ -106,24 +104,6 @@ function Home() {
       event.preventDefault()
       event.currentTarget.form?.requestSubmit()
     }
-  }
-
-  function handleTabListKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-      return
-    }
-
-    event.preventDefault()
-    const nextTab: PanelTab =
-      event.key === 'Home'
-        ? 'github'
-        : event.key === 'End'
-          ? 'paste'
-          : activeTab === 'paste'
-            ? 'github'
-            : 'paste'
-    setActiveTab(nextTab)
-    ;(nextTab === 'paste' ? pasteTabRef : githubTabRef).current?.focus()
   }
 
   async function copyTerminalCommand() {
@@ -179,7 +159,7 @@ function Home() {
         <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-[560] leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
           Any pull request.
           <br />
-          <span className="text-muted">One clean review.</span>
+          <span className="text-muted-foreground">One clean review.</span>
         </h1>
         <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
           Open any GitHub pull request, commit, or comparison in a fast, focused
@@ -188,7 +168,13 @@ function Home() {
         </p>
       </section>
 
-      <section aria-labelledby="panel-section-title">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          if (value === 'github' || value === 'paste') setActiveTab(value)
+        }}
+        render={<section aria-labelledby="panel-section-title" />}
+      >
         <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
           <h2
             id="panel-section-title"
@@ -198,7 +184,7 @@ function Home() {
               ? 'Review a GitHub diff'
               : 'Create a shared diff'}
           </h2>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             {activeTab === 'github'
               ? 'Public repos work instantly — private ones ask for a token when needed.'
               : 'Paste or pipe a patch to create an expiring, unlisted link.'}
@@ -206,42 +192,34 @@ function Home() {
         </div>
 
         <div className="overflow-hidden rounded-panel border border-line bg-panel shadow-soft">
-          <div className="flex min-h-12 items-stretch justify-between border-b border-line bg-canvas pr-3 font-mono text-xs text-muted">
+          <div className="flex min-h-12 items-stretch justify-between border-b border-line bg-canvas pr-3 font-mono text-xs text-muted-foreground">
             <div className="flex min-w-0 items-stretch">
               <span
                 className="hidden items-center gap-1.5 px-4 sm:flex"
                 aria-hidden="true"
               >
                 <i className="size-[7px] rounded-full bg-line-bright" />
-                <i className="size-[7px] rounded-full bg-muted" />
+                <i className="size-[7px] rounded-full bg-muted-foreground" />
                 <i className="size-[7px] rounded-full bg-muted-bright" />
               </span>
-              <div
-                role="tablist"
+              <TabsList
                 aria-label="Diff source"
                 className="flex items-stretch"
-                tabIndex={-1}
-                onKeyDown={handleTabListKeyDown}
+                activateOnFocus
               >
-                <PanelTabButton
-                  active={activeTab === 'github'}
-                  controls="panel-github"
-                  id="tab-github"
-                  tabRef={githubTabRef}
-                  onSelect={() => setActiveTab('github')}
+                <TabsTrigger
+                  className="-mb-px border-b-2 border-transparent px-3.5 transition-colors hover:text-foreground data-active:border-primary data-active:text-foreground"
+                  value="github"
                 >
                   github.com/…
-                </PanelTabButton>
-                <PanelTabButton
-                  active={activeTab === 'paste'}
-                  controls="panel-paste"
-                  id="tab-paste"
-                  tabRef={pasteTabRef}
-                  onSelect={() => setActiveTab('paste')}
+                </TabsTrigger>
+                <TabsTrigger
+                  className="-mb-px border-b-2 border-transparent px-3.5 transition-colors hover:text-foreground data-active:border-primary data-active:text-foreground"
+                  value="paste"
                 >
                   diff.patch
-                </PanelTabButton>
-              </div>
+                </TabsTrigger>
+              </TabsList>
             </div>
             <Button
               variant="ghost"
@@ -261,24 +239,14 @@ function Home() {
             </Button>
           </div>
 
-          <div
-            role="tabpanel"
-            id="panel-github"
-            aria-labelledby="tab-github"
-            className={cn(activeTab !== 'github' && 'hidden')}
-          >
+          <TabsContent value="github">
             <GitHubOpenPanel url={githubUrl} onUrlChange={setGithubUrl} />
-          </div>
+          </TabsContent>
 
-          <div
-            role="tabpanel"
-            id="panel-paste"
-            aria-labelledby="tab-paste"
-            className={cn(activeTab !== 'paste' && 'hidden')}
-          >
+          <TabsContent value="paste">
             <form onSubmit={handleSubmit}>
               <textarea
-                className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
+                className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
                 id="diff-input"
                 name="diff"
                 value={diff}
@@ -297,12 +265,12 @@ function Home() {
 
               <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-5 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
                 <div>
-                  <p id="diff-help" className="text-xs text-muted">
+                  <p id="diff-help" className="text-xs text-muted-foreground">
                     Unlisted · Expires after 24 hours · 2 MiB max
                   </p>
                   <p
                     id="diff-security"
-                    className="mt-1 max-w-[590px] text-xs leading-snug text-muted"
+                    className="mt-1 max-w-[590px] text-xs leading-snug text-muted-foreground"
                   >
                     Anyone with the link can view this diff — remove secrets
                     before sharing.
@@ -320,7 +288,7 @@ function Home() {
                 <div className="flex shrink-0 items-center justify-between gap-4 md:justify-start">
                   <span
                     className={cn(
-                      'min-w-[55px] text-right font-mono text-[11px] text-muted',
+                      'min-w-[55px] text-right font-mono text-[11px] text-muted-foreground',
                       byteLength > MAX_DIFF_BYTES && 'text-danger',
                     )}
                   >
@@ -334,12 +302,12 @@ function Home() {
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Creating link…' : 'Create share link'}
-                    {!isSubmitting && <span aria-hidden="true">↗</span>}
+                    {!isSubmitting && <IconArrowUpRight aria-hidden="true" />}
                   </Button>
                 </div>
               </div>
             </form>
-          </div>
+          </TabsContent>
         </div>
 
         {activeTab === 'github' ? (
@@ -354,7 +322,7 @@ function Home() {
               >
                 From the address bar
               </p>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Swap <code className="font-mono">github.com</code> for{' '}
                 <code className="font-mono">diffdump.com</code> on any pull
                 request, commit, or comparison URL.
@@ -362,8 +330,10 @@ function Home() {
             </div>
             <div className="min-w-0 rounded-control border border-line bg-canvas px-3 py-1.5">
               <code className="font-mono text-xs leading-[1.7] [overflow-wrap:anywhere]">
-                <span className="text-muted line-through">github.com</span>
-                <span className="text-muted" aria-hidden="true">
+                <span className="text-muted-foreground line-through">
+                  github.com
+                </span>
+                <span className="text-muted-foreground" aria-hidden="true">
                   {' → '}
                 </span>
                 <span className="text-accent-text">diffdump.com</span>
@@ -383,18 +353,21 @@ function Home() {
               >
                 From your terminal
               </p>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Pipe working-tree changes straight to a share link.
               </p>
             </div>
             <div className="flex min-w-0 items-center gap-2">
               <div className="min-w-0 flex-1 rounded-control border border-line bg-canvas px-3 py-1.5">
                 <code className="font-mono text-xs leading-[1.7] text-foreground [overflow-wrap:anywhere]">
-                  <span className="select-none text-muted" aria-hidden="true">
+                  <span
+                    className="select-none text-muted-foreground"
+                    aria-hidden="true"
+                  >
                     ${' '}
                   </span>
                   {uploadCommand}
-                  <span className="text-muted"> | xargs open</span>
+                  <span className="text-muted-foreground"> | xargs open</span>
                 </code>
               </div>
               <Button
@@ -418,7 +391,7 @@ function Home() {
                 }
               >
                 <span className="text-accent-text" aria-hidden="true">
-                  {commandCopyState === 'idle' ? '⧉' : '✓'}
+                  {commandCopyState === 'idle' ? <IconCopy /> : <IconCheck />}
                 </span>
                 {commandCopyState === 'armed'
                   ? 'Copy + open'
@@ -429,47 +402,12 @@ function Home() {
             </div>
           </section>
         )}
-      </section>
+      </Tabs>
 
       <div className="pt-10">
         <SiteFooter />
       </div>
     </main>
-  )
-}
-
-function PanelTabButton({
-  active,
-  controls,
-  id,
-  onSelect,
-  tabRef,
-  children,
-}: {
-  active: boolean
-  controls: string
-  id: string
-  onSelect: () => void
-  tabRef: RefObject<HTMLButtonElement | null>
-  children: ReactNode
-}) {
-  return (
-    <button
-      ref={tabRef}
-      className={cn(
-        '-mb-px flex items-center border-b-2 border-transparent px-3.5 transition-colors hover:text-foreground',
-        active && 'border-accent text-foreground',
-      )}
-      id={id}
-      aria-controls={controls}
-      aria-selected={active}
-      onClick={onSelect}
-      role="tab"
-      tabIndex={active ? 0 : -1}
-      type="button"
-    >
-      {children}
-    </button>
   )
 }
 

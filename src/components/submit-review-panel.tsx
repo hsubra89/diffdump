@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { IconArrowUpRight, IconCheck } from '@pierre/icons'
 
 import { Button } from './ui/button'
 import { cn } from '../lib/cn'
@@ -75,13 +76,13 @@ export default function SubmitReviewPanel({
         <span className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-bright">
           Submit review
         </span>
-        <span className="text-muted tabular-nums">
+        <span className="text-muted-foreground tabular-nums">
           {draftCount} {draftCount === 1 ? 'draft' : 'drafts'}
         </span>
       </div>
 
       <textarea
-        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted/70"
+        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
         value={body}
         placeholder="Review summary (optional)"
         aria-label="Review summary"
@@ -112,7 +113,7 @@ export default function SubmitReviewPanel({
             />
             <span className="flex flex-col gap-0.5">
               <span className="font-medium">{option.label}</span>
-              <span className="leading-snug text-muted">
+              <span className="leading-snug text-muted-foreground">
                 {option.description}
               </span>
             </span>
@@ -120,7 +121,7 @@ export default function SubmitReviewPanel({
         ))}
       </fieldset>
 
-      <p className="leading-snug text-muted">
+      <p className="leading-snug text-muted-foreground">
         Publishes this review to GitHub from this browser with your saved token.
       </p>
 
@@ -134,26 +135,29 @@ export default function SubmitReviewPanel({
 
       {errorReason === 'pending-review-exists' && pullRequestUrl !== null && (
         <a
-          className="self-start text-accent-text underline underline-offset-2 hover:no-underline"
+          className="inline-flex self-start items-center gap-1 text-accent-text underline underline-offset-2 hover:no-underline"
           href={pullRequestUrl}
           target="_blank"
           rel="noreferrer noopener"
         >
-          Resolve the pending review on GitHub ↗
+          Resolve the pending review on GitHub
+          <IconArrowUpRight aria-hidden="true" />
         </a>
       )}
 
       {succeeded ? (
         <div className="flex items-center justify-between gap-2">
-          <span className="text-addition">Review published ✓</span>
+          <span className="inline-flex items-center gap-1.5 text-addition">
+            Review published <IconCheck aria-hidden="true" />
+          </span>
           {reviewUrl !== null && (
             <a
-              className="text-accent-text underline underline-offset-2 hover:no-underline"
+              className="inline-flex items-center gap-1 text-accent-text underline underline-offset-2 hover:no-underline"
               href={reviewUrl}
               target="_blank"
               rel="noreferrer noopener"
             >
-              View on GitHub ↗
+              View on GitHub <IconArrowUpRight aria-hidden="true" />
             </a>
           )}
         </div>

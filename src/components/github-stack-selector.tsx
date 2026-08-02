@@ -1,5 +1,15 @@
 import type { ChangeEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import {
+  IconArrow,
+  IconArrowRight,
+  IconArrowRightShort,
+  IconChevronSm,
+  IconCircle,
+  IconDraft,
+  IconMerged,
+  IconX,
+} from '@pierre/icons'
 
 import { buttonVariants } from './ui/button'
 import { cn } from '../lib/cn'
@@ -88,8 +98,11 @@ export function GitHubStackSelector({
               ? `Layer ${position} of ${size} · Stack unavailable`
               : `PR #${pullNumber} · Layer ${position} of ${size}`}
           </span>
-          <span className="ml-2 text-[10px] text-muted" aria-hidden="true">
-            {stack ? '▾' : state.status === 'loading' ? '…' : ''}
+          <span
+            className="ml-2 text-[10px] text-muted-foreground"
+            aria-hidden="true"
+          >
+            {stack ? <IconChevronSm /> : state.status === 'loading' ? '…' : ''}
           </span>
           {state.status === 'error' && (
             <RetryStackButton
@@ -124,7 +137,7 @@ export function GitHubStackSelector({
       </div>
 
       <div className="hidden min-w-0 items-center gap-2 sm:flex">
-        <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+        <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           Stack #{summary.number}
         </span>
         <span
@@ -133,8 +146,8 @@ export function GitHubStackSelector({
         >
           {baseRef}
         </span>
-        <span className="shrink-0 text-muted" aria-hidden="true">
-          →
+        <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+          <IconArrowRightShort />
         </span>
 
         {stack ? (
@@ -152,15 +165,15 @@ export function GitHubStackSelector({
                   key={pull.number}
                 >
                   {index > 0 && (
-                    <span className="text-muted" aria-hidden="true">
-                      →
+                    <span className="text-muted-foreground" aria-hidden="true">
+                      <IconArrowRightShort />
                     </span>
                   )}
                   <Link
                     className={cn(
                       'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border px-2.5 font-mono text-[11px] font-medium transition-colors',
                       current
-                        ? 'border-accent bg-accent text-accent-ink'
+                        ? 'border-primary bg-primary text-primary-foreground'
                         : 'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground',
                     )}
                     to="/$"
@@ -172,7 +185,7 @@ export function GitHubStackSelector({
                     title={`${pull.title} · ${pull.headRef} · ${status}`}
                     data-testid={`github-stack-pull-${pull.number}`}
                   >
-                    <span aria-hidden="true">{getPullStatusSymbol(pull)}</span>
+                    <span aria-hidden="true">{getPullStatusIcon(pull)}</span>
                     <span>#{pull.number}</span>
                     {current && (
                       <span
@@ -271,7 +284,7 @@ function StackStepLink({
   pull: GitHubPullStackItem | null
 }) {
   const label = direction === 'previous' ? 'Previous layer' : 'Next layer'
-  const symbol = direction === 'previous' ? '←' : '→'
+  const icon = direction === 'previous' ? <IconArrow /> : <IconArrowRight />
 
   if (!pull) {
     return (
@@ -282,7 +295,7 @@ function StackStepLink({
         )}
         aria-hidden="true"
       >
-        {symbol}
+        {icon}
       </span>
     )
   }
@@ -295,7 +308,7 @@ function StackStepLink({
       aria-label={`${label}: pull request #${pull.number}, ${pull.title}`}
       title={`${label}: #${pull.number}`}
     >
-      <span aria-hidden="true">{symbol}</span>
+      <span aria-hidden="true">{icon}</span>
     </Link>
   )
 }
@@ -318,15 +331,15 @@ function getPullStatus(pull: GitHubPullStackItem): string {
   return pull.state === 'open' ? 'Open' : 'Closed'
 }
 
-function getPullStatusSymbol(pull: GitHubPullStackItem): string {
+function getPullStatusIcon(pull: GitHubPullStackItem) {
   switch (getPullStatus(pull)) {
     case 'Merged':
-      return '✓'
+      return <IconMerged />
     case 'Draft':
-      return '◌'
+      return <IconDraft />
     case 'Closed':
-      return '×'
+      return <IconX />
     default:
-      return '○'
+      return <IconCircle />
   }
 }

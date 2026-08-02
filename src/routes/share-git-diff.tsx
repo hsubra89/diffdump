@@ -46,7 +46,7 @@ function ShareGitDiffGuide() {
       dateModified={dateModified}
     >
       <GuideSection title="Share a diff from the browser">
-        <ol className="list-decimal space-y-3 pl-5 marker:text-muted">
+        <ol className="list-decimal space-y-3 pl-5 marker:text-muted-foreground">
           <li>
             Open Diffdump and select the{' '}
             <code className="font-mono text-foreground">diff.patch</code> tab.
@@ -107,7 +107,7 @@ git -c core.quotepath=off diff --full-index --binary "$BASE_SHA" |
       </GuideSection>
 
       <GuideSection title="What can be shared?">
-        <ul className="list-disc space-y-2 pl-5 marker:text-muted">
+        <ul className="list-disc space-y-2 pl-5 marker:text-muted-foreground">
           <li>Working-tree or staged changes from a Git repository.</li>
           <li>A commit exported as a unified patch.</li>
           <li>

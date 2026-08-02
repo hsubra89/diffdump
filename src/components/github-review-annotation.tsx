@@ -50,7 +50,7 @@ export function GitHubCommentBody({
           {comment.author.login}
         </a>
         <a
-          className="text-muted hover:text-foreground hover:underline"
+          className="text-muted-foreground hover:text-foreground hover:underline"
           href={comment.htmlUrl}
           target="_blank"
           rel="noreferrer noopener"

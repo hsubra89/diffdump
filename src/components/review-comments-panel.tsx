@@ -1,5 +1,6 @@
 import { useMemo, type MouseEvent, type ReactNode } from 'react'
 import type { SelectedLineRange } from '@pierre/diffs'
+import { IconArrowUpRight } from '@pierre/icons'
 
 import { DraftInvalidBadge } from './draft-review-annotation'
 import { Button } from './ui/button'
@@ -81,10 +82,12 @@ export default function ReviewCommentsPanel({
       <section aria-label="Draft review comments">
         <PanelSectionTitle>
           Your drafts
-          <span className="text-muted tabular-nums">{drafts.length}</span>
+          <span className="text-muted-foreground tabular-nums">
+            {drafts.length}
+          </span>
         </PanelSectionTitle>
         {drafts.length === 0 ? (
-          <p className="px-2 text-xs leading-snug text-muted">
+          <p className="px-2 text-xs leading-snug text-muted-foreground">
             Select lines in the diff and use the gutter control to draft review
             comments.
           </p>
@@ -149,12 +152,14 @@ export default function ReviewCommentsPanel({
         <PanelSectionTitle>
           Comments
           {commentsState.status === 'loaded' && (
-            <span className="text-muted tabular-nums">{threads.length}</span>
+            <span className="text-muted-foreground tabular-nums">
+              {threads.length}
+            </span>
           )}
         </PanelSectionTitle>
 
         {commentsState.status === 'loading' && (
-          <p className="px-2 text-xs text-muted" aria-live="polite">
+          <p className="px-2 text-xs text-muted-foreground" aria-live="polite">
             Loading GitHub comments…
           </p>
         )}
@@ -172,7 +177,7 @@ export default function ReviewCommentsPanel({
 
         {commentsState.status === 'loaded' &&
           (threads.length === 0 ? (
-            <p className="px-2 text-xs text-muted">
+            <p className="px-2 text-xs text-muted-foreground">
               No review comments on this pull request yet.
             </p>
           ) : (
@@ -180,7 +185,7 @@ export default function ReviewCommentsPanel({
               {threadsByFile.map(([path, fileThreads]) => (
                 <div key={path}>
                   <p
-                    className="truncate px-2 pb-1 font-mono text-[11px] text-muted"
+                    className="truncate px-2 pb-1 font-mono text-[11px] text-muted-foreground"
                     title={path}
                   >
                     {path}
@@ -220,12 +225,12 @@ function ThreadRow({
       <span className="flex w-full items-center gap-1.5">
         <span className="truncate font-medium">{root.author.login}</span>
         {root.outdated && (
-          <span className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-muted">
+          <span className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
             Outdated
           </span>
         )}
         {replies.length > 0 && (
-          <span className="shrink-0 text-muted tabular-nums">
+          <span className="shrink-0 text-muted-foreground tabular-nums">
             {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
           </span>
         )}
@@ -252,7 +257,9 @@ function ThreadRow({
         }}
       >
         {meta}
-        <span className="text-accent-text">View on GitHub ↗</span>
+        <span className="inline-flex items-center gap-1 text-accent-text">
+          View on GitHub <IconArrowUpRight aria-hidden="true" />
+        </span>
       </a>
     )
   }
@@ -304,7 +311,7 @@ function CommentLocation({
   const marker = kind === 'addition' ? '+' : kind === 'deletion' ? '−' : ''
 
   return (
-    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted">
+    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
       {path !== null && <span title={path}>{path}</span>}
       {line !== null && (
         <span

@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { CodeViewLineSelection } from '@pierre/diffs'
 import type { CodeViewHandle } from '@pierre/diffs/react'
+import { IconArrow, IconX } from '@pierre/icons'
 
 import { IconButton } from './ui/button'
 import type { ClassifiedDiffFile } from '../lib/diff-files'
@@ -205,7 +206,7 @@ export default function DiffFindBar({
     >
       <input
         ref={inputRef}
-        className="h-8 min-w-0 flex-1 bg-transparent px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted/70 sm:h-7 sm:w-52 sm:flex-none"
+        className="h-8 min-w-0 flex-1 bg-transparent px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/70 sm:h-7 sm:w-52 sm:flex-none"
         type="text"
         value={inputValue}
         placeholder="Find in diff"
@@ -217,7 +218,7 @@ export default function DiffFindBar({
         onKeyDown={handleInputKeyDown}
       />
       <span
-        className="min-w-14 px-1 text-right font-mono text-[11px] text-muted tabular-nums"
+        className="min-w-14 px-1 text-right font-mono text-[11px] text-muted-foreground tabular-nums"
         aria-live="polite"
       >
         {search ? formatMatchCounter(search) : ''}
@@ -230,7 +231,7 @@ export default function DiffFindBar({
         disabled={inputValue === ''}
         onClick={() => submit(-1)}
       >
-        <span aria-hidden="true">↑</span>
+        <IconArrow className="rotate-90" aria-hidden="true" />
       </IconButton>
       <IconButton
         className="max-sm:size-8"
@@ -240,7 +241,7 @@ export default function DiffFindBar({
         disabled={inputValue === ''}
         onClick={() => submit(1)}
       >
-        <span aria-hidden="true">↓</span>
+        <IconArrow className="-rotate-90" aria-hidden="true" />
       </IconButton>
       <IconButton
         className="max-sm:size-8"
@@ -249,9 +250,7 @@ export default function DiffFindBar({
         size="xs"
         onClick={() => onOpenChange(false)}
       >
-        <span className="text-lg leading-none" aria-hidden="true">
-          ×
-        </span>
+        <IconX aria-hidden="true" />
       </IconButton>
     </search>
   )

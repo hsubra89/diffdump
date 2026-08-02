@@ -280,7 +280,7 @@ function GitHubTokenPrompt({
           onSubmit={handleSubmit}
         >
           <input
-            className="h-8 min-w-0 flex-1 rounded-control border border-line bg-canvas px-3 font-mono text-xs text-foreground outline-none placeholder:text-muted/70"
+            className="h-8 min-w-0 flex-1 rounded-control border border-line bg-canvas px-3 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
             type="password"
             value={tokenDraft}
             onChange={(event) => setTokenDraft(event.currentTarget.value)}
@@ -301,7 +301,7 @@ function GitHubTokenPrompt({
           </Button>
         </form>
 
-        <p className="mt-3 text-xs leading-snug text-muted">
+        <p className="mt-3 text-xs leading-snug text-muted-foreground">
           <a
             className="text-accent-text underline underline-offset-2 hover:no-underline"
             href={CREATE_FINE_GRAINED_GITHUB_TOKEN_URL}
@@ -365,7 +365,7 @@ function GitHubDiffLoading() {
         </div>
       </header>
       <div
-        className="flex items-center justify-center gap-3 font-mono text-xs text-muted"
+        className="flex items-center justify-center gap-3 font-mono text-xs text-muted-foreground"
         aria-live="polite"
       >
         <span
