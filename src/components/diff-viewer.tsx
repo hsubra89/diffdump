@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from 'react'
 import {
   CodeView,
   WorkerPoolContextProvider,
@@ -49,6 +58,13 @@ import SubmitReviewPanel from './submit-review-panel'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from './ui/sheet'
 import { eyebrowClassName, PanelHeader, Toolbar } from './ui/surfaces'
 import { Switch } from './ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
@@ -119,6 +135,7 @@ import {
 } from '../lib/viewed-files'
 
 type DiffStyle = 'unified' | 'split'
+type SidebarTab = 'files' | 'comments'
 
 /* Split review needs enough room for two useful code columns after gutters.
    Measure the review canvas instead of the viewport because the file sidebar
@@ -248,7 +265,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const composerBodyRef = useRef<ComposerBodyStore | null>(null)
   const [selectedLines, setSelectedLines] =
     useState<CodeViewLineSelection | null>(null)
-  const [sidebarTab, setSidebarTab] = useState<'files' | 'comments'>('files')
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files')
   const [submitPanelOpen, setSubmitPanelOpen] = useState(false)
   const [submitState, setSubmitState] = useState<SubmitReviewState>({
     phase: 'idle',
@@ -612,6 +629,7 @@ export default function DiffViewer(props: DiffViewerProps) {
     (draft: DraftReviewComment) => {
       if (editDraft(draft)) {
         revealReviewRange(draft.itemId, draft.range)
+        setFilePickerOpen(false)
       }
     },
     [editDraft, revealReviewRange],
@@ -627,7 +645,10 @@ export default function DiffViewer(props: DiffViewerProps) {
     [updateDrafts],
   )
   const selectDraftInPanel = useCallback(
-    (draft: DraftReviewComment) => revealReviewRange(draft.itemId, draft.range),
+    (draft: DraftReviewComment) => {
+      revealReviewRange(draft.itemId, draft.range)
+      setFilePickerOpen(false)
+    },
     [revealReviewRange],
   )
   /* Labels a sidebar anchor as an added, deleted, or unchanged line. */
@@ -652,6 +673,7 @@ export default function DiffViewer(props: DiffViewerProps) {
       const itemId = itemIdByPath.get(thread.root.path)
       if (itemId !== undefined && thread.root.range !== null) {
         revealReviewRange(itemId, thread.root.range)
+        setFilePickerOpen(false)
       }
     },
     [itemIdByPath, revealReviewRange],
@@ -930,19 +952,15 @@ export default function DiffViewer(props: DiffViewerProps) {
   }, [parsed.error])
 
   useEffect(() => {
-    if (!filePickerOpen) {
-      return
+    const desktopViewport = window.matchMedia('(min-width: 768px)')
+
+    function closeMobileSheet(event: MediaQueryListEvent) {
+      if (event.matches) setFilePickerOpen(false)
     }
 
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setFilePickerOpen(false)
-      }
-    }
-
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
-  }, [filePickerOpen])
+    desktopViewport.addEventListener('change', closeMobileSheet)
+    return () => desktopViewport.removeEventListener('change', closeMobileSheet)
+  }, [])
 
   async function copyShareLink() {
     try {
@@ -952,6 +970,31 @@ export default function DiffViewer(props: DiffViewerProps) {
     } catch {
       setCopied(false)
     }
+  }
+
+  const sidebarProps: DiffSidebarSharedProps = {
+    reviewEnabled,
+    activeTab: sidebarTab,
+    onTabChange: setSidebarTab,
+    reviewItemCount: reviewThreads.length + drafts.length,
+    viewedFileCount,
+    fileCount: summary.files,
+    filePickerKey: `${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`,
+    filePickerProps: {
+      entries: filePickerEntries,
+      onSelect: scrollToFile,
+    },
+    reviewCommentsProps: {
+      drafts,
+      threads: reviewThreads,
+      commentsState: reviewComments,
+      classifyAnchor,
+      onSelectDraft: selectDraftInPanel,
+      onEditDraft: editDraftFromPanel,
+      onDeleteDraft: deleteDraft,
+      onSelectThread: selectThreadInPanel,
+      onReloadComments: onReloadComments ?? NOOP,
+    },
   }
 
   return (
@@ -1045,20 +1088,46 @@ export default function DiffViewer(props: DiffViewerProps) {
             )}
 
             <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 sm:shrink-0 sm:justify-end sm:px-0 md:flex-nowrap md:gap-3 md:pr-4">
-              <Button
-                className="md:hidden"
-                variant="secondary"
-                size="sm"
-                aria-label={
-                  filePickerOpen ? 'Close file picker' : 'Open file picker'
-                }
-                aria-controls="diff-file-picker"
-                aria-expanded={filePickerOpen}
-                onClick={() => setFilePickerOpen((current) => !current)}
-              >
-                <IconSidebar aria-hidden="true" />
-                <span className="max-[390px]:sr-only">Files</span>
-              </Button>
+              <Sheet open={filePickerOpen} onOpenChange={setFilePickerOpen}>
+                <SheetTrigger
+                  render={
+                    <Button
+                      className="md:hidden"
+                      variant="secondary"
+                      size="sm"
+                      aria-label="Open file picker"
+                    />
+                  }
+                >
+                  <IconSidebar aria-hidden="true" />
+                  <span className="max-[390px]:sr-only">Files</span>
+                </SheetTrigger>
+                <SheetContent
+                  className="w-[min(280px,calc(100%-44px))] bg-canvas p-0 md:hidden"
+                  overlayClassName="md:hidden"
+                  side="left"
+                >
+                  <SheetTitle className="sr-only">Changed files</SheetTitle>
+                  <DiffSidebar
+                    {...sidebarProps}
+                    className="min-h-0 flex-1"
+                    id="diff-file-picker-mobile"
+                    closeControl={
+                      <SheetClose
+                        render={
+                          <IconButton
+                            label="Close file picker"
+                            variant="ghost"
+                            size="xs"
+                          />
+                        }
+                      >
+                        <IconX aria-hidden="true" />
+                      </SheetClose>
+                    }
+                  />
+                </SheetContent>
+              </Sheet>
               <IconButton
                 label="Find in diff"
                 title={`Find in diff (${FIND_SHORTCUT_HINT})`}
@@ -1142,99 +1211,11 @@ export default function DiffViewer(props: DiffViewerProps) {
         />
       ) : (
         <div className="relative grid min-h-0 grid-cols-1 [grid-area:workspace] [grid-template-areas:'viewer'] md:grid-cols-[240px_minmax(0,1fr)] md:[grid-template-areas:'tree_viewer']">
-          {filePickerOpen ? (
-            <button
-              className="absolute inset-0 z-10 block cursor-default bg-black/50 md:hidden"
-              type="button"
-              aria-label="Close file picker"
-              onClick={() => setFilePickerOpen(false)}
-            />
-          ) : null}
-          <Tabs
-            className={cn(
-              'invisible absolute inset-y-0 left-0 z-20 flex w-[min(280px,calc(100%-44px))] -translate-x-full flex-col border-r border-line bg-canvas shadow-float transition-[transform,visibility] duration-150 [grid-area:tree]',
-              'md:visible md:static md:z-auto md:w-auto md:translate-x-0 md:shadow-none',
-              filePickerOpen && 'visible translate-x-0',
-            )}
-            value={sidebarTab}
-            onValueChange={(value) => {
-              if (value === 'files' || value === 'comments')
-                setSidebarTab(value)
-            }}
-            render={<aside />}
-            id="diff-file-picker"
-            aria-label="Changed files"
-          >
-            <PanelHeader>
-              {reviewEnabled ? (
-                <TabsList
-                  className="flex items-center gap-4"
-                  aria-label="Sidebar sections"
-                  activateOnFocus
-                >
-                  <TabsTrigger
-                    className="h-8 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-muted-bright data-active:text-foreground data-active:after:absolute data-active:after:inset-x-0 data-active:after:bottom-0 data-active:after:h-0.5 data-active:after:rounded-full data-active:after:bg-foreground"
-                    value="files"
-                  >
-                    Files
-                  </TabsTrigger>
-                  <TabsTrigger
-                    className="h-8 gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-muted-bright data-active:text-foreground data-active:after:absolute data-active:after:inset-x-0 data-active:after:bottom-0 data-active:after:h-0.5 data-active:after:rounded-full data-active:after:bg-foreground"
-                    value="comments"
-                  >
-                    Comments
-                    <span className="text-muted-foreground tabular-nums">
-                      {reviewThreads.length + drafts.length}
-                    </span>
-                  </TabsTrigger>
-                </TabsList>
-              ) : (
-                <span>Files</span>
-              )}
-              <output
-                className="ml-auto whitespace-nowrap text-muted-foreground"
-                title={`${viewedFileCount} of ${summary.files} files viewed`}
-                aria-label={`${viewedFileCount} of ${summary.files} files viewed`}
-              >
-                {viewedFileCount}/{summary.files}
-              </output>
-              <IconButton
-                className="md:hidden"
-                label="Close file picker"
-                variant="ghost"
-                size="xs"
-                onClick={() => setFilePickerOpen(false)}
-              >
-                <IconX aria-hidden="true" />
-              </IconButton>
-            </PanelHeader>
-            <TabsContent value="files" className="min-h-0 flex-1">
-              {sidebarTab === 'files' && (
-                <DiffFilePicker
-                  key={`${viewerId}:${categoryFilter}:${fileOrder}:${viewedFileCount}`}
-                  entries={filePickerEntries}
-                  onSelect={scrollToFile}
-                />
-              )}
-            </TabsContent>
-            {reviewEnabled && (
-              <TabsContent value="comments" className="min-h-0 flex-1">
-                {sidebarTab === 'comments' && (
-                  <ReviewCommentsPanel
-                    drafts={drafts}
-                    threads={reviewThreads}
-                    commentsState={reviewComments}
-                    classifyAnchor={classifyAnchor}
-                    onSelectDraft={selectDraftInPanel}
-                    onEditDraft={editDraftFromPanel}
-                    onDeleteDraft={deleteDraft}
-                    onSelectThread={selectThreadInPanel}
-                    onReloadComments={onReloadComments ?? NOOP}
-                  />
-                )}
-              </TabsContent>
-            )}
-          </Tabs>
+          <DiffSidebar
+            {...sidebarProps}
+            className="hidden min-h-0 border-r border-line bg-canvas [grid-area:tree] md:flex"
+            id="diff-file-picker-desktop"
+          />
           <WorkerPoolContextProvider
             poolOptions={workerPoolOptions}
             highlighterOptions={highlighterOptions}
@@ -1283,6 +1264,100 @@ const NOOP = () => {}
 const FIND_SHORTCUT_HINT = /Mac|iP/.test(globalThis.navigator?.platform ?? '')
   ? '⌘F'
   : 'Ctrl+F'
+
+type DiffSidebarSharedProps = {
+  reviewEnabled: boolean
+  activeTab: SidebarTab
+  onTabChange: (tab: SidebarTab) => void
+  reviewItemCount: number
+  viewedFileCount: number
+  fileCount: number
+  filePickerKey: string
+  filePickerProps: ComponentProps<typeof DiffFilePicker>
+  reviewCommentsProps: ComponentProps<typeof ReviewCommentsPanel>
+}
+
+type DiffSidebarProps = DiffSidebarSharedProps & {
+  id: string
+  className?: string
+  closeControl?: ReactNode
+}
+
+function DiffSidebar({
+  id,
+  className,
+  closeControl,
+  reviewEnabled,
+  activeTab,
+  onTabChange,
+  reviewItemCount,
+  viewedFileCount,
+  fileCount,
+  filePickerKey,
+  filePickerProps,
+  reviewCommentsProps,
+}: DiffSidebarProps) {
+  return (
+    <Tabs
+      className={cn('min-h-0 flex-col', className)}
+      value={activeTab}
+      onValueChange={(value) => {
+        if (value === 'files' || value === 'comments') onTabChange(value)
+      }}
+      render={<aside />}
+      id={id}
+      aria-label="Changed files"
+    >
+      <PanelHeader>
+        {reviewEnabled ? (
+          <TabsList
+            className="flex items-center gap-4"
+            aria-label="Sidebar sections"
+            activateOnFocus
+          >
+            <TabsTrigger
+              className="h-8 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-muted-bright data-active:text-foreground data-active:after:absolute data-active:after:inset-x-0 data-active:after:bottom-0 data-active:after:h-0.5 data-active:after:rounded-full data-active:after:bg-foreground"
+              value="files"
+            >
+              Files
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-8 gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-muted-bright data-active:text-foreground data-active:after:absolute data-active:after:inset-x-0 data-active:after:bottom-0 data-active:after:h-0.5 data-active:after:rounded-full data-active:after:bg-foreground"
+              value="comments"
+            >
+              Comments
+              <span className="text-muted-foreground tabular-nums">
+                {reviewItemCount}
+              </span>
+            </TabsTrigger>
+          </TabsList>
+        ) : (
+          <span>Files</span>
+        )}
+        <output
+          className="ml-auto whitespace-nowrap text-muted-foreground"
+          title={`${viewedFileCount} of ${fileCount} files viewed`}
+          aria-label={`${viewedFileCount} of ${fileCount} files viewed`}
+        >
+          {viewedFileCount}/{fileCount}
+        </output>
+        {closeControl}
+      </PanelHeader>
+      <TabsContent value="files" className="min-h-0 flex-1">
+        {activeTab === 'files' && (
+          <DiffFilePicker key={filePickerKey} {...filePickerProps} />
+        )}
+      </TabsContent>
+      {reviewEnabled && (
+        <TabsContent value="comments" className="min-h-0 flex-1">
+          {activeTab === 'comments' && (
+            <ReviewCommentsPanel {...reviewCommentsProps} />
+          )}
+        </TabsContent>
+      )}
+    </Tabs>
+  )
+}
 
 function FileExpansionStatus({ state }: { state: FileExpansionState }) {
   if (state.phase === 'error') {

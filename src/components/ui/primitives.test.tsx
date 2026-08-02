@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './sheet'
 import { Switch } from './switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
 import { ToggleGroup, ToggleGroupItem } from './toggle-group'
@@ -89,6 +90,79 @@ describe('Base UI primitives', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Submit review' })).toBeNull()
+    })
+  })
+
+  it('traps sheet focus and restores it after Escape', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <div>
+        <button type="button">Before</button>
+        <Sheet>
+          <SheetTrigger
+            render={<button type="button" aria-label="Open files" />}
+          >
+            Files
+          </SheetTrigger>
+          <SheetContent side="left">
+            <SheetTitle>Changed files</SheetTitle>
+            <button type="button">First action</button>
+            <button type="button">Last action</button>
+          </SheetContent>
+        </Sheet>
+        <button type="button">After</button>
+      </div>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Open files' })
+    await user.click(trigger)
+
+    const dialog = screen.getByRole('dialog', { name: 'Changed files' })
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    )
+
+    for (let index = 0; index < 4; index += 1) {
+      await user.tab()
+      expect(dialog.contains(document.activeElement)).toBe(true)
+    }
+
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Changed files' })).toBeNull()
+    })
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('dismisses a sheet from its backdrop', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <Sheet>
+        <SheetTrigger
+          render={<button type="button" aria-label="Open navigation" />}
+        >
+          Navigation
+        </SheetTrigger>
+        <SheetContent side="left">
+          <SheetTitle>Navigation</SheetTitle>
+        </SheetContent>
+      </Sheet>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Open navigation' }))
+    expect(screen.getByRole('dialog', { name: 'Navigation' })).not.toBeNull()
+
+    const backdrop = document.querySelector<HTMLElement>(
+      '[data-slot="sheet-overlay"]',
+    )
+    expect(backdrop).not.toBeNull()
+    await user.click(backdrop!)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Navigation' })).toBeNull()
     })
   })
 
