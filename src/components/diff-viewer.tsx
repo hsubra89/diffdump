@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -38,8 +40,6 @@ import {
 } from '@pierre/icons'
 import { Link } from '@tanstack/react-router'
 
-import DiffFilePicker from './diff-file-picker'
-import DiffFindBar from './diff-find-bar'
 import {
   DraftReviewAnnotation,
   DraftReviewComposer,
@@ -53,8 +53,6 @@ import {
   GitHubStackSelector,
   type GitHubPullStackLoadState,
 } from './github-stack-selector'
-import ReviewCommentsPanel from './review-comments-panel'
-import SubmitReviewPanel from './submit-review-panel'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -128,11 +126,17 @@ import {
   formatExpiryCountdown,
   getExpiryCountdownUpdateDelay,
 } from '../lib/expiry'
+import { isDiffFindShortcut } from '../lib/diff-find-shortcut'
 import { createDiffFilePickerEntries } from '../lib/file-picker'
 import {
   readStoredViewedFileIds,
   writeStoredViewedFileIds,
 } from '../lib/viewed-files'
+
+const DiffFilePicker = lazy(() => import('./diff-file-picker'))
+const DiffFindBar = lazy(() => import('./diff-find-bar'))
+const ReviewCommentsPanel = lazy(() => import('./review-comments-panel'))
+const SubmitReviewPanel = lazy(() => import('./submit-review-panel'))
 
 type DiffStyle = 'unified' | 'split'
 type SidebarTab = 'files' | 'comments'
@@ -265,6 +269,10 @@ export default function DiffViewer(props: DiffViewerProps) {
   const composerBodyRef = useRef<ComposerBodyStore | null>(null)
   const [selectedLines, setSelectedLines] =
     useState<CodeViewLineSelection | null>(null)
+  const handleFindBarOpenChange = useCallback((open: boolean) => {
+    setFindBarOpen(open)
+    if (!open) setSelectedLines(null)
+  }, [])
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('files')
   const [submitPanelOpen, setSubmitPanelOpen] = useState(false)
   const [submitState, setSubmitState] = useState<SubmitReviewState>({
@@ -273,6 +281,21 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [expansionStates, setExpansionStates] = useState<
     ReadonlyMap<string, FileExpansionState>
   >(EMPTY_EXPANSION_STATES)
+
+  useEffect(() => {
+    function handleFindShortcut(event: KeyboardEvent) {
+      if (isDiffFindShortcut(event)) {
+        /* Native find silently misses everything the virtualized CodeView
+           has not rendered, so take the shortcut over before the find-bar
+           module is loaded. */
+        event.preventDefault()
+        handleFindBarOpenChange(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleFindShortcut)
+    return () => window.removeEventListener('keydown', handleFindShortcut)
+  }, [handleFindBarOpenChange])
 
   const parsed = useMemo(() => {
     try {
@@ -1135,7 +1158,7 @@ export default function DiffViewer(props: DiffViewerProps) {
                 aria-controls="diff-find-bar"
                 aria-expanded={findBarOpen}
                 disabled={parsed.error !== null}
-                onClick={() => setFindBarOpen((current) => !current)}
+                onClick={() => handleFindBarOpenChange(!findBarOpen)}
               >
                 <IconSearch aria-hidden="true" />
               </IconButton>
@@ -1171,28 +1194,30 @@ export default function DiffViewer(props: DiffViewerProps) {
                     align="end"
                     aria-label="Submit review"
                   >
-                    <SubmitReviewPanel
-                      draftCount={drafts.length}
-                      submitState={submitState}
-                      reviewUrl={
-                        submitState.phase === 'success' && reviewTarget
-                          ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}#pullrequestreview-${submitState.reviewId}`
-                          : null
-                      }
-                      pullRequestUrl={
-                        reviewTarget
-                          ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}`
-                          : null
-                      }
-                      onSubmit={submitReview}
-                      onReloadDiff={onReloadDiff ?? NOOP}
-                      onClose={() => {
-                        setSubmitPanelOpen(false)
-                        if (submitState.phase === 'success') {
-                          setSubmitState({ phase: 'idle' })
+                    <Suspense fallback={<ReviewPanelLoading />}>
+                      <SubmitReviewPanel
+                        draftCount={drafts.length}
+                        submitState={submitState}
+                        reviewUrl={
+                          submitState.phase === 'success' && reviewTarget
+                            ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}#pullrequestreview-${submitState.reviewId}`
+                            : null
                         }
-                      }}
-                    />
+                        pullRequestUrl={
+                          reviewTarget
+                            ? `https://github.com/${reviewTarget.owner}/${reviewTarget.repo}/pull/${reviewTarget.pullNumber}`
+                            : null
+                        }
+                        onSubmit={submitReview}
+                        onReloadDiff={onReloadDiff ?? NOOP}
+                        onClose={() => {
+                          setSubmitPanelOpen(false)
+                          if (submitState.phase === 'success') {
+                            setSubmitState({ phase: 'idle' })
+                          }
+                        }}
+                      />
+                    </Suspense>
                   </PopoverContent>
                 </Popover>
               )}
@@ -1234,14 +1259,18 @@ export default function DiffViewer(props: DiffViewerProps) {
               }
             />
           </WorkerPoolContextProvider>
-          <DiffFindBar
-            open={findBarOpen}
-            onOpenChange={setFindBarOpen}
-            visibleFiles={visibleFiles}
-            codeViewRef={codeViewRef}
-            onSelectLines={setSelectedLines}
-            onRevealFile={revealFileForSearch}
-          />
+          {findBarOpen && (
+            <Suspense fallback={null}>
+              <DiffFindBar
+                open
+                onOpenChange={handleFindBarOpenChange}
+                visibleFiles={visibleFiles}
+                codeViewRef={codeViewRef}
+                onSelectLines={setSelectedLines}
+                onRevealFile={revealFileForSearch}
+              />
+            </Suspense>
+          )}
         </div>
       )}
     </main>
@@ -1345,17 +1374,45 @@ function DiffSidebar({
       </PanelHeader>
       <TabsContent value="files" className="min-h-0 flex-1">
         {activeTab === 'files' && (
-          <DiffFilePicker key={filePickerKey} {...filePickerProps} />
+          <Suspense fallback={<SidebarLoading label="Loading files…" />}>
+            <DiffFilePicker key={filePickerKey} {...filePickerProps} />
+          </Suspense>
         )}
       </TabsContent>
       {reviewEnabled && (
         <TabsContent value="comments" className="min-h-0 flex-1">
           {activeTab === 'comments' && (
-            <ReviewCommentsPanel {...reviewCommentsProps} />
+            <Suspense fallback={<SidebarLoading label="Loading comments…" />}>
+              <ReviewCommentsPanel {...reviewCommentsProps} />
+            </Suspense>
           )}
         </TabsContent>
       )}
     </Tabs>
+  )
+}
+
+function SidebarLoading({ label }: { label: string }) {
+  return (
+    <output className="flex h-full items-center justify-center gap-2 px-4 font-mono text-[11px] text-muted-foreground">
+      <span
+        className="size-1.5 animate-pulse rounded-full bg-accent-text"
+        aria-hidden="true"
+      />
+      {label}
+    </output>
+  )
+}
+
+function ReviewPanelLoading() {
+  return (
+    <div className="flex w-72 items-center gap-2 rounded-control border border-line bg-canvas p-3 font-mono text-[11px] text-muted-foreground shadow-float">
+      <span
+        className="size-1.5 animate-pulse rounded-full bg-accent-text"
+        aria-hidden="true"
+      />
+      Loading review controls…
+    </div>
   )
 }
 

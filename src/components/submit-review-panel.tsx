@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { IconArrowUpRight, IconCheck } from '@pierre/icons'
 
 import { Button } from './ui/button'
@@ -51,6 +51,7 @@ export default function SubmitReviewPanel({
 }) {
   const [event, setEvent] = useState<GitHubReviewEvent>('COMMENT')
   const [body, setBody] = useState('')
+  const summaryRef = useRef<HTMLTextAreaElement>(null)
   const reviewEventId = useId()
   const submitting = submitState.phase === 'submitting'
   const succeeded = submitState.phase === 'success'
@@ -63,6 +64,12 @@ export default function SubmitReviewPanel({
     !succeeded &&
     errorReason !== 'head-changed' &&
     (draftCount > 0 || body.trim() !== '')
+
+  /* The panel can arrive after its popover opens because it is lazy-loaded;
+     move focus into the form when that deferred content mounts. */
+  useEffect(() => {
+    summaryRef.current?.focus({ preventScroll: true })
+  }, [])
 
   return (
     <form
@@ -86,6 +93,7 @@ export default function SubmitReviewPanel({
       </div>
 
       <Textarea
+        ref={summaryRef}
         value={body}
         placeholder="Review summary (optional)"
         aria-label="Review summary"

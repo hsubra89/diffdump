@@ -186,6 +186,10 @@ pnpm test
 pnpm run build
 ```
 
+The production build enforces gzip budgets for the core viewer and its
+deferred file-picker chunk. Run `pnpm analyze` to generate an interactive
+treemap and raw module data in `dist/client/` when investigating a regression.
+
 ## Deploy
 
 Authenticate Wrangler, create the production bucket once, then deploy:

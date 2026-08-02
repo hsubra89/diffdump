@@ -75,27 +75,6 @@ export default function DiffFindBar({
   }, [onSelectLines, open])
 
   useEffect(() => {
-    function handleFindShortcut(event: KeyboardEvent) {
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        !event.altKey &&
-        !event.shiftKey &&
-        event.key.toLowerCase() === 'f'
-      ) {
-        /* Native find silently misses everything the virtualized CodeView
-           has not rendered, so take the shortcut over. */
-        event.preventDefault()
-        onOpenChange(true)
-        inputRef.current?.focus()
-        inputRef.current?.select()
-      }
-    }
-
-    window.addEventListener('keydown', handleFindShortcut)
-    return () => window.removeEventListener('keydown', handleFindShortcut)
-  }, [onOpenChange])
-
-  useEffect(() => {
     if (open) {
       inputRef.current?.focus()
       inputRef.current?.select()

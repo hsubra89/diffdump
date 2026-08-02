@@ -33,7 +33,9 @@ describe('SubmitReviewPanel', () => {
 
     const comment = screen.getByRole('radio', { name: 'Comment' })
     const approve = screen.getByRole('radio', { name: 'Approve' })
+    const summary = screen.getByRole('textbox', { name: 'Review summary' })
 
+    expect(document.activeElement).toBe(summary)
     expect(comment.getAttribute('aria-checked')).toBe('true')
     expect(approve.getAttribute('aria-checked')).toBe('false')
 
@@ -43,10 +45,7 @@ describe('SubmitReviewPanel', () => {
     expect(comment.getAttribute('aria-checked')).toBe('false')
     expect(approve.getAttribute('aria-checked')).toBe('true')
 
-    await user.type(
-      screen.getByRole('textbox', { name: 'Review summary' }),
-      'Ready to merge',
-    )
+    await user.type(summary, 'Ready to merge')
     await user.click(screen.getByRole('button', { name: 'Submit review' }))
 
     expect(onSubmit).toHaveBeenCalledWith('APPROVE', 'Ready to merge')
