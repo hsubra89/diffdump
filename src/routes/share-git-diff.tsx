@@ -13,7 +13,7 @@ const description =
   'Paste or pipe a unified Git diff to create a clean, unlisted review link that expires automatically after 24 hours.'
 const path = '/share-git-diff' as const
 const datePublished = '2026-07-29'
-const dateModified = '2026-07-30'
+const dateModified = '2026-08-01'
 
 export const Route = createFileRoute('/share-git-diff')({
   head: () => ({
@@ -76,8 +76,9 @@ function ShareGitDiffGuide() {
       <GuideSection title="What is stored?">
         <p>
           Raw shared diffs are stored in a private Cloudflare R2 bucket under a
-          random 96-bit URL slug. Diffdump enforces the 24-hour expiry when the
-          link is read, and the storage lifecycle removes expired objects.
+          random 96-bit URL slug. Each request checks the stored expiration
+          time, so links stop working after 24 hours. An R2 lifecycle rule
+          deletes the expired objects afterward.
         </p>
         <p>
           Links are unlisted rather than access-controlled: anyone who has the

@@ -120,7 +120,7 @@ export function GuideLinkCards({
       id: 'cli',
       to: '/docs/cli',
       title: 'Use the CLI workflow',
-      description: 'Pipe a patch to Diffdump from any Git repository.',
+      description: 'Install ddd or pipe a patch from any Git repository.',
     },
   ] as const
 

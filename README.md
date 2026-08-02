@@ -20,6 +20,8 @@ It is hosted at [diffdump.com](https://diffdump.com).
 
 - Or paste a public GitHub pull request, commit, or comparison URL into the
   form on the home page.
+- With the `ddd` CLI installed (see below), `ddd pr` opens the current
+  branch's pull request straight from the terminal.
 - GitHub reviews are client-only: the diff is fetched straight from GitHub
   and rendered in the browser without creating a share or storing anything
   on Diffdump.
@@ -43,6 +45,27 @@ It is hosted at [diffdump.com](https://diffdump.com).
 
 ### Create a share link
 
+- Install the `ddd` shell command and share straight from any repository:
+
+  ```bash
+  curl -fsSL https://diffdump.com/install | zsh
+  ```
+
+  `ddd` shares staged, unstaged, and untracked changes. `ddd commit` (`ddc`)
+  shares the latest commit, `ddd branch` (`ddb`) the current branch against
+  the default branch, and `ddd from <ref>` the working tree since any Git
+  ref. `ddd pr` (`ddp`) opens the current pull request without uploading a
+  patch. `ddd` opens the URL automatically on macOS and prints it everywhere
+  else; run `ddd help` for the full reference.
+
+- The installer verifies a SHA-256 checksum, places `ddd` in `~/.local/bin`,
+  adds that directory to `PATH` in `~/.zshrc` when needed, and creates the
+  shortcut symlinks. Running it again updates the command. It requires Zsh,
+  Git, and curl; `ddd pr` and default-branch detection additionally require
+  the GitHub CLI (`gh`). The served
+  [installer](https://diffdump.com/install) and
+  [command](https://diffdump.com/cli/ddd) can be inspected before running.
+
 - Paste a unified git diff on the home page and get a link immediately, or
   pipe one straight from your terminal:
 
@@ -51,7 +74,8 @@ It is hosted at [diffdump.com](https://diffdump.com).
   ```
 
   The response body is the share URL — append `| xargs open` to jump straight
-  into the review view.
+  into the review view. This is the endpoint `ddd` wraps, and it composes
+  naturally with scripts and coding agents.
 
 - Links are unlisted by design: 96-bit, base64url-encoded random slugs served
   with `noindex, nofollow`. There is no public listing.
@@ -91,6 +115,8 @@ It is hosted at [diffdump.com](https://diffdump.com).
 - Unsent review drafts (and an interrupted submission's pending review id)
   live only in browser `localStorage`, scoped to the pull request and its
   head commit.
+- The `ddd` command and its checksum-verifying installer are served by the
+  Worker from same-origin endpoints (`/cli/ddd` and `/install`).
 - Shared unified diffs are stored as private objects in Cloudflare R2.
 - A GitHub-backed shared diff stores its repository and base SHA as object
   metadata. Full base-file contents are fetched by the browser from GitHub and
@@ -172,5 +198,6 @@ pnpm run deploy
 ```
 
 The R2 bucket is private and is only available to the Worker through the
-`DIFFS` binding in `wrangler.jsonc`. The application enforces the 24-hour
-expiry when a link is read; the lifecycle rule removes expired objects from R2.
+`DIFFS` binding in `wrangler.jsonc`. Each request checks the stored expiration
+time, so links stop working after 24 hours; the lifecycle rule deletes the
+expired objects afterward.

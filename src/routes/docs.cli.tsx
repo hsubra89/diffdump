@@ -8,12 +8,12 @@ import {
 } from '../components/guide-page'
 import { createPageHead, createTechArticleStructuredData } from '../lib/seo'
 
-const title = 'Turn git diff into a Shareable URL from the Terminal | Diffdump'
+const title = 'Install the Diffdump CLI and Review Git Changes | Diffdump'
 const description =
-  'Pipe working-tree, staged, or committed Git changes to Diffdump and receive an unlisted 24-hour review URL as plain text.'
+  'Install ddd to open working-tree changes, commits, branches, and pull requests in Diffdump, or upload a patch directly with curl.'
 const path = '/docs/cli' as const
 const datePublished = '2026-07-29'
-const dateModified = '2026-07-30'
+const dateModified = '2026-08-01'
 
 export const Route = createFileRoute('/docs/cli')({
   head: () => ({
@@ -40,15 +40,105 @@ function CliGuide() {
   return (
     <GuidePage
       eyebrow="CLI workflow"
-      title="Pipe a Git diff straight to a review URL."
-      summary="Send a unified diff to Diffdump with an HTTP PUT request. A successful upload returns a clean, unlisted review URL as text, so the workflow composes naturally with Git, curl, shells, scripts, and coding agents."
+      title="Open any Git change from your terminal."
+      summary="Install the ddd shell command to open working-tree changes, commits, branches, and pull requests in Diffdump. Scripts and coding agents can still upload directly with curl."
       actionLabel="Open Diffdump"
       dateModified={dateModified}
     >
-      <GuideSection title="Working-tree changes">
+      <GuideSection title="Install or update ddd">
         <p>
-          Upload changes that are not staged. The response body is the share
-          URL.
+          The installer places{' '}
+          <code className="font-mono text-foreground">ddd</code> in{' '}
+          <code className="font-mono text-foreground">~/.local/bin</code>, adds
+          the directory to your Zsh path when necessary, and installs the{' '}
+          <code className="font-mono text-foreground">ddc</code>,{' '}
+          <code className="font-mono text-foreground">ddu</code>,{' '}
+          <code className="font-mono text-foreground">ddp</code>, and{' '}
+          <code className="font-mono text-foreground">ddb</code> shortcuts.
+          Running it again updates the command.
+        </p>
+        <GuideCode>{`curl -fsSL https://diffdump.com/install | zsh`}</GuideCode>
+        <p>
+          The installer verifies the downloaded command with SHA-256 before
+          replacing an existing installation. You can inspect the served{' '}
+          <a
+            className="text-accent-text underline underline-offset-2 hover:no-underline"
+            href="/install"
+          >
+            installer
+          </a>{' '}
+          and{' '}
+          <a
+            className="text-accent-text underline underline-offset-2 hover:no-underline"
+            href="/cli/ddd"
+          >
+            ddd command
+          </a>{' '}
+          before running them. The command requires Zsh, Git, and curl.{' '}
+          <code className="font-mono text-foreground">ddd pr</code> and
+          default-branch detection additionally require the GitHub CLI (
+          <code className="font-mono text-foreground">gh</code>).
+        </p>
+      </GuideSection>
+
+      <GuideSection title="Commands and shortcuts">
+        <div className="overflow-x-auto rounded-panel border border-line">
+          <table className="w-full min-w-[620px] border-collapse text-left text-sm">
+            <thead className="bg-panel text-foreground">
+              <tr>
+                <th className="border-b border-line px-4 py-3 font-medium">
+                  Command
+                </th>
+                <th className="border-b border-line px-4 py-3 font-medium">
+                  Shortcut
+                </th>
+                <th className="border-b border-line px-4 py-3 font-medium">
+                  Opens
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <CommandRow
+                command="ddd"
+                shortcut="ddu"
+                meaning="Staged, unstaged, and untracked changes."
+              />
+              <CommandRow
+                command="ddd commit"
+                shortcut="ddc"
+                meaning="The latest commit only."
+              />
+              <CommandRow
+                command="ddd pr"
+                shortcut="ddp"
+                meaning="The current GitHub pull request, without uploading a patch."
+              />
+              <CommandRow
+                command="ddd branch"
+                shortcut="ddb"
+                meaning="The current branch against the default branch."
+              />
+              <CommandRow
+                command="ddd from <ref>"
+                shortcut="—"
+                meaning="Working-tree changes since an arbitrary Git ref."
+              />
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code className="font-mono text-foreground">ddd</code> opens the URL
+          automatically on macOS and prints it everywhere else. Run{' '}
+          <code className="font-mono text-foreground">ddd help</code> for the
+          command’s built-in reference.
+        </p>
+      </GuideSection>
+
+      <GuideSection title="Use curl directly">
+        <p>
+          The CLI is a convenience wrapper around Diffdump’s HTTP endpoint. Send
+          any unified diff with an HTTP PUT request; a successful upload returns
+          the unlisted review URL as plain text.
         </p>
         <GuideCode>{`git diff | curl -T- https://diffdump.com/d`}</GuideCode>
       </GuideSection>
@@ -156,6 +246,24 @@ function ResponseRow({ status, meaning }: { status: string; meaning: string }) {
   return (
     <tr className="border-b border-line last:border-b-0">
       <td className="px-4 py-3 font-mono text-foreground">{status}</td>
+      <td className="px-4 py-3 text-muted-bright">{meaning}</td>
+    </tr>
+  )
+}
+
+function CommandRow({
+  command,
+  meaning,
+  shortcut,
+}: {
+  command: string
+  meaning: string
+  shortcut: string
+}) {
+  return (
+    <tr className="border-b border-line last:border-b-0">
+      <td className="px-4 py-3 font-mono text-foreground">{command}</td>
+      <td className="px-4 py-3 font-mono text-foreground">{shortcut}</td>
       <td className="px-4 py-3 text-muted-bright">{meaning}</td>
     </tr>
   )
