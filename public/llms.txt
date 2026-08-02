@@ -1,10 +1,10 @@
 # Diffdump
 
-> Diffdump is a no-account web service for reviewing GitHub pull requests, commits, and comparisons in a clean, focused viewer, and for turning raw unified Git diffs into unlisted, expiring share links.
+> Diffdump is a no-account web service for reviewing GitHub pull requests in a focused browser view, and for turning raw unified Git diffs into unlisted, expiring share links.
 
 Canonical origin: https://diffdump.com
 
-Diffdump renders multi-file patches with syntax highlighting, unified and split layouts, line wrapping, a searchable file tree, file categories, and light and dark themes.
+Diffdump supports the complete GitHub review flow with inline comments, Approve, and Request changes actions. It categorizes Source, Tests, Docs, and Other files to make agent-generated code easier to review, and provides a stack navigator for moving through stacked pull requests. The viewer also includes syntax highlighting, unified and split layouts, line wrapping, a searchable file tree, and light and dark themes.
 
 Public GitHub pull requests, commits, and comparisons can be opened directly without creating or storing anything. Replace `github.com` with `diffdump.com` in a supported GitHub URL, or paste the URL into the form on the home page.
 

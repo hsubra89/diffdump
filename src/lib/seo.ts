@@ -98,11 +98,13 @@ export function createWebApplicationStructuredData(description: string) {
     },
     codeRepository: SOURCE_REPOSITORY_URL,
     featureList: [
+      'Complete GitHub pull request review flow with inline comments, approvals, and change requests',
+      'Automatic Source, Tests, Docs, and Other file categorization',
+      'GitHub stacked pull request navigation',
       'GitHub pull request, commit, and comparison review',
       'Unified and split diff layouts',
       'Syntax-highlighted multi-file diffs',
       'Unlisted 24-hour diff share links',
-      'Inline GitHub pull request reviews',
     ],
   }
 }

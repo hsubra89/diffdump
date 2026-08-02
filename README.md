@@ -1,6 +1,6 @@
 # diffdump
 
-Any pull request. One clean review.
+Review your diffs.
 
 diffdump opens GitHub pull requests, commits, and comparisons in a fast,
 focused review view — no account, no repository access granted to Diffdump.
