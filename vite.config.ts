@@ -8,6 +8,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: { allowedHosts: ['warptech'] },
   worker: { format: 'es' },
   plugins: [
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
