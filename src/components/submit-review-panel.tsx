@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { IconArrowUpRight, IconCheck } from '@pierre/icons'
 
 import { Button } from './ui/button'
+import { RadioGroup, RadioGroupItem } from './ui/radio-group'
+import { Textarea } from './ui/textarea'
 import { cn } from '../lib/cn'
 import type { GitHubReviewEvent } from '../lib/review-comments'
 import type { SubmitReviewState } from '../lib/review-state'
@@ -49,8 +51,10 @@ export default function SubmitReviewPanel({
 }) {
   const [event, setEvent] = useState<GitHubReviewEvent>('COMMENT')
   const [body, setBody] = useState('')
+  const reviewEventId = useId()
   const submitting = submitState.phase === 'submitting'
   const succeeded = submitState.phase === 'success'
+  const controlsDisabled = submitting || succeeded
   const errorReason = submitState.phase === 'error' ? submitState.reason : null
   /* GitHub rejects a review that carries no comments and no summary. A moved
      head SHA blocks submission entirely until the diff is reloaded. */
@@ -81,45 +85,61 @@ export default function SubmitReviewPanel({
         </span>
       </div>
 
-      <textarea
-        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
+      <Textarea
         value={body}
         placeholder="Review summary (optional)"
         aria-label="Review summary"
-        disabled={submitting || succeeded}
+        disabled={controlsDisabled}
         onChange={(changeEvent) => setBody(changeEvent.currentTarget.value)}
       />
 
-      <fieldset
+      <RadioGroup
+        aria-label="Review type"
         className="flex flex-col gap-1"
-        disabled={submitting || succeeded}
+        name="review-event"
+        value={event}
+        disabled={controlsDisabled}
+        onValueChange={setEvent}
       >
-        {REVIEW_EVENTS.map((option) => (
-          <label
-            key={option.event}
-            aria-label={option.label}
-            className={cn(
-              'flex cursor-pointer items-start gap-2 rounded-control border border-transparent px-2 py-1.5 transition-colors hover:bg-surface-raised',
-              event === option.event && 'border-line bg-surface-raised',
-            )}
-          >
-            <input
-              className="mt-0.5"
-              type="radio"
-              name="review-event"
-              checked={event === option.event}
-              style={{ accentColor: 'var(--accent-text)' }}
-              onChange={() => setEvent(option.event)}
-            />
-            <span className="flex flex-col gap-0.5">
-              <span className="font-medium">{option.label}</span>
-              <span className="leading-snug text-muted-foreground">
-                {option.description}
+        {REVIEW_EVENTS.map((option) => {
+          const optionId = `${reviewEventId}-${option.event.toLowerCase()}`
+          const labelId = `${optionId}-label`
+          const descriptionId = `${optionId}-description`
+
+          return (
+            <label
+              key={option.event}
+              htmlFor={optionId}
+              className={cn(
+                'flex items-start gap-2 rounded-control border border-transparent px-2 py-1.5 transition-colors',
+                controlsDisabled
+                  ? 'cursor-not-allowed opacity-55'
+                  : 'cursor-pointer hover:bg-surface-raised',
+                event === option.event && 'border-line bg-surface-raised',
+              )}
+            >
+              <RadioGroupItem
+                id={optionId}
+                className="mt-0.5"
+                value={option.event}
+                aria-labelledby={labelId}
+                aria-describedby={descriptionId}
+              />
+              <span className="flex flex-col gap-0.5">
+                <span id={labelId} className="font-medium">
+                  {option.label}
+                </span>
+                <span
+                  id={descriptionId}
+                  className="leading-snug text-muted-foreground"
+                >
+                  {option.description}
+                </span>
               </span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+            </label>
+          )
+        })}
+      </RadioGroup>
 
       <p className="leading-snug text-muted-foreground">
         Publishes this review to GitHub from this browser with your saved token.
