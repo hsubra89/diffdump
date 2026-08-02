@@ -3,13 +3,25 @@
 import { useState } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './select'
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './sheet'
 import { Switch } from './switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
 import { ToggleGroup, ToggleGroupItem } from './toggle-group'
+
+vi.mock('@pierre/icons', () => ({
+  IconCheck: () => null,
+  IconChevronSm: () => null,
+}))
 
 afterEach(cleanup)
 
@@ -227,5 +239,58 @@ describe('Base UI primitives', () => {
 
     expect(wrapLines.getAttribute('aria-checked')).toBe('true')
     expect(screen.getByText('enabled')).not.toBeNull()
+  })
+
+  it('selects an option with the keyboard and restores trigger focus', async () => {
+    const user = userEvent.setup()
+    const pulls = [
+      { label: 'Pull request #101', value: '101' },
+      { label: 'Pull request #102', value: '102' },
+    ]
+
+    function PullSelector() {
+      const [value, setValue] = useState('101')
+
+      return (
+        <Select
+          items={pulls}
+          value={value}
+          onValueChange={(nextValue) => {
+            if (nextValue) setValue(nextValue)
+          }}
+        >
+          <SelectTrigger aria-label="Pull request">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {pulls.map((pull) => (
+              <SelectItem key={pull.value} value={pull.value}>
+                {pull.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )
+    }
+
+    render(<PullSelector />)
+
+    const trigger = screen.getByRole('combobox', { name: 'Pull request' })
+    await user.click(trigger)
+
+    expect(screen.getByRole('listbox')).not.toBeNull()
+    expect(
+      screen
+        .getByRole('option', { name: 'Pull request #101' })
+        .getAttribute('aria-selected'),
+    ).toBe('true')
+
+    await user.keyboard('{ArrowDown}{Enter}')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).toBeNull()
+    })
+    expect(trigger.textContent).toContain('Pull request #102')
+    expect(document.activeElement).toBe(trigger)
   })
 })

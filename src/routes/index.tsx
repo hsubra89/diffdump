@@ -13,6 +13,7 @@ import { SiteFooter, SiteHeader } from '../components/site-chrome'
 import { Button } from '../components/ui/button'
 import { eyebrowClassName } from '../components/ui/surfaces'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { Textarea } from '../components/ui/textarea'
 import { cn } from '../lib/cn'
 import { createSharedDiff } from '../lib/create-shared-diff'
 import { MAX_DIFF_BYTES } from '../lib/diffs'
@@ -245,8 +246,8 @@ function Home() {
 
           <TabsContent value="paste">
             <form onSubmit={handleSubmit}>
-              <textarea
-                className="block min-h-[300px] w-full resize-y border-0 bg-panel px-5 py-5 font-mono text-xs leading-[1.7] text-foreground caret-accent-text outline-none placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
+              <Textarea
+                className="block min-h-[300px] resize-y rounded-none border-0 bg-panel px-5 py-5 font-mono leading-[1.7] caret-accent-text focus-visible:border-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text md:min-h-80 md:px-6 md:py-6 md:text-[13px]"
                 id="diff-input"
                 name="diff"
                 value={diff}

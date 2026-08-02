@@ -7,6 +7,7 @@ import type { GitHubPullStackLoadState } from './github-stack-selector'
 import { Wordmark } from './wordmark'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Button, buttonVariants } from './ui/button'
+import { Input } from './ui/input'
 import { eyebrowClassName } from './ui/surfaces'
 import { cn } from '../lib/cn'
 import {
@@ -279,8 +280,8 @@ function GitHubTokenPrompt({
           className="flex w-full flex-col items-stretch gap-2 sm:flex-row"
           onSubmit={handleSubmit}
         >
-          <input
-            className="h-8 min-w-0 flex-1 rounded-control border border-line bg-canvas px-3 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
+          <Input
+            className="flex-1 font-mono"
             type="password"
             value={tokenDraft}
             onChange={(event) => setTokenDraft(event.currentTarget.value)}

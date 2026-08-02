@@ -49,10 +49,7 @@ import {
 import { ErrorHero } from './error-hero'
 import { GitHubRepoLink } from './github-repo-link'
 import { GitHubReviewAnnotation } from './github-review-annotation'
-import {
-  GitHubStackSelector,
-  type GitHubPullStackLoadState,
-} from './github-stack-selector'
+import type { GitHubPullStackLoadState } from './github-stack-selector'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -137,6 +134,7 @@ const DiffFilePicker = lazy(() => import('./diff-file-picker'))
 const DiffFindBar = lazy(() => import('./diff-find-bar'))
 const ReviewCommentsPanel = lazy(() => import('./review-comments-panel'))
 const SubmitReviewPanel = lazy(() => import('./submit-review-panel'))
+const GitHubStackSelector = lazy(() => import('./github-stack-selector'))
 
 type DiffStyle = 'unified' | 'split'
 type SidebarTab = 'files' | 'comments'
@@ -1100,14 +1098,16 @@ export default function DiffViewer(props: DiffViewerProps) {
 
           <div className="flex min-w-0 flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center sm:gap-3">
             {isGitHubDiff && props.stackSummary && reviewTarget && (
-              <GitHubStackSelector
-                owner={reviewTarget.owner}
-                repo={reviewTarget.repo}
-                pullNumber={reviewTarget.pullNumber}
-                summary={props.stackSummary}
-                state={props.stackState}
-                onRetry={props.onReloadStack}
-              />
+              <Suspense fallback={null}>
+                <GitHubStackSelector
+                  owner={reviewTarget.owner}
+                  repo={reviewTarget.repo}
+                  pullNumber={reviewTarget.pullNumber}
+                  summary={props.stackSummary}
+                  state={props.stackState}
+                  onRetry={props.onReloadStack}
+                />
+              </Suspense>
             )}
 
             <div className="flex min-w-0 flex-wrap items-center gap-2 px-3 sm:shrink-0 sm:justify-end sm:px-0 md:flex-nowrap md:gap-3 md:pr-4">

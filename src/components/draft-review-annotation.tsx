@@ -9,6 +9,7 @@ import {
 } from 'react'
 
 import { Button } from './ui/button'
+import { Textarea } from './ui/textarea'
 import {
   draftRangeError,
   type DraftReviewComment,
@@ -119,9 +120,8 @@ export function DraftReviewComposer({
         }
       }}
     >
-      <textarea
+      <Textarea
         ref={textareaRef}
-        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground/70"
         value={body}
         placeholder="Leave a review comment"
         aria-label="Review comment"

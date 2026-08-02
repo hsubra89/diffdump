@@ -8,6 +8,7 @@ import {
   writeStoredGitHubToken,
 } from '../lib/github-diffs'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 
 export function GitHubOpenPanel({
   url,
@@ -71,8 +72,8 @@ export function GitHubOpenPanel({
           share link created, nothing uploaded.
         </label>
         <div className="mt-4 flex max-w-[640px] flex-col items-stretch gap-2 sm:flex-row">
-          <input
-            className="h-10 min-w-0 flex-1 rounded-control border border-line bg-canvas px-3.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text"
+          <Input
+            className="h-10 flex-1 px-3.5 font-mono"
             id="github-url-input"
             type="url"
             value={url}

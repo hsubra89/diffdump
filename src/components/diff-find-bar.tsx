@@ -12,6 +12,7 @@ import type { CodeViewHandle } from '@pierre/diffs/react'
 import { IconArrow, IconX } from '@pierre/icons'
 
 import { IconButton } from './ui/button'
+import { Input } from './ui/input'
 import type { ClassifiedDiffFile } from '../lib/diff-files'
 import {
   buildSearchCorpus,
@@ -183,9 +184,9 @@ export default function DiffFindBar({
       aria-label="Find in diff"
       className="absolute left-3 right-3 top-3 z-30 flex items-center gap-1 rounded-control border border-line-bright bg-panel p-1 shadow-float focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-solid focus-within:outline-accent-text sm:left-auto md:right-4"
     >
-      <input
+      <Input
         ref={inputRef}
-        className="h-8 min-w-0 flex-1 bg-transparent px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/70 sm:h-7 sm:w-52 sm:flex-none"
+        className="h-8 flex-1 border-0 bg-transparent px-2 font-mono focus-visible:ring-0 focus-visible:ring-offset-0 sm:h-7 sm:w-52 sm:flex-none"
         type="text"
         value={inputValue}
         placeholder="Find in diff"

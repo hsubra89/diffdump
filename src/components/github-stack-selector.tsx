@@ -1,10 +1,8 @@
-import type { ChangeEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   IconArrow,
   IconArrowRight,
   IconArrowRightShort,
-  IconChevronSm,
   IconCircle,
   IconDraft,
   IconMerged,
@@ -12,6 +10,15 @@ import {
 } from '@pierre/icons'
 
 import { buttonVariants } from './ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
 import { cn } from '../lib/cn'
 import type {
   GitHubPullStack,
@@ -55,9 +62,8 @@ export function GitHubStackSelector({
   const baseRef = stack?.baseRef ?? summary.baseRef
   const statusId = `github-stack-status-${summary.number}`
 
-  function selectPull(event: ChangeEvent<HTMLSelectElement>) {
-    const selectedPullNumber = event.currentTarget.value
-    if (selectedPullNumber !== pullNumber) {
+  function selectPull(selectedPullNumber: string | null) {
+    if (selectedPullNumber && selectedPullNumber !== pullNumber) {
       void navigate({
         to: '/$',
         params: {
@@ -82,51 +88,79 @@ export function GitHubStackSelector({
           pull={previousPull}
         />
 
-        <div
-          className={cn(
-            'relative flex h-8 min-w-0 flex-1 items-center justify-center rounded-control border border-line bg-surface-raised px-3',
-            stack &&
-              'focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-text',
-          )}
-        >
-          <span
-            className="truncate font-mono text-[11px] font-medium text-foreground"
-            aria-hidden={stack !== null}
-            title={state.status === 'error' ? state.message : undefined}
-          >
-            {state.status === 'error'
-              ? `Layer ${position} of ${size} · Stack unavailable`
-              : `PR #${pullNumber} · Layer ${position} of ${size}`}
-          </span>
-          <span
-            className="ml-2 text-[10px] text-muted-foreground"
-            aria-hidden="true"
-          >
-            {stack ? <IconChevronSm /> : state.status === 'loading' ? '…' : ''}
-          </span>
-          {state.status === 'error' && (
-            <RetryStackButton
-              className="ml-2 shrink-0"
-              statusId={statusId}
-              onRetry={onRetry}
-            />
-          )}
-          {stack && (
-            <select
-              className="absolute inset-0 size-full cursor-pointer opacity-0"
+        {stack ? (
+          <Select value={pullNumber} onValueChange={selectPull}>
+            <SelectTrigger
+              className="flex-1 justify-center bg-surface-raised px-3 font-mono text-[11px] font-medium"
               aria-label={`Select a pull request in stack #${summary.number}`}
-              value={pullNumber}
-              onChange={selectPull}
               data-testid="github-stack-select"
             >
-              {stack.pullRequests.map((pull, index) => (
-                <option key={pull.number} value={pull.number}>
-                  {`#${pull.number} · ${index + 1} of ${stack.pullRequests.length} · ${pull.title} · ${getPullStatus(pull)}`}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+              <SelectValue>
+                {`PR #${pullNumber} · Layer ${position} of ${size}`}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="w-[min(24rem,calc(100vw-5rem))]">
+              <SelectGroup>
+                <SelectLabel>
+                  Stack #{summary.number} · base {baseRef}
+                </SelectLabel>
+                {stack.pullRequests.map((pull, index) => {
+                  const status = getPullStatus(pull)
+
+                  return (
+                    <SelectItem
+                      key={pull.number}
+                      value={pull.number}
+                      label={`Pull request #${pull.number}: ${pull.title}. ${status}. Layer ${index + 1} of ${stack.pullRequests.length}.`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        >
+                          {getPullStatusIcon(pull)}
+                        </span>
+                        <span className="shrink-0 font-mono font-medium text-foreground">
+                          #{pull.number}
+                        </span>
+                        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                          {index + 1}/{stack.pullRequests.length}
+                        </span>
+                        <span className="truncate">{pull.title}</span>
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-control border border-line bg-surface-raised px-3">
+            <span
+              className="truncate font-mono text-[11px] font-medium text-foreground"
+              title={state.status === 'error' ? state.message : undefined}
+            >
+              {state.status === 'error'
+                ? `Layer ${position} of ${size} · Stack unavailable`
+                : `PR #${pullNumber} · Layer ${position} of ${size}`}
+            </span>
+            {state.status === 'loading' && (
+              <span
+                className="ml-2 text-[10px] text-muted-foreground"
+                aria-hidden="true"
+              >
+                …
+              </span>
+            )}
+            {state.status === 'error' && (
+              <RetryStackButton
+                className="ml-2 shrink-0"
+                statusId={statusId}
+                onRetry={onRetry}
+              />
+            )}
+          </div>
+        )}
 
         <StackStepLink
           direction="next"
@@ -233,6 +267,8 @@ export function GitHubStackSelector({
     </section>
   )
 }
+
+export default GitHubStackSelector
 
 function RetryStackButton({
   className,
