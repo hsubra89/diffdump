@@ -2,6 +2,7 @@ import { IconBrandGithub } from '@pierre/icons'
 
 import { buttonVariants } from './ui/button'
 import { ThemeToggle } from './ui/theme-toggle'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from '../lib/cn'
 
 export const DIFFDUMP_REPO_URL = 'https://github.com/hsyntax/diffdump'
@@ -10,19 +11,25 @@ export const DIFFDUMP_REPO_URL = 'https://github.com/hsyntax/diffdump'
  * reads as part of the app rather than a content action. */
 export function GitHubRepoLink({ className }: { className?: string }) {
   return (
-    <a
-      className={cn(
-        buttonVariants({ variant: 'ghost', size: 'iconSm' }),
-        className,
-      )}
-      href={DIFFDUMP_REPO_URL}
-      target="_blank"
-      rel="noreferrer noopener"
-      aria-label="Diffdump on GitHub"
-      title="Diffdump on GitHub"
-    >
-      <IconBrandGithub aria-hidden="true" />
-    </a>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <a
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'iconSm' }),
+              className,
+            )}
+            href={DIFFDUMP_REPO_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Diffdump on GitHub"
+          />
+        }
+      >
+        <IconBrandGithub aria-hidden="true" />
+      </TooltipTrigger>
+      <TooltipContent>Diffdump on GitHub</TooltipContent>
+    </Tooltip>
   )
 }
 

@@ -2,7 +2,11 @@ import { useMemo, type MouseEvent, type ReactNode } from 'react'
 import type { SelectedLineRange } from '@pierre/diffs'
 import { IconArrowUpRight } from '@pierre/icons'
 
-import { DraftInvalidBadge } from './draft-review-annotation'
+import {
+  DraftDeleteButton,
+  DraftInvalidBadge,
+  type DraftDeletionDialogHandle,
+} from './draft-review-annotation'
 import { Button } from './ui/button'
 import { cn } from '../lib/cn'
 import {
@@ -45,7 +49,7 @@ export default function ReviewCommentsPanel({
   classifyAnchor,
   onSelectDraft,
   onEditDraft,
-  onDeleteDraft,
+  deleteDialogHandle,
   onSelectThread,
   onReloadComments,
 }: {
@@ -55,7 +59,7 @@ export default function ReviewCommentsPanel({
   classifyAnchor: AnchorClassifier
   onSelectDraft: (draft: DraftReviewComment) => void
   onEditDraft: (draft: DraftReviewComment) => void
-  onDeleteDraft: (localId: string) => void
+  deleteDialogHandle: DraftDeletionDialogHandle
   onSelectThread: (thread: ReviewCommentThread) => void
   onReloadComments: () => void
 }) {
@@ -133,13 +137,10 @@ export default function ReviewCommentsPanel({
                     >
                       Edit
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => onDeleteDraft(draft.localId)}
-                    >
-                      Delete
-                    </Button>
+                    <DraftDeleteButton
+                      draft={draft}
+                      dialogHandle={deleteDialogHandle}
+                    />
                   </span>
                 </li>
               )

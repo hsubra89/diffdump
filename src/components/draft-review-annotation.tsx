@@ -8,6 +8,19 @@ import {
   type RefObject,
 } from 'react'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  createAlertDialogHandle,
+  type AlertDialogHandle,
+} from './ui/alert-dialog'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import {
@@ -190,14 +203,74 @@ export function DraftInvalidBadge({ error }: { error: string }) {
   )
 }
 
+export type DraftDeletionDialogHandle = AlertDialogHandle<DraftReviewComment>
+
+export function createDraftDeletionDialogHandle(): DraftDeletionDialogHandle {
+  return createAlertDialogHandle<DraftReviewComment>()
+}
+
+export function DraftDeleteButton({
+  draft,
+  dialogHandle,
+}: {
+  draft: DraftReviewComment
+  dialogHandle: DraftDeletionDialogHandle
+}) {
+  return (
+    <AlertDialogTrigger
+      handle={dialogHandle}
+      payload={draft}
+      render={<Button variant="ghost" size="xs" />}
+    >
+      Delete
+    </AlertDialogTrigger>
+  )
+}
+
+export function DraftDeletionDialog({
+  handle,
+  onDelete,
+}: {
+  handle: DraftDeletionDialogHandle
+  onDelete: (localId: string) => void
+}) {
+  return (
+    <AlertDialog handle={handle}>
+      {({ payload: draft }) => (
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete draft comment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {draft
+                ? `This removes your saved draft for ${draft.path}:${draft.range.end}. This action can’t be undone.`
+                : 'This removes your saved draft. This action can’t be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!draft}
+              onClick={() => {
+                if (draft) onDelete(draft.localId)
+              }}
+            >
+              Delete draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
+    </AlertDialog>
+  )
+}
+
 export function DraftReviewAnnotation({
   draft,
   onEdit,
-  onDelete,
+  deleteDialogHandle,
 }: {
   draft: DraftReviewComment
   onEdit: (draft: DraftReviewComment) => void
-  onDelete: (localId: string) => void
+  deleteDialogHandle: DraftDeletionDialogHandle
 }) {
   const rangeError = draftRangeError(draft.range)
 
@@ -220,14 +293,7 @@ export function DraftReviewAnnotation({
           >
             Edit
           </Button>
-          <Button
-            variant="ghost"
-            size="xs"
-            type="button"
-            onClick={() => onDelete(draft.localId)}
-          >
-            Delete
-          </Button>
+          <DraftDeleteButton draft={draft} dialogHandle={deleteDialogHandle} />
         </span>
       </div>
       <p className="whitespace-pre-wrap break-words">{draft.body}</p>

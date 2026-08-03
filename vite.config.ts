@@ -12,7 +12,11 @@ const config = defineConfig(({ mode }) => ({
   /* Pre-bundle deep Base UI imports that otherwise appear after the initial
      development scan and trigger a mid-render optimization reload. */
   optimizeDeps: {
-    include: ['@base-ui/react/select', '@base-ui/react/tooltip'],
+    include: [
+      '@base-ui/react/alert-dialog',
+      '@base-ui/react/select',
+      '@base-ui/react/tooltip',
+    ],
   },
   worker: { format: 'es' },
   build: {

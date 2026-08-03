@@ -43,6 +43,8 @@ import { Link } from '@tanstack/react-router'
 import {
   DraftReviewAnnotation,
   DraftReviewComposer,
+  DraftDeletionDialog,
+  createDraftDeletionDialogHandle,
   type ComposerBodyStore,
   type DraftReviewComposerHandle,
 } from './draft-review-annotation'
@@ -262,6 +264,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const drafts =
     draftsState.reviewKey === reviewKey ? draftsState.drafts : EMPTY_DRAFTS
   const [composer, setComposer] = useState<DraftReviewComment | null>(null)
+  const draftDeletionDialog = useMemo(createDraftDeletionDialogHandle, [])
   const composerRef = useRef<DraftReviewComposerHandle>(null)
   /* The composer unmounts (taking its React state with it) whenever its
      diff item leaves the virtualization window; the text it has typed so
@@ -772,14 +775,14 @@ export default function DiffViewer(props: DiffViewerProps) {
           key={metadata.localId}
           draft={metadata}
           onEdit={editDraft}
-          onDelete={deleteDraft}
+          deleteDialogHandle={draftDeletionDialog}
         />
       )
     },
     [
       closeComposer,
       composer,
-      deleteDraft,
+      draftDeletionDialog,
       editDraft,
       saveComposer,
       threadByRootId,
@@ -1015,7 +1018,7 @@ export default function DiffViewer(props: DiffViewerProps) {
       classifyAnchor,
       onSelectDraft: selectDraftInPanel,
       onEditDraft: editDraftFromPanel,
-      onDeleteDraft: deleteDraft,
+      deleteDialogHandle: draftDeletionDialog,
       onSelectThread: selectThreadInPanel,
       onReloadComments: onReloadComments ?? NOOP,
     },
@@ -1291,6 +1294,10 @@ export default function DiffViewer(props: DiffViewerProps) {
           )}
         </div>
       )}
+      <DraftDeletionDialog
+        handle={draftDeletionDialog}
+        onDelete={deleteDraft}
+      />
     </main>
   )
 }

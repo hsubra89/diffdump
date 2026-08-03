@@ -22,6 +22,8 @@ export const buttonVariants = cva(
           'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground active:translate-y-px',
         ghost:
           'border-transparent bg-transparent text-muted-foreground hover:bg-surface-raised hover:text-foreground',
+        destructive:
+          'border-destructive bg-destructive text-destructive-foreground hover:border-destructive-strong hover:bg-destructive-strong active:translate-y-px',
       },
       size: {
         xs: 'h-7 px-2.5',
