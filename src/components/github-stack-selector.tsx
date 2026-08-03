@@ -9,7 +9,7 @@ import {
   IconX,
 } from '@pierre/icons'
 
-import { buttonVariants } from './ui/button'
+import { Button, buttonVariants } from './ui/button'
 import {
   Select,
   SelectContent,
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from '../lib/cn'
 import type {
   GitHubPullStack,
@@ -203,33 +204,42 @@ export function GitHubStackSelector({
                       <IconArrowRightShort />
                     </span>
                   )}
-                  <Link
-                    className={cn(
-                      'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border px-2.5 font-mono text-[11px] font-medium transition-colors',
-                      current
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground',
-                    )}
-                    to="/$"
-                    params={{
-                      _splat: createPullSplat(owner, repo, pull.number),
-                    }}
-                    aria-current={current ? 'page' : undefined}
-                    aria-label={`Pull request #${pull.number}: ${pull.title}. ${status}. Layer ${index + 1} of ${stack.pullRequests.length}.`}
-                    title={`${pull.title} · ${pull.headRef} · ${status}`}
-                    data-testid={`github-stack-pull-${pull.number}`}
-                  >
-                    <span aria-hidden="true">{getPullStatusIcon(pull)}</span>
-                    <span>#{pull.number}</span>
-                    {current && (
-                      <span
-                        className="border-l border-current/30 pl-1.5 opacity-75"
-                        aria-hidden="true"
-                      >
-                        {position}/{size}
-                      </span>
-                    )}
-                  </Link>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Link
+                          className={cn(
+                            buttonVariants({
+                              variant: current ? 'primary' : 'outline',
+                              size: 'xs',
+                            }),
+                            'h-7 gap-1.5 px-2.5 font-mono text-[11px]',
+                          )}
+                          to="/$"
+                          params={{
+                            _splat: createPullSplat(owner, repo, pull.number),
+                          }}
+                          aria-current={current ? 'page' : undefined}
+                          aria-label={`Pull request #${pull.number}: ${pull.title}. ${status}. Layer ${index + 1} of ${stack.pullRequests.length}.`}
+                          data-testid={`github-stack-pull-${pull.number}`}
+                        />
+                      }
+                    >
+                      <span aria-hidden="true">{getPullStatusIcon(pull)}</span>
+                      <span>#{pull.number}</span>
+                      {current && (
+                        <span
+                          className="border-l border-current/30 pl-1.5 opacity-75"
+                          aria-hidden="true"
+                        >
+                          {position}/{size}
+                        </span>
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {pull.title} · {pull.headRef} · {status}
+                    </TooltipContent>
+                  </Tooltip>
                 </span>
               )
             })}
@@ -280,17 +290,15 @@ function RetryStackButton({
   onRetry: () => void
 }) {
   return (
-    <button
-      className={cn(
-        'font-mono text-[11px] font-medium text-accent-text underline underline-offset-2 hover:no-underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
-        className,
-      )}
-      type="button"
+    <Button
+      className={cn('h-6 px-1.5 font-mono text-[11px]', className)}
+      variant="ghost"
+      size="xs"
       aria-describedby={statusId}
       onClick={onRetry}
     >
       Retry
-    </button>
+    </Button>
   )
 }
 
@@ -336,16 +344,27 @@ function StackStepLink({
     )
   }
 
+  const accessibleLabel = `${label}: pull request #${pull.number}, ${pull.title}`
+
   return (
-    <Link
-      className={buttonVariants({ variant: 'outline', size: 'iconSm' })}
-      to="/$"
-      params={{ _splat: createPullSplat(owner, repo, pull.number) }}
-      aria-label={`${label}: pull request #${pull.number}, ${pull.title}`}
-      title={`${label}: #${pull.number}`}
-    >
-      <span aria-hidden="true">{icon}</span>
-    </Link>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Link
+            className={buttonVariants({
+              variant: 'outline',
+              size: 'iconSm',
+            })}
+            to="/$"
+            params={{ _splat: createPullSplat(owner, repo, pull.number) }}
+            aria-label={accessibleLabel}
+          />
+        }
+      >
+        <span aria-hidden="true">{icon}</span>
+      </TooltipTrigger>
+      <TooltipContent>{`${label}: #${pull.number}`}</TooltipContent>
+    </Tooltip>
   )
 }
 
