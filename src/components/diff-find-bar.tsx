@@ -24,6 +24,7 @@ import type { ReviewCommentMetadata } from '../lib/review-comments'
 type DiffFindBarProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  returnFocusRef: RefObject<HTMLElement | null>
   visibleFiles: readonly ClassifiedDiffFile[]
   codeViewRef: RefObject<CodeViewHandle<ReviewCommentMetadata> | null>
   /* The viewer controls line selection, so match highlights flow through its
@@ -42,6 +43,7 @@ type ExecutedSearch = {
 export default function DiffFindBar({
   open,
   onOpenChange,
+  returnFocusRef,
   visibleFiles,
   codeViewRef,
   onSelectLines,
@@ -81,6 +83,18 @@ export default function DiffFindBar({
       inputRef.current?.select()
     }
   }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    const returnFocusElement = returnFocusRef.current
+
+    return () => {
+      returnFocusElement?.focus({ preventScroll: true })
+    }
+  }, [open, returnFocusRef])
 
   useEffect(() => {
     if (!open) {
@@ -190,6 +204,7 @@ export default function DiffFindBar({
         type="text"
         value={inputValue}
         placeholder="Find in diff"
+        aria-label="Find in diff"
         title="Searches the visible files. Enter for next match, Shift+Enter for previous."
         autoCapitalize="off"
         autoCorrect="off"

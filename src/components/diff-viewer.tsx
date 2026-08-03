@@ -239,6 +239,7 @@ export default function DiffViewer(props: DiffViewerProps) {
   const [filePickerOpen, setFilePickerOpen] = useState(false)
   const [findBarOpen, setFindBarOpen] = useState(false)
   const codeViewRef = useRef<CodeViewHandle<ReviewCommentMetadata>>(null)
+  const findTriggerRef = useRef<HTMLButtonElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const [viewedState, setViewedState] = useState(() => ({
     reviewId,
@@ -1153,6 +1154,7 @@ export default function DiffViewer(props: DiffViewerProps) {
                 </SheetContent>
               </Sheet>
               <IconButton
+                ref={findTriggerRef}
                 label="Find in diff"
                 title={`Find in diff (${FIND_SHORTCUT_HINT})`}
                 variant="secondary"
@@ -1265,6 +1267,7 @@ export default function DiffViewer(props: DiffViewerProps) {
               <DiffFindBar
                 open
                 onOpenChange={handleFindBarOpenChange}
+                returnFocusRef={findTriggerRef}
                 visibleFiles={visibleFiles}
                 codeViewRef={codeViewRef}
                 onSelectLines={setSelectedLines}
