@@ -72,7 +72,6 @@ export function IconButton({ label, size = 'sm', ...props }: IconButtonProps) {
       data-slot="icon-button"
       size={size === 'xs' ? 'iconXs' : 'iconSm'}
       aria-label={label}
-      title={props.title ?? label}
       {...props}
     />
   )

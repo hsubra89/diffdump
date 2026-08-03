@@ -13,6 +13,7 @@ import { IconArrow, IconX } from '@pierre/icons'
 
 import { IconButton } from './ui/button'
 import { Input } from './ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import type { ClassifiedDiffFile } from '../lib/diff-files'
 import {
   buildSearchCorpus,
@@ -218,35 +219,56 @@ export default function DiffFindBar({
       >
         {search ? formatMatchCounter(search) : ''}
       </span>
-      <IconButton
-        className="max-sm:size-8"
-        label="Previous match"
-        variant="ghost"
-        size="xs"
-        disabled={inputValue === ''}
-        onClick={() => submit(-1)}
-      >
-        <IconArrow className="rotate-90" aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        className="max-sm:size-8"
-        label="Next match"
-        variant="ghost"
-        size="xs"
-        disabled={inputValue === ''}
-        onClick={() => submit(1)}
-      >
-        <IconArrow className="-rotate-90" aria-hidden="true" />
-      </IconButton>
-      <IconButton
-        className="max-sm:size-8"
-        label="Close find bar"
-        variant="ghost"
-        size="xs"
-        onClick={() => onOpenChange(false)}
-      >
-        <IconX aria-hidden="true" />
-      </IconButton>
+      <Tooltip disabled={inputValue === ''}>
+        <TooltipTrigger
+          render={
+            <IconButton
+              className="max-sm:size-8"
+              label="Previous match"
+              variant="ghost"
+              size="xs"
+              disabled={inputValue === ''}
+              onClick={() => submit(-1)}
+            />
+          }
+        >
+          <IconArrow className="rotate-90" aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Previous match</TooltipContent>
+      </Tooltip>
+      <Tooltip disabled={inputValue === ''}>
+        <TooltipTrigger
+          render={
+            <IconButton
+              className="max-sm:size-8"
+              label="Next match"
+              variant="ghost"
+              size="xs"
+              disabled={inputValue === ''}
+              onClick={() => submit(1)}
+            />
+          }
+        >
+          <IconArrow className="-rotate-90" aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Next match</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
+              className="max-sm:size-8"
+              label="Close find bar"
+              variant="ghost"
+              size="xs"
+              onClick={() => onOpenChange(false)}
+            />
+          }
+        >
+          <IconX aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>Close find bar</TooltipContent>
+      </Tooltip>
     </search>
   )
 }

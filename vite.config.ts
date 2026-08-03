@@ -9,10 +9,11 @@ import { visualizer } from 'rollup-plugin-visualizer'
 
 const config = defineConfig(({ mode }) => ({
   resolve: { tsconfigPaths: true },
-  /* The stack navigator is lazy-loaded. Pre-bundle its Select dependency so
-     the first stacked PR opened in development does not trigger a mid-render
-     dependency optimization and page reload. */
-  optimizeDeps: { include: ['@base-ui/react/select'] },
+  /* Pre-bundle deep Base UI imports that otherwise appear after the initial
+     development scan and trigger a mid-render optimization reload. */
+  optimizeDeps: {
+    include: ['@base-ui/react/select', '@base-ui/react/tooltip'],
+  },
   worker: { format: 'es' },
   build: {
     /* The core renderer and on-demand Shiki grammars are intentionally

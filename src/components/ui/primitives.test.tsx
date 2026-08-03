@@ -18,6 +18,12 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from './sheet'
 import { Switch } from './switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './tooltip'
 import { ToggleGroup, ToggleGroupItem } from './toggle-group'
 
 vi.mock('@pierre/icons', () => ({
@@ -63,8 +69,66 @@ describe('Base UI primitives', () => {
     expect(onActivate).toHaveBeenCalledTimes(1)
 
     const iconButton = screen.getByRole('button', { name: 'Copy link' })
-    expect(iconButton.getAttribute('title')).toBe('Copy link')
     expect(iconButton.getAttribute('data-slot')).toBe('icon-button')
+  })
+
+  it('shows tooltips on hover and focus, then dismisses with Escape', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <TooltipProvider delay={0}>
+        <Tooltip>
+          <TooltipTrigger render={<IconButton label="Search changes" />}>
+            <span aria-hidden="true">+</span>
+          </TooltipTrigger>
+          <TooltipContent>Search changes</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Search changes' })
+    await user.hover(trigger)
+
+    expect(screen.getByText('Search changes').getAttribute('data-slot')).toBe(
+      'tooltip-content',
+    )
+
+    await user.unhover(trigger)
+    await waitFor(() => {
+      expect(screen.queryByText('Search changes')).toBeNull()
+    })
+
+    trigger.focus()
+    await waitFor(() => {
+      expect(screen.getByText('Search changes')).not.toBeNull()
+    })
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByText('Search changes')).toBeNull()
+    })
+    expect(document.activeElement).toBe(trigger)
+  })
+
+  it('keeps disabled tooltip triggers closed', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <TooltipProvider delay={0}>
+        <Tooltip disabled>
+          <TooltipTrigger render={<IconButton label="Unavailable action" />}>
+            <span aria-hidden="true">+</span>
+          </TooltipTrigger>
+          <TooltipContent>Unavailable action</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Unavailable action' })
+    await user.hover(trigger)
+    trigger.focus()
+
+    expect(screen.queryByText('Unavailable action')).toBeNull()
   })
 
   it('activates tabs with arrow-key navigation', async () => {

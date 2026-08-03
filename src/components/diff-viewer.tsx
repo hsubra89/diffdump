@@ -65,6 +65,7 @@ import { eyebrowClassName, PanelHeader, Toolbar } from './ui/surfaces'
 import { Switch } from './ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { ThemeToggle } from './ui/theme-toggle'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import { cn } from '../lib/cn'
 import { diffThemes } from '../lib/diff-themes'
@@ -1138,33 +1139,46 @@ export default function DiffViewer(props: DiffViewerProps) {
                     className="min-h-0 flex-1"
                     id="diff-file-picker-mobile"
                     closeControl={
-                      <SheetClose
-                        render={
-                          <IconButton
-                            label="Close file picker"
-                            variant="ghost"
-                            size="xs"
-                          />
-                        }
-                      >
-                        <IconX aria-hidden="true" />
-                      </SheetClose>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <SheetClose
+                              render={
+                                <IconButton
+                                  label="Close file picker"
+                                  variant="ghost"
+                                  size="xs"
+                                />
+                              }
+                            />
+                          }
+                        >
+                          <IconX aria-hidden="true" />
+                        </TooltipTrigger>
+                        <TooltipContent>Close file picker</TooltipContent>
+                      </Tooltip>
                     }
                   />
                 </SheetContent>
               </Sheet>
-              <IconButton
-                ref={findTriggerRef}
-                label="Find in diff"
-                title={`Find in diff (${FIND_SHORTCUT_HINT})`}
-                variant="secondary"
-                aria-controls="diff-find-bar"
-                aria-expanded={findBarOpen}
-                disabled={parsed.error !== null}
-                onClick={() => handleFindBarOpenChange(!findBarOpen)}
-              >
-                <IconSearch aria-hidden="true" />
-              </IconButton>
+              <Tooltip disabled={parsed.error !== null}>
+                <TooltipTrigger
+                  render={
+                    <IconButton
+                      ref={findTriggerRef}
+                      label="Find in diff"
+                      variant="secondary"
+                      aria-controls="diff-find-bar"
+                      aria-expanded={findBarOpen}
+                      disabled={parsed.error !== null}
+                      onClick={() => handleFindBarOpenChange(!findBarOpen)}
+                    />
+                  }
+                >
+                  <IconSearch aria-hidden="true" />
+                </TooltipTrigger>
+                <TooltipContent>{`Find in diff (${FIND_SHORTCUT_HINT})`}</TooltipContent>
+              </Tooltip>
               <ViewOptionsControl
                 order={fileOrder}
                 onOrderChange={setFileOrder}
