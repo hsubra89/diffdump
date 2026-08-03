@@ -52,6 +52,7 @@ import { GitHubReviewAnnotation } from './github-review-annotation'
 import type { GitHubPullStackLoadState } from './github-stack-selector'
 import { Wordmark } from './wordmark'
 import { Button, IconButton, buttonVariants } from './ui/button'
+import { Checkbox } from './ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import {
   Sheet,
@@ -1446,15 +1447,14 @@ function ViewedFileControl({
   viewed: boolean
   onChange: (viewed: boolean) => void
 }) {
+  const checkboxId = useId()
+
   return (
-    <label className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground">
-      <input
-        className="size-3.5 cursor-pointer rounded-sm"
-        type="checkbox"
-        checked={viewed}
-        style={{ accentColor: 'var(--accent-text)' }}
-        onChange={(event) => onChange(event.currentTarget.checked)}
-      />
+    <label
+      className="inline-flex cursor-pointer select-none items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+      htmlFor={checkboxId}
+    >
+      <Checkbox id={checkboxId} checked={viewed} onCheckedChange={onChange} />
       <span>Viewed</span>
     </label>
   )

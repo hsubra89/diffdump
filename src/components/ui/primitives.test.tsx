@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { Button, IconButton } from './button'
+import { Checkbox } from './checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import {
   Select,
@@ -279,6 +280,73 @@ describe('Base UI primitives', () => {
 
     expect(wrapLines.getAttribute('aria-checked')).toBe('true')
     expect(screen.getByText('enabled')).not.toBeNull()
+  })
+
+  it('toggles a checkbox from its label and the keyboard', async () => {
+    const user = userEvent.setup()
+
+    function ViewedControl() {
+      const [checked, setChecked] = useState(false)
+
+      return (
+        <label htmlFor="viewed-checkbox">
+          <Checkbox
+            id="viewed-checkbox"
+            checked={checked}
+            onCheckedChange={setChecked}
+          />
+          Viewed
+          <output>{checked ? 'viewed' : 'not viewed'}</output>
+        </label>
+      )
+    }
+
+    render(<ViewedControl />)
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Viewed' })
+    expect(checkbox.getAttribute('aria-checked')).toBe('false')
+
+    await user.click(screen.getByText('Viewed'))
+
+    expect(checkbox.getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByText('viewed')).not.toBeNull()
+
+    checkbox.focus()
+    await user.keyboard(' ')
+
+    expect(checkbox.getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByText('not viewed')).not.toBeNull()
+  })
+
+  it('reports indeterminate and disabled checkbox states', async () => {
+    const user = userEvent.setup()
+    const onCheckedChange = vi.fn<(checked: boolean) => void>()
+
+    render(
+      <>
+        <Checkbox indeterminate aria-label="Some files viewed" />
+        <label htmlFor="locked-checkbox">
+          <Checkbox
+            id="locked-checkbox"
+            disabled
+            onCheckedChange={onCheckedChange}
+          />
+          Locked
+        </label>
+      </>,
+    )
+
+    expect(
+      screen
+        .getByRole('checkbox', { name: 'Some files viewed' })
+        .getAttribute('aria-checked'),
+    ).toBe('mixed')
+
+    const disabled = screen.getByRole('checkbox', { name: 'Locked' })
+    expect(disabled.getAttribute('aria-disabled')).toBe('true')
+    await user.click(screen.getByText('Locked'))
+
+    expect(onCheckedChange).not.toHaveBeenCalled()
   })
 
   it('selects an option with the keyboard and restores trigger focus', async () => {
