@@ -133,6 +133,17 @@ describe('GitHubStackSelector', () => {
 
     await user.keyboard('{Escape}')
 
+    const baseRef = screen.getByLabelText('Stack base: main')
+    expect(baseRef.getAttribute('title')).toBeNull()
+    expect(baseRef.getAttribute('data-slot')).toBe('tooltip-trigger')
+
+    await user.hover(baseRef)
+    await waitFor(() => {
+      expect(screen.getByText('Stack base: main')).not.toBeNull()
+    })
+
+    await user.unhover(baseRef)
+
     const previous = screen.getByRole('link', {
       name: 'Previous layer: pull request #101, Add parser',
     })
@@ -197,6 +208,15 @@ describe('GitHubStackSelector', () => {
     expect(retryButtons[0].getAttribute('aria-describedby')).toBe(
       'github-stack-status-12',
     )
+
+    const mobileError = screen.getByLabelText(
+      'Layer 2 of 3 · Stack unavailable: GitHub rate limit reached.',
+    )
+    const desktopError = screen.getByLabelText('GitHub rate limit reached.')
+    expect(mobileError.getAttribute('title')).toBeNull()
+    expect(desktopError.getAttribute('title')).toBeNull()
+    expect(mobileError.getAttribute('data-slot')).toBe('tooltip-trigger')
+    expect(desktopError.getAttribute('data-slot')).toBe('tooltip-trigger')
 
     await user.click(retryButtons[0])
     expect(onRetry).toHaveBeenCalledOnce()

@@ -23,6 +23,7 @@ import {
 } from './ui/alert-dialog'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import {
   draftRangeError,
   type DraftReviewComment,
@@ -194,12 +195,19 @@ export function DraftReviewComposer({
 
 export function DraftInvalidBadge({ error }: { error: string }) {
   return (
-    <span
-      className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-deletion"
-      title={error}
-    >
-      Can’t submit
-    </span>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className="inline-flex shrink-0 cursor-help items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-deletion"
+            aria-label={`Can’t submit: ${error}`}
+          />
+        }
+      >
+        Can’t submit
+      </TooltipTrigger>
+      <TooltipContent>{error}</TooltipContent>
+    </Tooltip>
   )
 }
 

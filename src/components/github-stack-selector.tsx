@@ -137,14 +137,17 @@ export function GitHubStackSelector({
           </Select>
         ) : (
           <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-control border border-line bg-surface-raised px-3">
-            <span
-              className="truncate font-mono text-[11px] font-medium text-foreground"
-              title={state.status === 'error' ? state.message : undefined}
-            >
-              {state.status === 'error'
-                ? `Layer ${position} of ${size} · Stack unavailable`
-                : `PR #${pullNumber} · Layer ${position} of ${size}`}
-            </span>
+            {state.status === 'error' ? (
+              <StackErrorMessage
+                className="truncate font-mono text-[11px] font-medium text-foreground"
+                label={`Layer ${position} of ${size} · Stack unavailable`}
+                message={state.message}
+              />
+            ) : (
+              <span className="truncate font-mono text-[11px] font-medium text-foreground">
+                PR #{pullNumber} · Layer {position} of {size}
+              </span>
+            )}
             {state.status === 'loading' && (
               <span
                 className="ml-2 text-[10px] text-muted-foreground"
@@ -175,12 +178,19 @@ export function GitHubStackSelector({
         <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           Stack #{summary.number}
         </span>
-        <span
-          className="inline-block h-7 max-w-40 shrink-0 truncate rounded-control border border-line bg-surface px-2 font-mono text-[11px] leading-[26px] text-muted-bright"
-          title={`Stack base: ${baseRef}`}
-        >
-          {baseRef}
-        </span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                className="inline-block h-7 max-w-40 shrink-0 cursor-help truncate rounded-control border border-line bg-surface px-2 font-mono text-[11px] leading-[26px] text-muted-bright"
+                aria-label={`Stack base: ${baseRef}`}
+              />
+            }
+          >
+            {baseRef}
+          </TooltipTrigger>
+          <TooltipContent>Stack base: {baseRef}</TooltipContent>
+        </Tooltip>
         <span className="shrink-0 text-muted-foreground" aria-hidden="true">
           <IconArrowRightShort />
         </span>
@@ -256,12 +266,11 @@ export function GitHubStackSelector({
             {state.status === 'error' && (
               <>
                 <span aria-hidden="true">·</span>
-                <span
+                <StackErrorMessage
                   className="max-w-80 truncate text-danger"
-                  title={state.message}
-                >
-                  {state.message}
-                </span>
+                  label={state.message}
+                  message={state.message}
+                />
                 <RetryStackButton statusId={statusId} onRetry={onRetry} />
               </>
             )}
@@ -279,6 +288,32 @@ export function GitHubStackSelector({
 }
 
 export default GitHubStackSelector
+
+function StackErrorMessage({
+  className,
+  label,
+  message,
+}: {
+  className?: string
+  label: string
+  message: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className={cn('cursor-help', className)}
+            aria-label={label === message ? message : `${label}: ${message}`}
+          />
+        }
+      >
+        {label}
+      </TooltipTrigger>
+      <TooltipContent>{message}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 function RetryStackButton({
   className,

@@ -1390,7 +1390,6 @@ function DiffSidebar({
         )}
         <output
           className="ml-auto whitespace-nowrap text-muted-foreground"
-          title={`${viewedFileCount} of ${fileCount} files viewed`}
           aria-label={`${viewedFileCount} of ${fileCount} files viewed`}
         >
           {viewedFileCount}/{fileCount}
@@ -1431,25 +1430,32 @@ function SidebarLoading({ label }: { label: string }) {
 
 function ReviewPanelLoading() {
   return (
-    <div className="flex w-72 items-center gap-2 rounded-control border border-line bg-canvas p-3 font-mono text-[11px] text-muted-foreground shadow-float">
+    <output className="flex w-72 items-center gap-2 rounded-control border border-line bg-canvas p-3 font-mono text-[11px] text-muted-foreground shadow-float">
       <span
         className="size-1.5 animate-pulse rounded-full bg-accent-text"
         aria-hidden="true"
       />
       Loading review controls…
-    </div>
+    </output>
   )
 }
 
 function FileExpansionStatus({ state }: { state: FileExpansionState }) {
   if (state.phase === 'error') {
     return (
-      <output
-        className="cursor-help font-mono text-[11px] font-medium text-deletion"
-        title={state.message}
-      >
-        Expand failed
-      </output>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <output
+              className="cursor-help font-mono text-[11px] font-medium text-deletion"
+              aria-label={`Expand failed: ${state.message}`}
+            />
+          }
+        >
+          Expand failed
+        </TooltipTrigger>
+        <TooltipContent>{state.message}</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -1635,6 +1641,8 @@ function ViewOptionGroup<Value extends string>({
   options: readonly { value: Value; label: string; title?: string }[]
   onChange: (value: Value) => void
 }) {
+  const descriptionId = useId()
+
   return (
     <fieldset aria-label={label} className="flex flex-col">
       <span className={cn(eyebrowClassName, 'mb-1 px-2 text-muted-bright')}>
@@ -1658,7 +1666,9 @@ function ViewOptionGroup<Value extends string>({
               'hover:bg-surface-raised hover:text-foreground',
               'text-muted-foreground data-pressed:text-foreground',
             )}
-            title={option.title}
+            aria-describedby={
+              option.title ? `${descriptionId}-${option.value}` : undefined
+            }
           >
             <span
               aria-hidden="true"
@@ -1668,6 +1678,18 @@ function ViewOptionGroup<Value extends string>({
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
+      {options.map(
+        (option) =>
+          option.title && (
+            <span
+              key={option.value}
+              className="sr-only"
+              id={`${descriptionId}-${option.value}`}
+            >
+              {option.title}
+            </span>
+          ),
+      )}
     </fieldset>
   )
 }
@@ -1718,18 +1740,24 @@ function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
   }, [expiresAt])
 
   return (
-    <time
-      className="cursor-help text-muted-foreground underline decoration-line-bright decoration-dotted underline-offset-[3px]"
-      dateTime={expiresAt}
-      title={absoluteExpiry}
-      aria-label={
-        absoluteExpiry
-          ? `${countdown}. Exact expiration: ${absoluteExpiry}`
-          : countdown
-      }
-      suppressHydrationWarning
-    >
-      {countdown}
-    </time>
+    <Tooltip disabled={!absoluteExpiry}>
+      <TooltipTrigger
+        render={
+          <time
+            className="cursor-help text-muted-foreground underline decoration-line-bright decoration-dotted underline-offset-[3px]"
+            dateTime={expiresAt}
+            aria-label={
+              absoluteExpiry
+                ? `${countdown}. Exact expiration: ${absoluteExpiry}`
+                : countdown
+            }
+            suppressHydrationWarning
+          />
+        }
+      >
+        {countdown}
+      </TooltipTrigger>
+      <TooltipContent>{absoluteExpiry}</TooltipContent>
+    </Tooltip>
   )
 }

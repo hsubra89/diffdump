@@ -7,8 +7,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   DraftDeleteButton,
   DraftDeletionDialog,
+  DraftInvalidBadge,
   createDraftDeletionDialogHandle,
 } from './draft-review-annotation'
+import { TooltipProvider } from './ui/tooltip'
 import type { DraftReviewComment } from '../lib/review-comments'
 
 const HEAD_SHA = '0123456789abcdef0123456789abcdef01234567'
@@ -96,5 +98,27 @@ describe('draft deletion confirmation', () => {
       expect(screen.queryByRole('alertdialog')).toBeNull()
     })
     expect(document.activeElement).toBe(firstTrigger)
+  })
+})
+
+describe('DraftInvalidBadge', () => {
+  it('makes the full error available without a native title', async () => {
+    const user = userEvent.setup()
+    const error = 'The selected lines are no longer in this patch.'
+
+    render(
+      <TooltipProvider delay={0}>
+        <DraftInvalidBadge error={error} />
+      </TooltipProvider>,
+    )
+
+    const badge = screen.getByLabelText(`Can’t submit: ${error}`)
+    expect(badge.getAttribute('title')).toBeNull()
+    expect(badge.getAttribute('data-slot')).toBe('tooltip-trigger')
+
+    await user.hover(badge)
+    await waitFor(() => {
+      expect(screen.getByText(error)).not.toBeNull()
+    })
   })
 })

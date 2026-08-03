@@ -206,19 +206,23 @@ export default function DiffFindBar({
         value={inputValue}
         placeholder="Find in diff"
         aria-label="Find in diff"
-        title="Searches the visible files. Enter for next match, Shift+Enter for previous."
+        aria-describedby="diff-find-instructions"
         autoCapitalize="off"
         autoCorrect="off"
         spellCheck={false}
         onChange={(event) => setInputValue(event.currentTarget.value)}
         onKeyDown={handleInputKeyDown}
       />
-      <span
+      <span id="diff-find-instructions" className="sr-only">
+        Searches the visible files. Enter for next match, Shift+Enter for
+        previous.
+      </span>
+      <output
         className="min-w-14 px-1 text-right font-mono text-[11px] text-muted-foreground tabular-nums"
-        aria-live="polite"
+        aria-atomic="true"
       >
         {search ? formatMatchCounter(search) : ''}
-      </span>
+      </output>
       <Tooltip disabled={inputValue === ''}>
         <TooltipTrigger
           render={

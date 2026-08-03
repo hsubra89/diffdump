@@ -377,18 +377,17 @@ function Home() {
                 size="sm"
                 onClick={copyTerminalCommand}
                 disabled={!siteOrigin}
-                aria-live="polite"
+                aria-describedby={
+                  commandCopyState === 'armed'
+                    ? 'terminal-copy-status'
+                    : undefined
+                }
                 aria-label={
                   commandCopyState === 'armed'
                     ? 'Copy command including the pipe to open its returned URL'
                     : commandCopyState === 'full'
                       ? 'Command including the pipe to open its returned URL copied'
                       : 'Copy terminal command'
-                }
-                title={
-                  commandCopyState === 'armed'
-                    ? 'Click again within five seconds to include “| xargs open”'
-                    : undefined
                 }
               >
                 <span className="text-accent-text" aria-hidden="true">
@@ -400,6 +399,17 @@ function Home() {
                     ? 'Copied + open'
                     : 'Copy'}
               </Button>
+              <output
+                id="terminal-copy-status"
+                className="sr-only"
+                aria-atomic="true"
+              >
+                {commandCopyState === 'armed'
+                  ? 'Terminal command copied. Activate again within five seconds to include “| xargs open”.'
+                  : commandCopyState === 'full'
+                    ? 'Command including the pipe to open its returned URL copied.'
+                    : ''}
+              </output>
             </div>
           </section>
         )}

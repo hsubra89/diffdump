@@ -58,6 +58,13 @@ describe('DiffFindBar', () => {
 
     const input = screen.getByRole('textbox', { name: 'Find in diff' })
     expect(document.activeElement).toBe(input)
+    expect(input.getAttribute('title')).toBeNull()
+    expect(input.getAttribute('aria-describedby')).toBe(
+      'diff-find-instructions',
+    )
+    expect(document.getElementById('diff-find-instructions')?.textContent).toBe(
+      'Searches the visible files. Enter for next match, Shift+Enter for previous.',
+    )
 
     await user.keyboard('{Escape}')
 

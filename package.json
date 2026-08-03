@@ -48,6 +48,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "axe-core": "^4.12.1",
     "happy-dom": "^20.11.1",
     "oxlint": "^1.76.0",
     "prettier": "^3.9.6",
