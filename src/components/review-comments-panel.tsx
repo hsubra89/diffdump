@@ -8,6 +8,7 @@ import {
   type DraftDeletionDialogHandle,
 } from './draft-review-annotation'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from '../lib/cn'
 import {
   draftRangeError,
@@ -20,7 +21,7 @@ import type { ReviewCommentsState } from '../lib/review-state'
 const rowClassName =
   'flex w-full flex-col items-start gap-1 rounded-control border border-transparent px-2 py-1.5 text-left text-xs leading-snug transition-colors'
 const clickableRowClassName =
-  'cursor-pointer hover:border-line hover:bg-surface-raised'
+  'cursor-pointer outline-none hover:border-line hover:bg-surface-raised focus-visible:border-accent-text focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
 export type AnchorClassifier = (
   path: string,
@@ -30,6 +31,12 @@ export type AnchorClassifier = (
 /** Rows navigate on click, but their comment text is selectable — a click
  * that just finished selecting text inside the row is not navigation. */
 function clickSelectsRowText(event: MouseEvent<HTMLElement>): boolean {
+  /* Enter and Space dispatch a click with detail 0. A selection left on the
+     page must not suppress those keyboard activations. */
+  if (event.detail === 0) {
+    return false
+  }
+
   const selection = window.getSelection()
   if (!selection || selection.isCollapsed) {
     return false
@@ -102,19 +109,20 @@ export default function ReviewCommentsPanel({
 
               return (
                 <li key={draft.localId} className={cn(rowClassName, 'gap-1.5')}>
-                  <button
+                  <Button
                     className={cn(
-                      'flex w-full cursor-pointer flex-col items-start gap-1 rounded-control text-left',
-                      'hover:text-foreground',
+                      'h-auto w-full flex-col items-start gap-1 whitespace-normal border-0 px-0 py-0 text-left font-normal text-foreground',
+                      'hover:bg-transparent hover:text-foreground',
                     )}
-                    type="button"
-                    title="Show in diff"
+                    variant="ghost"
+                    size="xs"
                     onClick={(event) => {
                       if (!clickSelectsRowText(event)) {
                         onSelectDraft(draft)
                       }
                     }}
                   >
+                    <span className="sr-only">Show in diff: </span>
                     <span className="flex w-full items-center gap-1.5">
                       <CommentLocation
                         path={draft.path}
@@ -128,7 +136,7 @@ export default function ReviewCommentsPanel({
                     <span className="line-clamp-2 w-full select-text break-words text-muted-bright">
                       {draft.body}
                     </span>
-                  </button>
+                  </Button>
                   <span className="flex gap-1.5">
                     <Button
                       variant="ghost"
@@ -185,12 +193,16 @@ export default function ReviewCommentsPanel({
             <div className="flex flex-col gap-3">
               {threadsByFile.map(([path, fileThreads]) => (
                 <div key={path}>
-                  <p
-                    className="truncate px-2 pb-1 font-mono text-[11px] text-muted-foreground"
-                    title={path}
-                  >
-                    {path}
-                  </p>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <p className="truncate px-2 pb-1 font-mono text-[11px] text-muted-foreground" />
+                      }
+                    >
+                      {path}
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{path}</TooltipContent>
+                  </Tooltip>
                   <ul className="flex flex-col gap-0.5">
                     {fileThreads.map((thread) => (
                       <li key={thread.root.id}>
@@ -266,15 +278,21 @@ function ThreadRow({
   }
 
   return (
-    <button
-      className={cn(rowClassName, clickableRowClassName)}
-      type="button"
+    <Button
+      className={cn(
+        rowClassName,
+        clickableRowClassName,
+        'h-auto whitespace-normal font-normal text-foreground',
+      )}
+      variant="ghost"
+      size="xs"
       onClick={(event) => {
         if (!clickSelectsRowText(event)) {
           onSelect(thread)
         }
       }}
     >
+      <span className="sr-only">Show in diff: </span>
       <CommentLocation
         path={null}
         line={root.range === null ? null : root.range.end}
@@ -283,7 +301,7 @@ function ThreadRow({
         }
       />
       {meta}
-    </button>
+    </Button>
   )
 }
 
@@ -310,24 +328,29 @@ function CommentLocation({
      carry their diff marker: +N for added lines, −N for deleted (old-file)
      lines, plain N for unchanged lines. */
   const marker = kind === 'addition' ? '+' : kind === 'deletion' ? '−' : ''
+  const visibleLocation =
+    path !== null
+      ? `${path}${line !== null ? `:${marker}${line}` : ''}`
+      : `Line ${marker}${line}`
+  const lineDescription =
+    kind !== null && line !== null
+      ? ` · ${DIFF_LINE_KIND_LABELS[kind]} ${line}`
+      : ''
 
   return (
-    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">
-      {path !== null && <span title={path}>{path}</span>}
-      {line !== null && (
-        <span
-          title={
-            kind !== null
-              ? `Comment on ${DIFF_LINE_KIND_LABELS[kind]} ${line}`
-              : undefined
-          }
-        >
-          {path !== null ? ':' : 'Line '}
-          {marker}
-          {line}
-        </span>
-      )}
-    </span>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground" />
+        }
+      >
+        {visibleLocation}
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {visibleLocation}
+        {lineDescription}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
