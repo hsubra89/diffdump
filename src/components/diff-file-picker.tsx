@@ -1,9 +1,11 @@
 import { useMemo } from 'react'
-import { preparePresortedFileTreeInput } from '@pierre/trees'
 import { FileTree, useFileTree } from '@pierre/trees/react'
 
 import { DIFF_CATEGORY_DETAILS } from '../lib/diff-files'
-import type { DiffFilePickerEntry } from '../lib/file-picker'
+import {
+  prepareDiffFileTreeInput,
+  type DiffFilePickerEntry,
+} from '../lib/file-picker'
 
 type DiffFilePickerProps = {
   entries: readonly DiffFilePickerEntry[]
@@ -15,10 +17,7 @@ export default function DiffFilePicker({
   onSelect,
 }: DiffFilePickerProps) {
   const paths = useMemo(() => entries.map((entry) => entry.path), [entries])
-  const preparedInput = useMemo(
-    () => preparePresortedFileTreeInput(paths),
-    [paths],
-  )
+  const preparedInput = useMemo(() => prepareDiffFileTreeInput(paths), [paths])
   const entriesByPath = useMemo(
     () => new Map(entries.map((entry) => [entry.path, entry])),
     [entries],

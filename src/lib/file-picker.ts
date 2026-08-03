@@ -1,5 +1,9 @@
 import type { ChangeTypes } from '@pierre/diffs'
-import type { GitStatus } from '@pierre/trees'
+import {
+  prepareFileTreeInput,
+  type FileTreePreparedInput,
+  type GitStatus,
+} from '@pierre/trees'
 
 import type { DiffCategory } from './diff-files'
 
@@ -21,6 +25,15 @@ export type DiffFilePickerEntry = {
   additions: number
   deletions: number
   viewed: boolean
+}
+
+export function prepareDiffFileTreeInput(
+  paths: readonly string[],
+): FileTreePreparedInput {
+  /* Patch and category order can split files from the same directory into
+     separate runs. Let the tree normalize that input before using its
+     presorted builder, which requires directory siblings to be contiguous. */
+  return prepareFileTreeInput(paths)
 }
 
 export function createDiffFilePickerEntries(
