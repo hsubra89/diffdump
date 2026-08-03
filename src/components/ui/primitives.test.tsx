@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 
-import { useState } from 'react'
+import { useState, type SubmitEvent as ReactSubmitEvent } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { Button, IconButton } from './button'
 import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import {
   Select,
@@ -26,6 +27,45 @@ vi.mock('@pierre/icons', () => ({
 afterEach(cleanup)
 
 describe('Base UI primitives', () => {
+  it('keeps button defaults safe and suppresses disabled activation', async () => {
+    const user = userEvent.setup()
+    const onActivate = vi.fn<() => void>()
+    const onSubmit = vi.fn<(event: ReactSubmitEvent<HTMLFormElement>) => void>(
+      (event) => event.preventDefault(),
+    )
+
+    render(
+      <form onSubmit={onSubmit}>
+        <Button onClick={onActivate}>Open</Button>
+        <Button disabled focusableWhenDisabled onClick={onActivate}>
+          Delete
+        </Button>
+        <IconButton label="Copy link">
+          <span aria-hidden="true">+</span>
+        </IconButton>
+      </form>,
+    )
+
+    const open = screen.getByRole('button', { name: 'Open' })
+    expect(open.getAttribute('type')).toBe('button')
+    await user.click(open)
+
+    expect(onActivate).toHaveBeenCalledTimes(1)
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    const disabled = screen.getByRole('button', { name: 'Delete' })
+    expect(disabled.getAttribute('aria-disabled')).toBe('true')
+    disabled.focus()
+    await user.keyboard('{Enter}')
+
+    expect(document.activeElement).toBe(disabled)
+    expect(onActivate).toHaveBeenCalledTimes(1)
+
+    const iconButton = screen.getByRole('button', { name: 'Copy link' })
+    expect(iconButton.getAttribute('title')).toBe('Copy link')
+    expect(iconButton.getAttribute('data-slot')).toBe('icon-button')
+  })
+
   it('activates tabs with arrow-key navigation', async () => {
     const user = userEvent.setup()
 
