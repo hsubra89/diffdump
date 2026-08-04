@@ -145,7 +145,7 @@ type SidebarTab = 'files' | 'comments'
 
 /* Split review needs enough room for two useful code columns after gutters.
    Measure the review canvas instead of the viewport because the file sidebar
-   starts consuming 240px at the md breakpoint. */
+   starts consuming 350px at the md breakpoint. */
 const MIN_SPLIT_VIEW_WIDTH = 720
 
 /** Hydration progress for one file, keyed by item id: present while the
@@ -1255,7 +1255,7 @@ export default function DiffViewer(props: DiffViewerProps) {
           actionLabel="Try another diff"
         />
       ) : (
-        <div className="relative grid min-h-0 grid-cols-1 [grid-area:workspace] [grid-template-areas:'viewer'] md:grid-cols-[240px_minmax(0,1fr)] md:[grid-template-areas:'tree_viewer']">
+        <div className="relative grid min-h-0 grid-cols-1 [grid-area:workspace] [grid-template-areas:'viewer'] md:grid-cols-[350px_minmax(0,1fr)] md:[grid-template-areas:'tree_viewer']">
           <DiffSidebar
             {...sidebarProps}
             className="hidden min-h-0 border-r border-line bg-canvas [grid-area:tree] md:flex"
