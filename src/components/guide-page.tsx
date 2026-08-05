@@ -102,18 +102,18 @@ export function GuideCode({ children }: { children: string }) {
 export function GuideLinkCards({
   current,
 }: {
-  current: 'cli' | 'github' | 'share'
+  current?: 'cli' | 'github' | 'share'
 }) {
   const links = [
     {
       id: 'github',
-      to: '/github-diff-viewer',
+      to: '/docs/github-diff-viewer',
       title: 'Review a GitHub diff',
       description: 'Open pull requests, commits, and comparisons.',
     },
     {
       id: 'share',
-      to: '/share-git-diff',
+      to: '/docs/share-git-diff',
       title: 'Share a raw diff',
       description: 'Create an unlisted link that expires after 24 hours.',
     },
@@ -128,7 +128,9 @@ export function GuideLinkCards({
   return (
     <nav
       className="grid gap-3 md:grid-cols-2"
-      aria-label="Related Diffdump guides"
+      aria-label={
+        current ? 'Related Diffdump documentation' : 'Diffdump documentation'
+      }
     >
       {links
         .filter((link) => link.id !== current)

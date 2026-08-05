@@ -4,12 +4,17 @@ export const SOCIAL_IMAGE_URL = `${SITE_ORIGIN}/og.png`
 export const SOURCE_REPOSITORY_URL = 'https://github.com/hsyntax/diffdump'
 
 export type IndexablePagePath =
-  '/' | '/github-diff-viewer' | '/share-git-diff' | '/docs/cli'
+  | '/'
+  | '/docs'
+  | '/docs/github-diff-viewer'
+  | '/docs/share-git-diff'
+  | '/docs/cli'
 
 export const INDEXABLE_PAGE_PATHS: readonly IndexablePagePath[] = [
   '/',
-  '/github-diff-viewer',
-  '/share-git-diff',
+  '/docs',
+  '/docs/github-diff-viewer',
+  '/docs/share-git-diff',
   '/docs/cli',
 ]
 
@@ -98,11 +103,13 @@ export function createWebApplicationStructuredData(description: string) {
     },
     codeRepository: SOURCE_REPOSITORY_URL,
     featureList: [
+      'Complete GitHub pull request review flow with inline comments, approvals, and change requests',
+      'Automatic Source, Tests, Docs, and Other file categorization',
+      'GitHub stacked pull request navigation',
       'GitHub pull request, commit, and comparison review',
       'Unified and split diff layouts',
       'Syntax-highlighted multi-file diffs',
       'Unlisted 24-hour diff share links',
-      'Inline GitHub pull request reviews',
     ],
   }
 }

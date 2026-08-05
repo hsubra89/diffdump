@@ -23,9 +23,30 @@ import { createPageHead, createWebApplicationStructuredData } from '../lib/seo'
 type CommandCopyState = 'idle' | 'armed' | 'full'
 type PanelTab = 'paste' | 'github'
 
-const title = 'Diffdump — Review and Share Code Changes'
+const title = 'Review Your Diffs | Diffdump'
 const description =
-  'Review any GitHub pull request, commit, or comparison in a fast, focused diff viewer, or create an unlisted 24-hour link for a raw Git diff.'
+  'Review and approve GitHub pull requests with automatic file categories and stacked PR navigation, or create an unlisted 24-hour link for a raw Git diff.'
+
+const reviewCapabilities = [
+  {
+    label: 'Complete review flow',
+    title: 'Everything in one review',
+    description:
+      'Comment on lines, submit one review, and approve or request changes directly on the pull request.',
+  },
+  {
+    label: 'Agent-friendly structure',
+    title: 'See the shape of the change',
+    description:
+      'Source, tests, docs, and other files are categorized automatically, making agent-generated code easier to review.',
+  },
+  {
+    label: 'Stack-aware',
+    title: 'Move through stacked PRs',
+    description:
+      'See the ultimate base and every pull request layer, then move through the stack without losing your place.',
+  },
+] as const
 
 export const Route = createFileRoute('/')({
   head: () => ({
@@ -157,16 +178,46 @@ function Home() {
       <SiteHeader />
 
       <section className="pt-16 pb-10 md:pt-24 md:pb-12">
-        <h1 className="max-w-[900px] text-[clamp(42px,13vw,64px)] font-[560] leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
-          Any pull request.
-          <br />
-          <span className="text-muted-foreground">One clean review.</span>
+        <h1 className="max-w-[1050px] text-[clamp(42px,13vw,64px)] font-[560] leading-[0.98] tracking-[-0.04em] md:text-[clamp(52px,7vw,88px)]">
+          Review your diffs.
         </h1>
-        <p className="mt-6 max-w-[610px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
-          Open any GitHub pull request, commit, or comparison in a fast, focused
-          review view — no account, nothing uploaded. Raw diff instead? Paste it
-          for a clean, unlisted share link.
+        <p className="mt-6 max-w-[680px] text-base leading-relaxed text-muted-bright md:mt-8 md:text-lg">
+          Open a GitHub pull request, commit, comparison, or raw patch in one
+          focused view. Diffdump categorizes large, agent-generated changes,
+          supports stacked PRs, and adds inline comments and approvals when
+          you’re reviewing on GitHub.
         </p>
+      </section>
+
+      <section
+        className="mb-10 border-y border-line md:mb-12"
+        aria-labelledby="review-capabilities-title"
+      >
+        <h2 id="review-capabilities-title" className="sr-only">
+          A clear, complete pull request review flow
+        </h2>
+        <div className="grid md:grid-cols-3 md:divide-x md:divide-line">
+          {reviewCapabilities.map((capability, index) => (
+            <article
+              key={capability.label}
+              className="border-b border-line px-1 py-5 last:border-b-0 md:border-b-0 md:px-6 md:py-6 md:first:pl-1 md:last:pr-1"
+            >
+              <div className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+                <span className="text-accent-text">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span aria-hidden="true" className="h-px w-5 bg-line-bright" />
+                {capability.label}
+              </div>
+              <h3 className="mt-3 text-base font-medium tracking-[-0.02em]">
+                {capability.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">
+                {capability.description}
+              </p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <Tabs

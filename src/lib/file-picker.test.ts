@@ -1,8 +1,35 @@
 import { describe, expect, it } from 'vitest'
+import { FileTree } from '@pierre/trees'
 
-import { createDiffFilePickerEntries } from './file-picker'
+import {
+  createDiffFilePickerEntries,
+  prepareDiffFileTreeInput,
+} from './file-picker'
 
 describe('diff file picker entries', () => {
+  it('searches files when patch order splits a directory into separate runs', () => {
+    const paths = [
+      'apps/app/src/durable-objects/upstream.ts',
+      'plan.md',
+      'apps/app/src/api/authenticated.ts',
+    ]
+    const tree = new FileTree({
+      preparedInput: prepareDiffFileTreeInput(paths),
+      flattenEmptyDirectories: true,
+      initialExpansion: 'open',
+      search: true,
+    })
+
+    try {
+      expect(() => tree.setSearch('upstream')).not.toThrow()
+      expect(tree.getSearchMatchingPaths()).toEqual([
+        'apps/app/src/durable-objects/upstream.ts',
+      ])
+    } finally {
+      tree.cleanUp()
+    }
+  })
+
   it('normalizes paths and maps diff changes to tree statuses', () => {
     expect(
       createDiffFilePickerEntries([

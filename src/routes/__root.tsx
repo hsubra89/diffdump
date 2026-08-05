@@ -16,7 +16,7 @@ export const Route = createRootRoute({
       {
         name: 'description',
         content:
-          'Review GitHub diffs and share code changes in a fast, focused diff viewer.',
+          'Review GitHub pull requests and raw code changes with automatic file categories and stacked PR navigation.',
       },
       {
         name: 'viewport',

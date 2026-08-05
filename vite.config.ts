@@ -18,6 +18,7 @@ const config = defineConfig(({ mode }) => ({
       '@base-ui/react/tooltip',
     ],
   },
+  server: { allowedHosts: ['warptech'] },
   worker: { format: 'es' },
   build: {
     /* The core renderer and on-demand Shiki grammars are intentionally

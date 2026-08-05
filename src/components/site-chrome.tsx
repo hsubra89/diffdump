@@ -4,9 +4,9 @@ import { GitHubRepoLink } from './github-repo-link'
 import { ThemeToggle } from './ui/theme-toggle'
 import { Wordmark } from './wordmark'
 
-const guideLinks = [
-  { to: '/github-diff-viewer', label: 'GitHub viewer' },
-  { to: '/share-git-diff', label: 'Share a diff' },
+const documentationLinks = [
+  { to: '/docs/github-diff-viewer', label: 'GitHub viewer' },
+  { to: '/docs/share-git-diff', label: 'Share a diff' },
   { to: '/docs/cli', label: 'CLI' },
 ] as const
 
@@ -19,39 +19,19 @@ export function SiteHeader() {
       <Wordmark />
 
       <div className="flex items-center gap-1.5">
-        <div className="hidden items-center sm:flex">
-          {guideLinks.map((link) => (
-            <Link
-              key={link.to}
-              className="rounded-control px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground"
-              activeProps={{
-                className:
-                  'rounded-control bg-surface-raised px-2.5 py-1.5 text-xs text-foreground',
-              }}
-              to={link.to}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </div>
+        <Link
+          className="rounded-control px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
+          activeOptions={{ exact: false }}
+          activeProps={{
+            className:
+              'rounded-control bg-surface-raised px-2.5 py-1.5 text-xs text-foreground',
+          }}
+          to="/docs"
+        >
+          Docs
+        </Link>
         <GitHubRepoLink />
         <ThemeToggle />
-      </div>
-
-      <div className="order-3 flex w-full items-center gap-1 sm:hidden">
-        {guideLinks.map((link) => (
-          <Link
-            key={link.to}
-            className="rounded-control px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-surface-raised hover:text-foreground"
-            activeProps={{
-              className:
-                'rounded-control bg-surface-raised px-2.5 py-1.5 text-xs text-foreground',
-            }}
-            to={link.to}
-          >
-            {link.label}
-          </Link>
-        ))}
       </div>
     </nav>
   )
@@ -62,9 +42,9 @@ export function SiteFooter() {
     <footer className="flex flex-col gap-4 border-t border-line px-1 pt-6 text-[11px] text-muted-foreground md:flex-row md:items-center md:justify-between">
       <nav
         className="flex flex-wrap items-center gap-x-4 gap-y-2"
-        aria-label="Guides"
+        aria-label="Documentation"
       >
-        {guideLinks.map((link) => (
+        {documentationLinks.map((link) => (
           <Link
             key={link.to}
             className="underline-offset-2 transition-colors hover:text-foreground hover:underline"
