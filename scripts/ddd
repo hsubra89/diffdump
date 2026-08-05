@@ -1,14 +1,14 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 
 # Requirements:
-# - zsh, git, and curl
+# - Bash 3.2 or newer, git, and curl
 # - A GitHub remote for uploaded diffs
 # - GitHub CLI (`gh`) for PRs and, when origin/HEAD is unset, default-branch lookup
 # - Optional: macOS `open`; URLs are printed when it is unavailable
 
-setopt pipe_fail
+set -o pipefail
 
-readonly DDD_VERSION='0.1.0'
+readonly DDD_VERSION='0.2.0'
 readonly DIFFDUMP_UPLOAD_URL='https://diffdump.com/d'
 
 usage() {
@@ -32,7 +32,7 @@ EOF
 }
 
 fail() {
-  print -u2 -- "ddd: $*"
+  printf 'ddd: %s\n' "$*" >&2
   return 1
 }
 
@@ -69,7 +69,7 @@ github_repository() {
     return
   fi
 
-  print -r -- "$github_repo"
+  printf '%s\n' "$github_repo"
 }
 
 has_untracked_files() {
@@ -90,10 +90,10 @@ append_untracked_diffs() {
 open_url() {
   local url=$1
 
-  if (( $+commands[open] )); then
+  if command -v open >/dev/null 2>&1; then
     open "$url"
   else
-    print -r -- "$url"
+    printf '%s\n' "$url"
   fi
 }
 
@@ -141,7 +141,7 @@ upload_range() {
   fi
   if (( diff_status == 0 )); then
     if [[ "$include_untracked" != true ]] || ! has_untracked_files; then
-      print 'No diff'
+      printf '%s\n' 'No diff'
       return
     fi
   fi
@@ -166,7 +166,7 @@ upload_root_commit() {
     return "$diff_status"
   fi
   if (( diff_status == 0 )); then
-    print 'No diff'
+    printf '%s\n' 'No diff'
     return
   fi
 
@@ -184,18 +184,18 @@ default_branch_ref() {
   remote_head=$(
     git symbolic-ref --quiet --short "refs/remotes/${remote_name}/HEAD"
   ) && {
-    print -r -- "$remote_head"
+    printf '%s\n' "$remote_head"
     return
   }
 
-  if (( $+commands[gh] )); then
+  if command -v gh >/dev/null 2>&1; then
     if branch_name=$(gh repo view "$github_repo" \
       --json defaultBranchRef --jq '.defaultBranchRef.name'); then
       github_default_branch=$branch_name
       candidate="${remote_name}/${branch_name}"
       if git rev-parse --verify --quiet --end-of-options \
         "${candidate}^{commit}" >/dev/null; then
-        print -r -- "$candidate"
+        printf '%s\n' "$candidate"
         return
       fi
     fi
@@ -205,7 +205,7 @@ default_branch_ref() {
     candidate="${remote_name}/${branch_name}"
     if git rev-parse --verify --quiet --end-of-options \
       "${candidate}^{commit}" >/dev/null; then
-      print -r -- "$candidate"
+      printf '%s\n' "$candidate"
       return
     fi
   done
@@ -220,7 +220,7 @@ default_branch_ref() {
 open_pull_request() {
   local pr_url diffdump_url
 
-  (( $+commands[gh] )) || {
+  command -v gh >/dev/null 2>&1 || {
     fail "The 'pr' command requires the GitHub CLI (gh)."
     return
   }
@@ -240,18 +240,18 @@ open_pull_request() {
 }
 
 invocation_command=''
-case "${0:t}" in
+case "${0##*/}" in
   ddc)
-    invocation_command=commit
+    invocation_command='commit'
     ;;
   ddu)
-    invocation_command=uncommitted
+    invocation_command='uncommitted'
     ;;
   ddp)
-    invocation_command=pr
+    invocation_command='pr'
     ;;
   ddb)
-    invocation_command=branch
+    invocation_command='branch'
     ;;
 esac
 
@@ -301,7 +301,7 @@ case "$command_name" in
       fail "The 'version' command takes no arguments."
       exit 1
     }
-    print -r -- "ddd $DDD_VERSION"
+    printf 'ddd %s\n' "$DDD_VERSION"
     exit
     ;;
   uncommitted|u|commit|c|pr|p|branch|b)

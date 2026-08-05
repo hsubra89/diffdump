@@ -19,6 +19,11 @@ describe('CLI downloads', () => {
     )
   })
 
+  it('serves scripts that select Bash through a portable shebang', () => {
+    expect(dddScript.startsWith('#!/usr/bin/env bash\n')).toBe(true)
+    expect(installerScript.startsWith('#!/usr/bin/env bash\n')).toBe(true)
+  })
+
   it('keeps the installer checksum synchronized with ddd', () => {
     const expectedChecksum = installerScript.match(
       /readonly DDD_SHA256='([a-f0-9]{64})'/,
