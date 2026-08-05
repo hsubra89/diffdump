@@ -13,7 +13,7 @@ const description =
   'Install ddd to open working-tree changes, commits, branches, and pull requests in Diffdump, or upload a patch directly with curl.'
 const path = '/docs/cli' as const
 const datePublished = '2026-07-29'
-const dateModified = '2026-08-01'
+const dateModified = '2026-08-05'
 
 export const Route = createFileRoute('/docs/cli')({
   head: () => ({
@@ -50,14 +50,14 @@ function CliGuide() {
           The installer places{' '}
           <code className="font-mono text-foreground">ddd</code> in{' '}
           <code className="font-mono text-foreground">~/.local/bin</code>, adds
-          the directory to your Zsh path when necessary, and installs the{' '}
-          <code className="font-mono text-foreground">ddc</code>,{' '}
+          the directory to your login shell’s profile when necessary, and
+          installs the <code className="font-mono text-foreground">ddc</code>,{' '}
           <code className="font-mono text-foreground">ddu</code>,{' '}
           <code className="font-mono text-foreground">ddp</code>, and{' '}
           <code className="font-mono text-foreground">ddb</code> shortcuts.
           Running it again updates the command.
         </p>
-        <GuideCode>{`curl -fsSL https://diffdump.com/install | zsh`}</GuideCode>
+        <GuideCode>{`curl -fsSL https://diffdump.com/install | bash`}</GuideCode>
         <p>
           The installer verifies the downloaded command with SHA-256 before
           replacing an existing installation. You can inspect the served{' '}
@@ -74,8 +74,8 @@ function CliGuide() {
           >
             ddd command
           </a>{' '}
-          before running them. The command requires Zsh, Git, and curl.{' '}
-          <code className="font-mono text-foreground">ddd pr</code> and
+          before running them. The command requires Bash 3.2 or newer, Git, and
+          curl. <code className="font-mono text-foreground">ddd pr</code> and
           default-branch detection additionally require the GitHub CLI (
           <code className="font-mono text-foreground">gh</code>).
         </p>

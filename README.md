@@ -48,7 +48,7 @@ It is hosted at [diffdump.com](https://diffdump.com).
 - Install the `ddd` shell command and share straight from any repository:
 
   ```bash
-  curl -fsSL https://diffdump.com/install | zsh
+  curl -fsSL https://diffdump.com/install | bash
   ```
 
   `ddd` shares staged, unstaged, and untracked changes. `ddd commit` (`ddc`)
@@ -59,10 +59,10 @@ It is hosted at [diffdump.com](https://diffdump.com).
   else; run `ddd help` for the full reference.
 
 - The installer verifies a SHA-256 checksum, places `ddd` in `~/.local/bin`,
-  adds that directory to `PATH` in `~/.zshrc` when needed, and creates the
-  shortcut symlinks. Running it again updates the command. It requires Zsh,
-  Git, and curl; `ddd pr` and default-branch detection additionally require
-  the GitHub CLI (`gh`). The served
+  adds that directory to `PATH` in the profile detected from your login shell
+  when needed, and creates the shortcut symlinks. Running it again updates the
+  command. It requires Bash 3.2 or newer, Git, and curl; `ddd pr` and
+  default-branch detection additionally require the GitHub CLI (`gh`). The served
   [installer](https://diffdump.com/install) and
   [command](https://diffdump.com/cli/ddd) can be inspected before running.
 
