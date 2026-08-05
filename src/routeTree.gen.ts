@@ -12,13 +12,17 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as DRouteImport } from './routes/d'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as GithubRouteImport } from './routes/github'
 import { Route as GithubDiffViewerRouteImport } from './routes/github-diff-viewer'
 import { Route as InstallRouteImport } from './routes/install'
 import { Route as ShareGitDiffRouteImport } from './routes/share-git-diff'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as CliDddRouteImport } from './routes/cli.ddd'
+import { Route as DocsIndexRouteImport } from './routes/docs.index'
 import { Route as DocsCliRouteImport } from './routes/docs.cli'
+import { Route as DocsGithubDiffViewerRouteImport } from './routes/docs.github-diff-viewer'
+import { Route as DocsShareGitDiffRouteImport } from './routes/docs.share-git-diff'
 import { Route as ViewSlugRouteImport } from './routes/view.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -34,6 +38,11 @@ const SplatRoute = SplatRouteImport.update({
 const DRoute = DRouteImport.update({
   id: '/d',
   path: '/d',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GithubRoute = GithubRouteImport.update({
@@ -66,10 +75,25 @@ const CliDddRoute = CliDddRouteImport.update({
   path: '/cli/ddd',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
 const DocsCliRoute = DocsCliRouteImport.update({
-  id: '/docs/cli',
-  path: '/docs/cli',
-  getParentRoute: () => rootRouteImport,
+  id: '/cli',
+  path: '/cli',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsGithubDiffViewerRoute = DocsGithubDiffViewerRouteImport.update({
+  id: '/github-diff-viewer',
+  path: '/github-diff-viewer',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsShareGitDiffRoute = DocsShareGitDiffRouteImport.update({
+  id: '/share-git-diff',
+  path: '/share-git-diff',
+  getParentRoute: () => DocsRoute,
 } as any)
 const ViewSlugRoute = ViewSlugRouteImport.update({
   id: '/view/$slug',
@@ -81,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/d': typeof DRoute
+  '/docs': typeof DocsRouteWithChildren
   '/github': typeof GithubRoute
   '/github-diff-viewer': typeof GithubDiffViewerRoute
   '/install': typeof InstallRoute
@@ -88,7 +113,10 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/cli/ddd': typeof CliDddRoute
   '/docs/cli': typeof DocsCliRoute
+  '/docs/github-diff-viewer': typeof DocsGithubDiffViewerRoute
+  '/docs/share-git-diff': typeof DocsShareGitDiffRoute
   '/view/$slug': typeof ViewSlugRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,13 +129,17 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/cli/ddd': typeof CliDddRoute
   '/docs/cli': typeof DocsCliRoute
+  '/docs/github-diff-viewer': typeof DocsGithubDiffViewerRoute
+  '/docs/share-git-diff': typeof DocsShareGitDiffRoute
   '/view/$slug': typeof ViewSlugRoute
+  '/docs': typeof DocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/d': typeof DRoute
+  '/docs': typeof DocsRouteWithChildren
   '/github': typeof GithubRoute
   '/github-diff-viewer': typeof GithubDiffViewerRoute
   '/install': typeof InstallRoute
@@ -115,7 +147,10 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/cli/ddd': typeof CliDddRoute
   '/docs/cli': typeof DocsCliRoute
+  '/docs/github-diff-viewer': typeof DocsGithubDiffViewerRoute
+  '/docs/share-git-diff': typeof DocsShareGitDiffRoute
   '/view/$slug': typeof ViewSlugRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,6 +158,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/d'
+    | '/docs'
     | '/github'
     | '/github-diff-viewer'
     | '/install'
@@ -130,7 +166,10 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/cli/ddd'
     | '/docs/cli'
+    | '/docs/github-diff-viewer'
+    | '/docs/share-git-diff'
     | '/view/$slug'
+    | '/docs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,12 +182,16 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/cli/ddd'
     | '/docs/cli'
+    | '/docs/github-diff-viewer'
+    | '/docs/share-git-diff'
     | '/view/$slug'
+    | '/docs'
   id:
     | '__root__'
     | '/'
     | '/$'
     | '/d'
+    | '/docs'
     | '/github'
     | '/github-diff-viewer'
     | '/install'
@@ -156,20 +199,23 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/cli/ddd'
     | '/docs/cli'
+    | '/docs/github-diff-viewer'
+    | '/docs/share-git-diff'
     | '/view/$slug'
+    | '/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
   DRoute: typeof DRoute
+  DocsRoute: typeof DocsRouteWithChildren
   GithubRoute: typeof GithubRoute
   GithubDiffViewerRoute: typeof GithubDiffViewerRoute
   InstallRoute: typeof InstallRoute
   ShareGitDiffRoute: typeof ShareGitDiffRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CliDddRoute: typeof CliDddRoute
-  DocsCliRoute: typeof DocsCliRoute
   ViewSlugRoute: typeof ViewSlugRoute
 }
 
@@ -194,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/d'
       fullPath: '/d'
       preLoaderRoute: typeof DRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/github': {
@@ -238,12 +291,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CliDddRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
     '/docs/cli': {
       id: '/docs/cli'
-      path: '/docs/cli'
+      path: '/cli'
       fullPath: '/docs/cli'
       preLoaderRoute: typeof DocsCliRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/github-diff-viewer': {
+      id: '/docs/github-diff-viewer'
+      path: '/github-diff-viewer'
+      fullPath: '/docs/github-diff-viewer'
+      preLoaderRoute: typeof DocsGithubDiffViewerRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/share-git-diff': {
+      id: '/docs/share-git-diff'
+      path: '/share-git-diff'
+      fullPath: '/docs/share-git-diff'
+      preLoaderRoute: typeof DocsShareGitDiffRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/view/$slug': {
       id: '/view/$slug'
@@ -255,17 +329,33 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DocsRouteChildren {
+  DocsCliRoute: typeof DocsCliRoute
+  DocsGithubDiffViewerRoute: typeof DocsGithubDiffViewerRoute
+  DocsShareGitDiffRoute: typeof DocsShareGitDiffRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsCliRoute: DocsCliRoute,
+  DocsGithubDiffViewerRoute: DocsGithubDiffViewerRoute,
+  DocsShareGitDiffRoute: DocsShareGitDiffRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   DRoute: DRoute,
+  DocsRoute: DocsRouteWithChildren,
   GithubRoute: GithubRoute,
   GithubDiffViewerRoute: GithubDiffViewerRoute,
   InstallRoute: InstallRoute,
   ShareGitDiffRoute: ShareGitDiffRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CliDddRoute: CliDddRoute,
-  DocsCliRoute: DocsCliRoute,
   ViewSlugRoute: ViewSlugRoute,
 }
 export const routeTree = rootRouteImport

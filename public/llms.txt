@@ -32,8 +32,9 @@ Shared diffs use random 96-bit URL slugs, are stored in a private Cloudflare R2 
 ## Primary resources
 
 - [Diffdump](https://diffdump.com/): Review a GitHub diff or create an unlisted diff share.
-- [GitHub diff viewer](https://diffdump.com/github-diff-viewer): Open a public or private GitHub pull request, commit, or comparison.
-- [Share a Git diff](https://diffdump.com/share-git-diff): Turn a raw unified diff into an unlisted 24-hour review link.
+- [Documentation](https://diffdump.com/docs): Choose a workflow for reviewing and sharing code changes.
+- [GitHub diff viewer](https://diffdump.com/docs/github-diff-viewer): Open a public or private GitHub pull request, commit, or comparison.
+- [Share a Git diff](https://diffdump.com/docs/share-git-diff): Turn a raw unified diff into an unlisted 24-hour review link.
 - [CLI workflow](https://diffdump.com/docs/cli): Pipe working-tree, staged, or committed changes to a review URL.
 - [Source and documentation](https://github.com/hsyntax/diffdump): Source code, complete capabilities, architecture, local development, and deployment instructions.
 
