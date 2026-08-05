@@ -8,6 +8,7 @@ import {
   writeStoredGitHubToken,
 } from '../lib/github-diffs'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 
 export function GitHubOpenPanel({
   url,
@@ -71,8 +72,8 @@ export function GitHubOpenPanel({
           share link created, nothing uploaded.
         </label>
         <div className="mt-4 flex max-w-[640px] flex-col items-stretch gap-2 sm:flex-row">
-          <input
-            className="h-10 min-w-0 flex-1 rounded-control border border-line bg-canvas px-3.5 font-mono text-xs text-foreground outline-none placeholder:text-muted/70 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-solid focus-visible:outline-accent-text"
+          <Input
+            className="h-10 flex-1 px-3.5 font-mono"
             id="github-url-input"
             type="url"
             value={url}
@@ -101,14 +102,14 @@ export function GitHubOpenPanel({
         >
           {error}
         </p>
-        <p className="mt-4 max-w-[560px] text-xs leading-snug text-muted">
+        <p className="mt-4 max-w-[560px] text-xs leading-snug text-muted-foreground">
           Reviews are client-only: the diff is fetched straight from GitHub and
           rendered in your browser.
         </p>
       </div>
 
       <div className="flex min-h-[72px] flex-col items-stretch justify-between gap-3 border-t border-line bg-canvas px-4 py-3.5 md:flex-row md:items-center md:pl-5">
-        <p className="max-w-[590px] text-xs leading-snug text-muted">
+        <p className="max-w-[590px] text-xs leading-snug text-muted-foreground">
           {hasToken
             ? 'GitHub token active — saved only in this browser, sent only to GitHub.'
             : 'Public repositories work without setup. Private diffs ask for a GitHub token when needed.'}

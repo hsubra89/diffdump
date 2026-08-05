@@ -94,7 +94,7 @@ function DiffLoading() {
         </div>
       </header>
       <div
-        className="flex items-center justify-center gap-3 font-mono text-xs text-muted"
+        className="flex items-center justify-center gap-3 font-mono text-xs text-muted-foreground"
         aria-live="polite"
       >
         <span

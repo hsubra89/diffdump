@@ -2,6 +2,7 @@ import type {
   GitHubReviewComment,
   ReviewCommentThread,
 } from '../lib/review-comments'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 export function GitHubReviewAnnotation({
   thread,
@@ -30,6 +31,8 @@ export function GitHubCommentBody({
 }: {
   comment: GitHubReviewComment
 }) {
+  const commentDateTime = formatCommentDateTime(comment.createdAt)
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
@@ -49,15 +52,22 @@ export function GitHubCommentBody({
         >
           {comment.author.login}
         </a>
-        <a
-          className="text-muted hover:text-foreground hover:underline"
-          href={comment.htmlUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          title="Open on GitHub"
-        >
-          <FormattedCommentDate isoDate={comment.createdAt} />
-        </a>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <a
+                className="text-muted-foreground hover:text-foreground hover:underline"
+                href={comment.htmlUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`Open comment from ${commentDateTime} on GitHub`}
+              />
+            }
+          >
+            <FormattedCommentDate isoDate={comment.createdAt} />
+          </TooltipTrigger>
+          <TooltipContent>{commentDateTime} · Open on GitHub</TooltipContent>
+        </Tooltip>
       </div>
       <p className="whitespace-pre-wrap break-words">{comment.body}</p>
     </div>
@@ -72,7 +82,7 @@ function FormattedCommentDate({ isoDate }: { isoDate: string }) {
   }
 
   return (
-    <time dateTime={isoDate} title={parsed.toLocaleString()}>
+    <time dateTime={isoDate}>
       {parsed.toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'short',
@@ -80,4 +90,9 @@ function FormattedCommentDate({ isoDate }: { isoDate: string }) {
       })}
     </time>
   )
+}
+
+function formatCommentDateTime(isoDate: string): string {
+  const parsed = new Date(isoDate)
+  return Number.isNaN(parsed.getTime()) ? isoDate : parsed.toLocaleString()
 }

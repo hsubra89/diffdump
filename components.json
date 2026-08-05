@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-rhea",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "pierre",
+  "aliases": {
+    "components": "#/components",
+    "ui": "#/components/ui",
+    "lib": "#/lib",
+    "hooks": "#/hooks",
+    "utils": "#/lib/cn"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "rtl": false
+}

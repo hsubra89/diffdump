@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import { IconArrowUpRight } from '@pierre/icons'
 
 import { SiteFooter, SiteHeader } from './site-chrome'
 import { buttonVariants } from './ui/button'
@@ -38,7 +39,7 @@ export function GuidePage({
           <p className="mt-6 max-w-[720px] text-base leading-relaxed text-muted-bright md:text-lg">
             {summary}
           </p>
-          <p className="mt-4 text-sm text-muted">
+          <p className="mt-4 text-sm text-muted-foreground">
             Updated{' '}
             <time dateTime={dateModified}>{formatGuideDate(dateModified)}</time>
           </p>
@@ -50,7 +51,7 @@ export function GuidePage({
             to="/"
           >
             {actionLabel}
-            <span aria-hidden="true">↗</span>
+            <IconArrowUpRight aria-hidden="true" />
           </Link>
         </header>
 
@@ -140,7 +141,7 @@ export function GuideLinkCards({
             to={link.to}
           >
             <span className="font-medium text-foreground">{link.title}</span>
-            <span className="mt-1 block text-sm leading-6 text-muted">
+            <span className="mt-1 block text-sm leading-6 text-muted-foreground">
               {link.description}
             </span>
           </Link>

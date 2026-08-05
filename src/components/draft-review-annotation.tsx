@@ -8,7 +8,22 @@ import {
   type RefObject,
 } from 'react'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  createAlertDialogHandle,
+  type AlertDialogHandle,
+} from './ui/alert-dialog'
 import { Button } from './ui/button'
+import { Textarea } from './ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import {
   draftRangeError,
   type DraftReviewComment,
@@ -119,9 +134,8 @@ export function DraftReviewComposer({
         }
       }}
     >
-      <textarea
+      <Textarea
         ref={textareaRef}
-        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted/70"
         value={body}
         placeholder="Leave a review comment"
         aria-label="Review comment"
@@ -181,23 +195,90 @@ export function DraftReviewComposer({
 
 export function DraftInvalidBadge({ error }: { error: string }) {
   return (
-    <span
-      className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-deletion"
-      title={error}
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className="inline-flex shrink-0 cursor-help items-center rounded border border-line bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-deletion"
+            aria-label={`Can’t submit: ${error}`}
+          />
+        }
+      >
+        Can’t submit
+      </TooltipTrigger>
+      <TooltipContent>{error}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export type DraftDeletionDialogHandle = AlertDialogHandle<DraftReviewComment>
+
+export function createDraftDeletionDialogHandle(): DraftDeletionDialogHandle {
+  return createAlertDialogHandle<DraftReviewComment>()
+}
+
+export function DraftDeleteButton({
+  draft,
+  dialogHandle,
+}: {
+  draft: DraftReviewComment
+  dialogHandle: DraftDeletionDialogHandle
+}) {
+  return (
+    <AlertDialogTrigger
+      handle={dialogHandle}
+      payload={draft}
+      render={<Button variant="ghost" size="xs" />}
     >
-      Can’t submit
-    </span>
+      Delete
+    </AlertDialogTrigger>
+  )
+}
+
+export function DraftDeletionDialog({
+  handle,
+  onDelete,
+}: {
+  handle: DraftDeletionDialogHandle
+  onDelete: (localId: string) => void
+}) {
+  return (
+    <AlertDialog handle={handle}>
+      {({ payload: draft }) => (
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete draft comment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {draft
+                ? `This removes your saved draft for ${draft.path}:${draft.range.end}. This action can’t be undone.`
+                : 'This removes your saved draft. This action can’t be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!draft}
+              onClick={() => {
+                if (draft) onDelete(draft.localId)
+              }}
+            >
+              Delete draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
+    </AlertDialog>
   )
 }
 
 export function DraftReviewAnnotation({
   draft,
   onEdit,
-  onDelete,
+  deleteDialogHandle,
 }: {
   draft: DraftReviewComment
   onEdit: (draft: DraftReviewComment) => void
-  onDelete: (localId: string) => void
+  deleteDialogHandle: DraftDeletionDialogHandle
 }) {
   const rangeError = draftRangeError(draft.range)
 
@@ -208,7 +289,9 @@ export function DraftReviewAnnotation({
           Pending
         </span>
         {rangeError !== null && <DraftInvalidBadge error={rangeError} />}
-        <span className="text-muted">Part of your unsubmitted review</span>
+        <span className="text-muted-foreground">
+          Part of your unsubmitted review
+        </span>
         <span className="ml-auto flex items-center gap-1.5">
           <Button
             variant="ghost"
@@ -218,14 +301,7 @@ export function DraftReviewAnnotation({
           >
             Edit
           </Button>
-          <Button
-            variant="ghost"
-            size="xs"
-            type="button"
-            onClick={() => onDelete(draft.localId)}
-          >
-            Delete
-          </Button>
+          <DraftDeleteButton draft={draft} dialogHandle={deleteDialogHandle} />
         </span>
       </div>
       <p className="whitespace-pre-wrap break-words">{draft.body}</p>

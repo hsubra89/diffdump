@@ -39,7 +39,7 @@ export function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="flex flex-col gap-4 border-t border-line px-1 pt-6 text-[11px] text-muted md:flex-row md:items-center md:justify-between">
+    <footer className="flex flex-col gap-4 border-t border-line px-1 pt-6 text-[11px] text-muted-foreground md:flex-row md:items-center md:justify-between">
       <nav
         className="flex flex-wrap items-center gap-x-4 gap-y-2"
         aria-label="Documentation"

@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 
 import { MissingDiffPage } from '../components/missing-diff-page'
+import { TooltipProvider } from '../components/ui/tooltip'
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
@@ -67,7 +68,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
 
         <Scripts />
       </body>

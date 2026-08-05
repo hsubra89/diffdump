@@ -1,8 +1,14 @@
 import { useMemo, type MouseEvent, type ReactNode } from 'react'
 import type { SelectedLineRange } from '@pierre/diffs'
+import { IconArrowUpRight } from '@pierre/icons'
 
-import { DraftInvalidBadge } from './draft-review-annotation'
+import {
+  DraftDeleteButton,
+  DraftInvalidBadge,
+  type DraftDeletionDialogHandle,
+} from './draft-review-annotation'
 import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from '../lib/cn'
 import {
   draftRangeError,
@@ -15,7 +21,7 @@ import type { ReviewCommentsState } from '../lib/review-state'
 const rowClassName =
   'flex w-full flex-col items-start gap-1 rounded-control border border-transparent px-2 py-1.5 text-left text-xs leading-snug transition-colors'
 const clickableRowClassName =
-  'cursor-pointer hover:border-line hover:bg-surface-raised'
+  'cursor-pointer outline-none hover:border-line hover:bg-surface-raised focus-visible:border-accent-text focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
 export type AnchorClassifier = (
   path: string,
@@ -25,6 +31,12 @@ export type AnchorClassifier = (
 /** Rows navigate on click, but their comment text is selectable — a click
  * that just finished selecting text inside the row is not navigation. */
 function clickSelectsRowText(event: MouseEvent<HTMLElement>): boolean {
+  /* Enter and Space dispatch a click with detail 0. A selection left on the
+     page must not suppress those keyboard activations. */
+  if (event.detail === 0) {
+    return false
+  }
+
   const selection = window.getSelection()
   if (!selection || selection.isCollapsed) {
     return false
@@ -44,7 +56,7 @@ export default function ReviewCommentsPanel({
   classifyAnchor,
   onSelectDraft,
   onEditDraft,
-  onDeleteDraft,
+  deleteDialogHandle,
   onSelectThread,
   onReloadComments,
 }: {
@@ -54,7 +66,7 @@ export default function ReviewCommentsPanel({
   classifyAnchor: AnchorClassifier
   onSelectDraft: (draft: DraftReviewComment) => void
   onEditDraft: (draft: DraftReviewComment) => void
-  onDeleteDraft: (localId: string) => void
+  deleteDialogHandle: DraftDeletionDialogHandle
   onSelectThread: (thread: ReviewCommentThread) => void
   onReloadComments: () => void
 }) {
@@ -81,10 +93,12 @@ export default function ReviewCommentsPanel({
       <section aria-label="Draft review comments">
         <PanelSectionTitle>
           Your drafts
-          <span className="text-muted tabular-nums">{drafts.length}</span>
+          <span className="text-muted-foreground tabular-nums">
+            {drafts.length}
+          </span>
         </PanelSectionTitle>
         {drafts.length === 0 ? (
-          <p className="px-2 text-xs leading-snug text-muted">
+          <p className="px-2 text-xs leading-snug text-muted-foreground">
             Select lines in the diff and use the gutter control to draft review
             comments.
           </p>
@@ -95,19 +109,20 @@ export default function ReviewCommentsPanel({
 
               return (
                 <li key={draft.localId} className={cn(rowClassName, 'gap-1.5')}>
-                  <button
+                  <Button
                     className={cn(
-                      'flex w-full cursor-pointer flex-col items-start gap-1 rounded-control text-left',
-                      'hover:text-foreground',
+                      'h-auto w-full flex-col items-start gap-1 whitespace-normal border-0 px-0 py-0 text-left font-normal text-foreground',
+                      'hover:bg-transparent hover:text-foreground',
                     )}
-                    type="button"
-                    title="Show in diff"
+                    variant="ghost"
+                    size="xs"
                     onClick={(event) => {
                       if (!clickSelectsRowText(event)) {
                         onSelectDraft(draft)
                       }
                     }}
                   >
+                    <span className="sr-only">Show in diff: </span>
                     <span className="flex w-full items-center gap-1.5">
                       <CommentLocation
                         path={draft.path}
@@ -121,7 +136,7 @@ export default function ReviewCommentsPanel({
                     <span className="line-clamp-2 w-full select-text break-words text-muted-bright">
                       {draft.body}
                     </span>
-                  </button>
+                  </Button>
                   <span className="flex gap-1.5">
                     <Button
                       variant="ghost"
@@ -130,13 +145,10 @@ export default function ReviewCommentsPanel({
                     >
                       Edit
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => onDeleteDraft(draft.localId)}
-                    >
-                      Delete
-                    </Button>
+                    <DraftDeleteButton
+                      draft={draft}
+                      dialogHandle={deleteDialogHandle}
+                    />
                   </span>
                 </li>
               )
@@ -149,12 +161,14 @@ export default function ReviewCommentsPanel({
         <PanelSectionTitle>
           Comments
           {commentsState.status === 'loaded' && (
-            <span className="text-muted tabular-nums">{threads.length}</span>
+            <span className="text-muted-foreground tabular-nums">
+              {threads.length}
+            </span>
           )}
         </PanelSectionTitle>
 
         {commentsState.status === 'loading' && (
-          <p className="px-2 text-xs text-muted" aria-live="polite">
+          <p className="px-2 text-xs text-muted-foreground" aria-live="polite">
             Loading GitHub comments…
           </p>
         )}
@@ -172,19 +186,23 @@ export default function ReviewCommentsPanel({
 
         {commentsState.status === 'loaded' &&
           (threads.length === 0 ? (
-            <p className="px-2 text-xs text-muted">
+            <p className="px-2 text-xs text-muted-foreground">
               No review comments on this pull request yet.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
               {threadsByFile.map(([path, fileThreads]) => (
                 <div key={path}>
-                  <p
-                    className="truncate px-2 pb-1 font-mono text-[11px] text-muted"
-                    title={path}
-                  >
-                    {path}
-                  </p>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <p className="truncate px-2 pb-1 font-mono text-[11px] text-muted-foreground" />
+                      }
+                    >
+                      {path}
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{path}</TooltipContent>
+                  </Tooltip>
                   <ul className="flex flex-col gap-0.5">
                     {fileThreads.map((thread) => (
                       <li key={thread.root.id}>
@@ -220,12 +238,12 @@ function ThreadRow({
       <span className="flex w-full items-center gap-1.5">
         <span className="truncate font-medium">{root.author.login}</span>
         {root.outdated && (
-          <span className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-muted">
+          <span className="inline-flex shrink-0 items-center rounded border border-line bg-surface px-1 py-px font-mono text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
             Outdated
           </span>
         )}
         {replies.length > 0 && (
-          <span className="shrink-0 text-muted tabular-nums">
+          <span className="shrink-0 text-muted-foreground tabular-nums">
             {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
           </span>
         )}
@@ -252,21 +270,29 @@ function ThreadRow({
         }}
       >
         {meta}
-        <span className="text-accent-text">View on GitHub ↗</span>
+        <span className="inline-flex items-center gap-1 text-accent-text">
+          View on GitHub <IconArrowUpRight aria-hidden="true" />
+        </span>
       </a>
     )
   }
 
   return (
-    <button
-      className={cn(rowClassName, clickableRowClassName)}
-      type="button"
+    <Button
+      className={cn(
+        rowClassName,
+        clickableRowClassName,
+        'h-auto whitespace-normal font-normal text-foreground',
+      )}
+      variant="ghost"
+      size="xs"
       onClick={(event) => {
         if (!clickSelectsRowText(event)) {
           onSelect(thread)
         }
       }}
     >
+      <span className="sr-only">Show in diff: </span>
       <CommentLocation
         path={null}
         line={root.range === null ? null : root.range.end}
@@ -275,7 +301,7 @@ function ThreadRow({
         }
       />
       {meta}
-    </button>
+    </Button>
   )
 }
 
@@ -302,24 +328,29 @@ function CommentLocation({
      carry their diff marker: +N for added lines, −N for deleted (old-file)
      lines, plain N for unchanged lines. */
   const marker = kind === 'addition' ? '+' : kind === 'deletion' ? '−' : ''
+  const visibleLocation =
+    path !== null
+      ? `${path}${line !== null ? `:${marker}${line}` : ''}`
+      : `Line ${marker}${line}`
+  const lineDescription =
+    kind !== null && line !== null
+      ? ` · ${DIFF_LINE_KIND_LABELS[kind]} ${line}`
+      : ''
 
   return (
-    <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted">
-      {path !== null && <span title={path}>{path}</span>}
-      {line !== null && (
-        <span
-          title={
-            kind !== null
-              ? `Comment on ${DIFF_LINE_KIND_LABELS[kind]} ${line}`
-              : undefined
-          }
-        >
-          {path !== null ? ':' : 'Line '}
-          {marker}
-          {line}
-        </span>
-      )}
-    </span>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground" />
+        }
+      >
+        {visibleLocation}
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {visibleLocation}
+        {lineDescription}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

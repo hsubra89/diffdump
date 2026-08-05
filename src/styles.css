@@ -1,24 +1,39 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/jetbrains-mono';
 
 @theme inline {
+  --color-background: var(--background);
   --color-canvas: var(--canvas);
   --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-line: var(--line);
   --color-line-bright: var(--line-bright);
-  --color-foreground: var(--text);
+  --color-foreground: var(--foreground);
   --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-muted-bright: var(--muted-bright);
   --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --color-accent-ink: var(--accent-ink);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-text: var(--accent-text);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-strong: var(--secondary-strong);
-  --color-secondary-ink: var(--secondary-ink);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-strong: var(--destructive-strong);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-danger: var(--danger);
   --color-addition: var(--addition);
   --color-deletion: var(--deletion);
@@ -52,15 +67,30 @@
   --line: light-dark(#e4e4e7, #27272a);
   --line-bright: light-dark(#d4d4d8, #3f3f46);
   --text: light-dark(#18181b, #fafafa);
-  --muted: light-dark(#71717a, #a1a1aa);
+  --background: var(--canvas);
+  --foreground: var(--text);
+  --card: var(--panel);
+  --card-foreground: var(--text);
+  --popover: var(--panel);
+  --popover-foreground: var(--text);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--accent-text);
+  --muted: var(--surface-raised);
+  --muted-foreground: light-dark(#71717a, #a1a1aa);
   --muted-bright: light-dark(#3f3f46, #d4d4d8);
-  --accent: light-dark(#27272a, #fafafa);
-  --accent-strong: light-dark(#18181b, #e4e4e7);
-  --accent-ink: light-dark(#fafafa, #18181b);
+  --accent: var(--surface-raised);
+  --accent-foreground: var(--text);
   --accent-text: light-dark(#3f3f46, #d4d4d8);
+  --primary: light-dark(#27272a, #fafafa);
+  --primary-strong: light-dark(#18181b, #e4e4e7);
+  --primary-foreground: light-dark(#fafafa, #18181b);
   --secondary: light-dark(#f4f4f5, #27272a);
   --secondary-strong: light-dark(#e4e4e7, #3f3f46);
-  --secondary-ink: light-dark(#27272a, #fafafa);
+  --secondary-foreground: light-dark(#27272a, #fafafa);
+  --destructive: light-dark(#b91c1c, #f87171);
+  --destructive-strong: light-dark(#991b1b, #fca5a5);
+  --destructive-foreground: light-dark(#ffffff, #18181b);
   --danger: light-dark(#b91c1c, #f87171);
   --addition: light-dark(#15803d, #4ade80);
   --deletion: light-dark(#b91c1c, #f87171);
@@ -149,7 +179,7 @@ body {
   --trees-bg-override: var(--canvas);
   --trees-bg-muted-override: light-dark(#f4f4f580, #27272a99);
   --trees-fg-override: var(--muted-bright);
-  --trees-fg-muted-override: var(--muted);
+  --trees-fg-muted-override: var(--muted-foreground);
   --trees-border-color-override: var(--line);
   --trees-input-bg-override: var(--panel);
   --trees-selected-bg-override: var(--surface-raised);
@@ -157,9 +187,9 @@ body {
   --trees-selected-focused-border-color-override: var(--accent-text);
   --trees-focus-ring-color-override: var(--accent-text);
   --trees-status-added-override: var(--addition);
-  --trees-status-ignored-override: var(--muted);
+  --trees-status-ignored-override: var(--muted-foreground);
   --trees-status-modified-override: var(--muted-bright);
-  --trees-status-renamed-override: var(--muted);
+  --trees-status-renamed-override: var(--muted-foreground);
   --trees-status-untracked-override: var(--addition);
   --trees-status-deleted-override: var(--deletion);
   --trees-scrollbar-thumb-override: var(--line-bright);
@@ -234,6 +264,8 @@ body {
   *::before,
   *::after {
     scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { IconArrowUpRight, IconCheck } from '@pierre/icons'
 
 import { Button } from './ui/button'
+import { RadioGroup, RadioGroupItem } from './ui/radio-group'
+import { Textarea } from './ui/textarea'
 import { cn } from '../lib/cn'
 import type { GitHubReviewEvent } from '../lib/review-comments'
 import type { SubmitReviewState } from '../lib/review-state'
@@ -48,8 +51,11 @@ export default function SubmitReviewPanel({
 }) {
   const [event, setEvent] = useState<GitHubReviewEvent>('COMMENT')
   const [body, setBody] = useState('')
+  const summaryRef = useRef<HTMLTextAreaElement>(null)
+  const reviewEventId = useId()
   const submitting = submitState.phase === 'submitting'
   const succeeded = submitState.phase === 'success'
+  const controlsDisabled = submitting || succeeded
   const errorReason = submitState.phase === 'error' ? submitState.reason : null
   /* GitHub rejects a review that carries no comments and no summary. A moved
      head SHA blocks submission entirely until the diff is reloaded. */
@@ -58,6 +64,12 @@ export default function SubmitReviewPanel({
     !succeeded &&
     errorReason !== 'head-changed' &&
     (draftCount > 0 || body.trim() !== '')
+
+  /* The panel can arrive after its popover opens because it is lazy-loaded;
+     move focus into the form when that deferred content mounts. */
+  useEffect(() => {
+    summaryRef.current?.focus({ preventScroll: true })
+  }, [])
 
   return (
     <form
@@ -75,52 +87,69 @@ export default function SubmitReviewPanel({
         <span className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-bright">
           Submit review
         </span>
-        <span className="text-muted tabular-nums">
+        <span className="text-muted-foreground tabular-nums">
           {draftCount} {draftCount === 1 ? 'draft' : 'drafts'}
         </span>
       </div>
 
-      <textarea
-        className="min-h-16 w-full resize-y rounded-control border border-line bg-canvas px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted/70"
+      <Textarea
+        ref={summaryRef}
         value={body}
         placeholder="Review summary (optional)"
         aria-label="Review summary"
-        disabled={submitting || succeeded}
+        disabled={controlsDisabled}
         onChange={(changeEvent) => setBody(changeEvent.currentTarget.value)}
       />
 
-      <fieldset
+      <RadioGroup
+        aria-label="Review type"
         className="flex flex-col gap-1"
-        disabled={submitting || succeeded}
+        name="review-event"
+        value={event}
+        disabled={controlsDisabled}
+        onValueChange={setEvent}
       >
-        {REVIEW_EVENTS.map((option) => (
-          <label
-            key={option.event}
-            aria-label={option.label}
-            className={cn(
-              'flex cursor-pointer items-start gap-2 rounded-control border border-transparent px-2 py-1.5 transition-colors hover:bg-surface-raised',
-              event === option.event && 'border-line bg-surface-raised',
-            )}
-          >
-            <input
-              className="mt-0.5"
-              type="radio"
-              name="review-event"
-              checked={event === option.event}
-              style={{ accentColor: 'var(--accent-text)' }}
-              onChange={() => setEvent(option.event)}
-            />
-            <span className="flex flex-col gap-0.5">
-              <span className="font-medium">{option.label}</span>
-              <span className="leading-snug text-muted">
-                {option.description}
-              </span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+        {REVIEW_EVENTS.map((option) => {
+          const optionId = `${reviewEventId}-${option.event.toLowerCase()}`
+          const labelId = `${optionId}-label`
+          const descriptionId = `${optionId}-description`
 
-      <p className="leading-snug text-muted">
+          return (
+            <label
+              key={option.event}
+              htmlFor={optionId}
+              className={cn(
+                'flex items-start gap-2 rounded-control border border-transparent px-2 py-1.5 transition-colors',
+                controlsDisabled
+                  ? 'cursor-not-allowed opacity-55'
+                  : 'cursor-pointer hover:bg-surface-raised',
+                event === option.event && 'border-line bg-surface-raised',
+              )}
+            >
+              <RadioGroupItem
+                id={optionId}
+                className="mt-0.5"
+                value={option.event}
+                aria-labelledby={labelId}
+                aria-describedby={descriptionId}
+              />
+              <span className="flex flex-col gap-0.5">
+                <span id={labelId} className="font-medium">
+                  {option.label}
+                </span>
+                <span
+                  id={descriptionId}
+                  className="leading-snug text-muted-foreground"
+                >
+                  {option.description}
+                </span>
+              </span>
+            </label>
+          )
+        })}
+      </RadioGroup>
+
+      <p className="leading-snug text-muted-foreground">
         Publishes this review to GitHub from this browser with your saved token.
       </p>
 
@@ -134,26 +163,29 @@ export default function SubmitReviewPanel({
 
       {errorReason === 'pending-review-exists' && pullRequestUrl !== null && (
         <a
-          className="self-start text-accent-text underline underline-offset-2 hover:no-underline"
+          className="inline-flex self-start items-center gap-1 text-accent-text underline underline-offset-2 hover:no-underline"
           href={pullRequestUrl}
           target="_blank"
           rel="noreferrer noopener"
         >
-          Resolve the pending review on GitHub ↗
+          Resolve the pending review on GitHub
+          <IconArrowUpRight aria-hidden="true" />
         </a>
       )}
 
       {succeeded ? (
         <div className="flex items-center justify-between gap-2">
-          <span className="text-addition">Review published ✓</span>
+          <span className="inline-flex items-center gap-1.5 text-addition">
+            Review published <IconCheck aria-hidden="true" />
+          </span>
           {reviewUrl !== null && (
             <a
-              className="text-accent-text underline underline-offset-2 hover:no-underline"
+              className="inline-flex items-center gap-1 text-accent-text underline underline-offset-2 hover:no-underline"
               href={reviewUrl}
               target="_blank"
               rel="noreferrer noopener"
             >
-              View on GitHub ↗
+              View on GitHub <IconArrowUpRight aria-hidden="true" />
             </a>
           )}
         </div>

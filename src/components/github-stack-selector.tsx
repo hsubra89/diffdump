@@ -1,7 +1,25 @@
-import type { ChangeEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
+import {
+  IconArrow,
+  IconArrowRight,
+  IconArrowRightShort,
+  IconCircle,
+  IconDraft,
+  IconMerged,
+  IconX,
+} from '@pierre/icons'
 
-import { buttonVariants } from './ui/button'
+import { Button, buttonVariants } from './ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { cn } from '../lib/cn'
 import type {
   GitHubPullStack,
@@ -45,9 +63,8 @@ export function GitHubStackSelector({
   const baseRef = stack?.baseRef ?? summary.baseRef
   const statusId = `github-stack-status-${summary.number}`
 
-  function selectPull(event: ChangeEvent<HTMLSelectElement>) {
-    const selectedPullNumber = event.currentTarget.value
-    if (selectedPullNumber !== pullNumber) {
+  function selectPull(selectedPullNumber: string | null) {
+    if (selectedPullNumber && selectedPullNumber !== pullNumber) {
       void navigate({
         to: '/$',
         params: {
@@ -72,48 +89,82 @@ export function GitHubStackSelector({
           pull={previousPull}
         />
 
-        <div
-          className={cn(
-            'relative flex h-8 min-w-0 flex-1 items-center justify-center rounded-control border border-line bg-surface-raised px-3',
-            stack &&
-              'focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-text',
-          )}
-        >
-          <span
-            className="truncate font-mono text-[11px] font-medium text-foreground"
-            aria-hidden={stack !== null}
-            title={state.status === 'error' ? state.message : undefined}
-          >
-            {state.status === 'error'
-              ? `Layer ${position} of ${size} · Stack unavailable`
-              : `PR #${pullNumber} · Layer ${position} of ${size}`}
-          </span>
-          <span className="ml-2 text-[10px] text-muted" aria-hidden="true">
-            {stack ? '▾' : state.status === 'loading' ? '…' : ''}
-          </span>
-          {state.status === 'error' && (
-            <RetryStackButton
-              className="ml-2 shrink-0"
-              statusId={statusId}
-              onRetry={onRetry}
-            />
-          )}
-          {stack && (
-            <select
-              className="absolute inset-0 size-full cursor-pointer opacity-0"
+        {stack ? (
+          <Select value={pullNumber} onValueChange={selectPull}>
+            <SelectTrigger
+              className="flex-1 justify-center bg-surface-raised px-3 font-mono text-[11px] font-medium"
               aria-label={`Select a pull request in stack #${summary.number}`}
-              value={pullNumber}
-              onChange={selectPull}
               data-testid="github-stack-select"
             >
-              {stack.pullRequests.map((pull, index) => (
-                <option key={pull.number} value={pull.number}>
-                  {`#${pull.number} · ${index + 1} of ${stack.pullRequests.length} · ${pull.title} · ${getPullStatus(pull)}`}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+              <SelectValue>
+                {`PR #${pullNumber} · Layer ${position} of ${size}`}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="w-[min(24rem,calc(100vw-5rem))]">
+              <SelectGroup>
+                <SelectLabel>
+                  Stack #{summary.number} · base {baseRef}
+                </SelectLabel>
+                {stack.pullRequests.map((pull, index) => {
+                  const status = getPullStatus(pull)
+
+                  return (
+                    <SelectItem
+                      key={pull.number}
+                      value={pull.number}
+                      label={`Pull request #${pull.number}: ${pull.title}. ${status}. Layer ${index + 1} of ${stack.pullRequests.length}.`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        >
+                          {getPullStatusIcon(pull)}
+                        </span>
+                        <span className="shrink-0 font-mono font-medium text-foreground">
+                          #{pull.number}
+                        </span>
+                        <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                          {index + 1}/{stack.pullRequests.length}
+                        </span>
+                        <span className="truncate">{pull.title}</span>
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-control border border-line bg-surface-raised px-3">
+            {state.status === 'error' ? (
+              <StackErrorMessage
+                className="truncate font-mono text-[11px] font-medium text-foreground"
+                label={`Layer ${position} of ${size} · Stack unavailable`}
+                message={state.message}
+              />
+            ) : (
+              <span className="truncate font-mono text-[11px] font-medium text-foreground">
+                PR #{pullNumber} · Layer {position} of {size}
+              </span>
+            )}
+            {state.status === 'loading' && (
+              <span
+                className="ml-2 text-[10px] text-muted-foreground"
+                aria-hidden="true"
+              >
+                …
+              </span>
+            )}
+            {state.status === 'error' && (
+              <RetryStackButton
+                className="ml-2 shrink-0"
+                statusId={statusId}
+                onRetry={onRetry}
+              />
+            )}
+          </div>
+        )}
 
         <StackStepLink
           direction="next"
@@ -124,17 +175,24 @@ export function GitHubStackSelector({
       </div>
 
       <div className="hidden min-w-0 items-center gap-2 sm:flex">
-        <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+        <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           Stack #{summary.number}
         </span>
-        <span
-          className="inline-block h-7 max-w-40 shrink-0 truncate rounded-control border border-line bg-surface px-2 font-mono text-[11px] leading-[26px] text-muted-bright"
-          title={`Stack base: ${baseRef}`}
-        >
-          {baseRef}
-        </span>
-        <span className="shrink-0 text-muted" aria-hidden="true">
-          →
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                className="inline-block h-7 max-w-40 shrink-0 cursor-help truncate rounded-control border border-line bg-surface px-2 font-mono text-[11px] leading-[26px] text-muted-bright"
+                aria-label={`Stack base: ${baseRef}`}
+              />
+            }
+          >
+            {baseRef}
+          </TooltipTrigger>
+          <TooltipContent>Stack base: {baseRef}</TooltipContent>
+        </Tooltip>
+        <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+          <IconArrowRightShort />
         </span>
 
         {stack ? (
@@ -152,37 +210,46 @@ export function GitHubStackSelector({
                   key={pull.number}
                 >
                   {index > 0 && (
-                    <span className="text-muted" aria-hidden="true">
-                      →
+                    <span className="text-muted-foreground" aria-hidden="true">
+                      <IconArrowRightShort />
                     </span>
                   )}
-                  <Link
-                    className={cn(
-                      'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-control border px-2.5 font-mono text-[11px] font-medium transition-colors',
-                      current
-                        ? 'border-accent bg-accent text-accent-ink'
-                        : 'border-line bg-surface text-muted-bright hover:border-line-bright hover:bg-surface-raised hover:text-foreground',
-                    )}
-                    to="/$"
-                    params={{
-                      _splat: createPullSplat(owner, repo, pull.number),
-                    }}
-                    aria-current={current ? 'page' : undefined}
-                    aria-label={`Pull request #${pull.number}: ${pull.title}. ${status}. Layer ${index + 1} of ${stack.pullRequests.length}.`}
-                    title={`${pull.title} · ${pull.headRef} · ${status}`}
-                    data-testid={`github-stack-pull-${pull.number}`}
-                  >
-                    <span aria-hidden="true">{getPullStatusSymbol(pull)}</span>
-                    <span>#{pull.number}</span>
-                    {current && (
-                      <span
-                        className="border-l border-current/30 pl-1.5 opacity-75"
-                        aria-hidden="true"
-                      >
-                        {position}/{size}
-                      </span>
-                    )}
-                  </Link>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Link
+                          className={cn(
+                            buttonVariants({
+                              variant: current ? 'primary' : 'outline',
+                              size: 'xs',
+                            }),
+                            'h-7 gap-1.5 px-2.5 font-mono text-[11px]',
+                          )}
+                          to="/$"
+                          params={{
+                            _splat: createPullSplat(owner, repo, pull.number),
+                          }}
+                          aria-current={current ? 'page' : undefined}
+                          aria-label={`Pull request #${pull.number}: ${pull.title}. ${status}. Layer ${index + 1} of ${stack.pullRequests.length}.`}
+                          data-testid={`github-stack-pull-${pull.number}`}
+                        />
+                      }
+                    >
+                      <span aria-hidden="true">{getPullStatusIcon(pull)}</span>
+                      <span>#{pull.number}</span>
+                      {current && (
+                        <span
+                          className="border-l border-current/30 pl-1.5 opacity-75"
+                          aria-hidden="true"
+                        >
+                          {position}/{size}
+                        </span>
+                      )}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {pull.title} · {pull.headRef} · {status}
+                    </TooltipContent>
+                  </Tooltip>
                 </span>
               )
             })}
@@ -199,12 +266,11 @@ export function GitHubStackSelector({
             {state.status === 'error' && (
               <>
                 <span aria-hidden="true">·</span>
-                <span
+                <StackErrorMessage
                   className="max-w-80 truncate text-danger"
-                  title={state.message}
-                >
-                  {state.message}
-                </span>
+                  label={state.message}
+                  message={state.message}
+                />
                 <RetryStackButton statusId={statusId} onRetry={onRetry} />
               </>
             )}
@@ -221,6 +287,34 @@ export function GitHubStackSelector({
   )
 }
 
+export default GitHubStackSelector
+
+function StackErrorMessage({
+  className,
+  label,
+  message,
+}: {
+  className?: string
+  label: string
+  message: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className={cn('cursor-help', className)}
+            aria-label={label === message ? message : `${label}: ${message}`}
+          />
+        }
+      >
+        {label}
+      </TooltipTrigger>
+      <TooltipContent>{message}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 function RetryStackButton({
   className,
   statusId,
@@ -231,17 +325,15 @@ function RetryStackButton({
   onRetry: () => void
 }) {
   return (
-    <button
-      className={cn(
-        'font-mono text-[11px] font-medium text-accent-text underline underline-offset-2 hover:no-underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text',
-        className,
-      )}
-      type="button"
+    <Button
+      className={cn('h-6 px-1.5 font-mono text-[11px]', className)}
+      variant="ghost"
+      size="xs"
       aria-describedby={statusId}
       onClick={onRetry}
     >
       Retry
-    </button>
+    </Button>
   )
 }
 
@@ -271,7 +363,7 @@ function StackStepLink({
   pull: GitHubPullStackItem | null
 }) {
   const label = direction === 'previous' ? 'Previous layer' : 'Next layer'
-  const symbol = direction === 'previous' ? '←' : '→'
+  const icon = direction === 'previous' ? <IconArrow /> : <IconArrowRight />
 
   if (!pull) {
     return (
@@ -282,21 +374,32 @@ function StackStepLink({
         )}
         aria-hidden="true"
       >
-        {symbol}
+        {icon}
       </span>
     )
   }
 
+  const accessibleLabel = `${label}: pull request #${pull.number}, ${pull.title}`
+
   return (
-    <Link
-      className={buttonVariants({ variant: 'outline', size: 'iconSm' })}
-      to="/$"
-      params={{ _splat: createPullSplat(owner, repo, pull.number) }}
-      aria-label={`${label}: pull request #${pull.number}, ${pull.title}`}
-      title={`${label}: #${pull.number}`}
-    >
-      <span aria-hidden="true">{symbol}</span>
-    </Link>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Link
+            className={buttonVariants({
+              variant: 'outline',
+              size: 'iconSm',
+            })}
+            to="/$"
+            params={{ _splat: createPullSplat(owner, repo, pull.number) }}
+            aria-label={accessibleLabel}
+          />
+        }
+      >
+        <span aria-hidden="true">{icon}</span>
+      </TooltipTrigger>
+      <TooltipContent>{`${label}: #${pull.number}`}</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -318,15 +421,15 @@ function getPullStatus(pull: GitHubPullStackItem): string {
   return pull.state === 'open' ? 'Open' : 'Closed'
 }
 
-function getPullStatusSymbol(pull: GitHubPullStackItem): string {
+function getPullStatusIcon(pull: GitHubPullStackItem) {
   switch (getPullStatus(pull)) {
     case 'Merged':
-      return '✓'
+      return <IconMerged />
     case 'Draft':
-      return '◌'
+      return <IconDraft />
     case 'Closed':
-      return '×'
+      return <IconX />
     default:
-      return '○'
+      return <IconCircle />
   }
 }
