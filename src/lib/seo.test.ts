@@ -16,16 +16,16 @@ describe('SEO metadata', () => {
     const head = createPageHead({
       title: 'Share a Git Diff | Diffdump',
       description: 'Create an expiring diff share link.',
-      path: '/share-git-diff',
+      path: '/docs/share-git-diff',
     })
 
     expect(head.links).toContainEqual({
       rel: 'canonical',
-      href: 'https://diffdump.com/share-git-diff',
+      href: 'https://diffdump.com/docs/share-git-diff',
     })
     expect(head.meta).toContainEqual({
       property: 'og:url',
-      content: 'https://diffdump.com/share-git-diff',
+      content: 'https://diffdump.com/docs/share-git-diff',
     })
     expect(head.meta).toContainEqual({
       property: 'og:image',
@@ -61,7 +61,7 @@ describe('SEO metadata', () => {
     const article = createTechArticleStructuredData({
       title: 'Share a Git Diff | Diffdump',
       description: 'Create an expiring diff share link.',
-      path: '/share-git-diff',
+      path: '/docs/share-git-diff',
       datePublished: '2026-07-29',
       dateModified: '2026-07-29',
     })
@@ -87,6 +87,12 @@ describe('sitemap', () => {
     expect(sitemap).not.toContain('/view/')
     expect(sitemap).not.toContain('/github?')
     expect(sitemap).not.toContain('<loc>https://diffdump.com/d</loc>')
+    expect(sitemap).not.toContain(
+      '<loc>https://diffdump.com/github-diff-viewer</loc>',
+    )
+    expect(sitemap).not.toContain(
+      '<loc>https://diffdump.com/share-git-diff</loc>',
+    )
   })
 })
 

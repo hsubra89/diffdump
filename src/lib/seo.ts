@@ -4,12 +4,17 @@ export const SOCIAL_IMAGE_URL = `${SITE_ORIGIN}/og.png`
 export const SOURCE_REPOSITORY_URL = 'https://github.com/hsyntax/diffdump'
 
 export type IndexablePagePath =
-  '/' | '/github-diff-viewer' | '/share-git-diff' | '/docs/cli'
+  | '/'
+  | '/docs'
+  | '/docs/github-diff-viewer'
+  | '/docs/share-git-diff'
+  | '/docs/cli'
 
 export const INDEXABLE_PAGE_PATHS: readonly IndexablePagePath[] = [
   '/',
-  '/github-diff-viewer',
-  '/share-git-diff',
+  '/docs',
+  '/docs/github-diff-viewer',
+  '/docs/share-git-diff',
   '/docs/cli',
 ]
 

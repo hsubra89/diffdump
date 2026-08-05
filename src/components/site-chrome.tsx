@@ -5,8 +5,8 @@ import { ThemeToggle } from './ui/theme-toggle'
 import { Wordmark } from './wordmark'
 
 const guideLinks = [
-  { to: '/github-diff-viewer', label: 'GitHub viewer' },
-  { to: '/share-git-diff', label: 'Share a diff' },
+  { to: '/docs/github-diff-viewer', label: 'GitHub viewer' },
+  { to: '/docs/share-git-diff', label: 'Share a diff' },
   { to: '/docs/cli', label: 'CLI' },
 ] as const
 
@@ -62,7 +62,7 @@ export function SiteFooter() {
     <footer className="flex flex-col gap-4 border-t border-line px-1 pt-6 text-[11px] text-muted md:flex-row md:items-center md:justify-between">
       <nav
         className="flex flex-wrap items-center gap-x-4 gap-y-2"
-        aria-label="Guides"
+        aria-label="Documentation"
       >
         {guideLinks.map((link) => (
           <Link
